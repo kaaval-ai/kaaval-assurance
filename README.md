@@ -1,4 +1,4 @@
-# kaaval-assurance
+# Kaaval-AI: kaaval-assurance
 
 The Kaaval **inference assurance plane**: task contracts, deterministic verification, per-category drift tracking, and sampled adversarial audit for AMD + Gemma agent workloads.
 
