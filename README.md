@@ -60,6 +60,18 @@ python -m kaaval_assurance.eval.cli --json
 
 Installed entrypoint: `kaaval-eval` (same flags).
 
+### Remote escalation via Fireworks AI
+
+The escalation tier can target a Fireworks-hosted model instead of the remote mock. Configuration is environment-only (`FIREWORKS_API_KEY`, `FIREWORKS_MODEL`, `FIREWORKS_BASE_URL`, `FIREWORKS_TIMEOUT_SECONDS`, optional `FIREWORKS_COST_PER_PROMPT_TOKEN` / `FIREWORKS_COST_PER_COMPLETION_TOKEN`). Keep secrets in an untracked local env file and source it — never commit keys.
+
+```bash
+set -a; source .env; set +a
+kaaval-eval --dataset data/eval/telecom_gold.jsonl \
+  --remote-provider fireworks --failure-mode bad_enum --failure-rate 0.4
+```
+
+The local tier stays mock here; injected local failures escalate to the live Fireworks endpoint, and Layer 1 verifies whatever comes back — malformed or prose output is recorded as a `json_parse` failure, not silently accepted.
+
 ## Task contracts (initial set)
 
 Four telecom incident-triage contracts, versioned:

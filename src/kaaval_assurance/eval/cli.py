@@ -13,7 +13,7 @@ from pathlib import Path
 
 from ..metrics import DEFAULT_EWMA_ALPHA, MetricsReport
 from ..pipeline import AssurancePipeline
-from ..providers import FAILURE_MODES, MockProvider
+from ..providers import FAILURE_MODES, FireworksError, MockProvider
 from ..router import Router
 from ..trajectory import TrajectoryStore
 from .dataset import load_dataset
@@ -71,6 +71,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="trajectory SQLite path (default in-memory)",
     )
     parser.add_argument(
+        "--remote-provider",
+        choices=["mock", "fireworks"],
+        default="mock",
+        help="escalation tier: deterministic mock (default) or Fireworks AI "
+        "(reads FIREWORKS_* env vars)",
+    )
+    parser.add_argument(
         "--failure-mode",
         choices=FAILURE_MODES,
         default=None,
@@ -102,6 +109,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
+    if args.remote_provider == "fireworks":
+        from ..providers.fireworks import FireworksConfig, FireworksProvider
+
+        try:
+            remote_provider = FireworksProvider(FireworksConfig.from_env())
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+    else:
+        remote_provider = MockProvider(tier="remote", model_id="mock-remote-strong")
+
     store = TrajectoryStore(args.db)
     try:
         pipeline = AssurancePipeline(
@@ -112,10 +130,13 @@ def main(argv: list[str] | None = None) -> int:
                 failure_rate=args.failure_rate,
                 seed=args.seed,
             ),
-            remote_provider=MockProvider(tier="remote", model_id="mock-remote-strong"),
+            remote_provider=remote_provider,
             store=store,
         )
         report = run_eval(pipeline, cases, ewma_alpha=args.ewma_alpha)
+    except FireworksError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
     finally:
         store.close()
 
