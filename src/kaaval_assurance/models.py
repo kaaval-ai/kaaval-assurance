@@ -14,7 +14,7 @@ class ModelResponse(BaseModel):
     """A single model generation, from any provider tier."""
 
     request_id: str
-    provider: str  # "mock" | "vllm-gemma" | "fireworks" (later)
+    provider: str  # "mock" | "vllm-gemma" | "fireworks"
     model_id: str
     tier: Literal["local", "remote"]
     raw_text: str

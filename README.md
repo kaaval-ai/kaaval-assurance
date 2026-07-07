@@ -108,6 +108,24 @@ Audit results persist into the trajectory rows (`audit_sampled`, `audit_result`,
 - FP8 KV cache, tensor parallelism, and GPU memory utilization are recorded as serving knobs in the runtime profile, not claimed results.
 - Fireworks serves as the remote challenger/escalation tier with strict JSON output; optional prompt-cache keys and logprob telemetry are passed through when configured, and provider-reported cached tokens are recorded when returned.
 
+## Telemetry Truth Layer
+
+Every demo claim maps to a stored telemetry field. `--telemetry-summary` prints a judge-ready block where each line carries its source tag: `measured` (derived from trajectory rows and run results), `configured` (recorded runtime settings from the vLLM/Gemma profile — settings, not measurements), `not_available` (the provider or run did not produce the value), or `planned` (intended AMD Developer Cloud deployment not yet executed). AMD/Gemma/vLLM runtime settings are recorded, never invented; the audit challenger signal is model-generated while aggregation and thresholding stay deterministic; and cost-savings figures appear only when a cached always-remote baseline run exists.
+
+```bash
+# judge-ready truth block after a mock run with audit
+kaaval-eval --dataset data/eval/telecom_gold.jsonl \
+  --audit-provider mock --audit-sample-rate 1.0 --telemetry-summary
+
+# with an always-remote baseline for cost-savings lines
+kaaval-eval --dataset data/eval/telecom_gold.jsonl \
+  --telemetry-summary --always-remote-baseline-db baseline.db
+
+# machine-readable / file outputs
+kaaval-eval --dataset data/eval/telecom_gold.jsonl --telemetry-json
+kaaval-eval --dataset data/eval/telecom_gold.jsonl --telemetry-markdown telemetry.md
+```
+
 ## Task contracts (initial set)
 
 Four telecom incident-triage contracts, versioned:

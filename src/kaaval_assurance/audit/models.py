@@ -105,3 +105,6 @@ class AuditRunSummary(BaseModel):
     cost_per_sampled_usd: Optional[float] = None
     cost_per_verified_accepted_usd: Optional[float] = None
     audit_tokens: int = 0  # remote challenger tokens spent on audit
+    # Sum of provider-reported cached prompt tokens across audit calls;
+    # None when the provider reported none. Telemetry only, never estimated.
+    cached_tokens_total: Optional[int] = None

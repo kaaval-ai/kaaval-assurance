@@ -1,8 +1,8 @@
 """SQLite trajectory store: one replayable row per model attempt.
 
 Every row carries the full task input and raw output, so any request can be
-replayed and re-verified later. audit_* columns are reserved for Layer 3
-(sampled adversarial audit) and stay NULL until it lands.
+replayed and re-verified later. audit_* columns hold Layer 3 sampled offline
+audit results; they stay NULL/0 for rows the audit did not sample.
 """
 
 import json
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS trajectory (
     raw_text TEXT NOT NULL DEFAULT '',
     audit_sampled INTEGER NOT NULL DEFAULT 0,
     audit_result TEXT,                     -- 'pass' | 'fail' | NULL
-    audit_violations TEXT                  -- JSON array (Layer 3), NULL until Jul 7
+    audit_violations TEXT                  -- JSON array (Layer 3), NULL if unsampled
 );
 CREATE INDEX IF NOT EXISTS idx_trajectory_category ON trajectory (category);
 CREATE INDEX IF NOT EXISTS idx_trajectory_request ON trajectory (request_id);

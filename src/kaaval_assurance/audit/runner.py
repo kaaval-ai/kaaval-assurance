@@ -91,5 +91,10 @@ def run_sampled_audit(
             total_cost / len(accepted) if accepted else None
         ),
         audit_tokens=sum(r.prompt_tokens + r.completion_tokens for r in results),
+        cached_tokens_total=(
+            sum(cached)
+            if (cached := [r.cached_tokens for r in results if r.cached_tokens is not None])
+            else None
+        ),
     )
     return summary, results

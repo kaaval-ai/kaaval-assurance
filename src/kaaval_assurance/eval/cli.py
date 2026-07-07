@@ -220,6 +220,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="local development only: skip the gold-answer calibration gate; "
         "audit results stay marked untrusted",
     )
+    parser.add_argument(
+        "--telemetry-summary",
+        action="store_true",
+        help="print the judge-ready telemetry truth block (claim -> value -> "
+        "source)",
+    )
+    parser.add_argument(
+        "--telemetry-json",
+        action="store_true",
+        help="print the full telemetry summary as JSON",
+    )
+    parser.add_argument(
+        "--telemetry-markdown",
+        type=Path,
+        default=None,
+        help="write the telemetry truth summary to a markdown file",
+    )
+    parser.add_argument(
+        "--always-remote-baseline-db",
+        type=Path,
+        default=None,
+        help="trajectory DB of a cached always-remote run; enables "
+        "remote-calls-avoided and cost-saved telemetry",
+    )
     return parser
 
 
@@ -247,6 +271,19 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "error: audit runs on the standard eval path, not the closed-loop "
             "demo",
+            file=sys.stderr,
+        )
+        return 2
+
+    telemetry_requested = (
+        args.telemetry_summary
+        or args.telemetry_json
+        or args.telemetry_markdown is not None
+    )
+    if telemetry_requested and args.closed_loop_demo:
+        print(
+            "error: telemetry summary runs on the standard eval path, not the "
+            "closed-loop demo",
             file=sys.stderr,
         )
         return 2
@@ -322,6 +359,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         report = run_eval(pipeline, cases, ewma_alpha=args.ewma_alpha)
 
+        run_rows = []
+        if challenger is not None or telemetry_requested:
+            for result in report.results:
+                run_rows.extend(store.rows_for_request(result.request_id))
+
         if challenger is not None:
             from ..audit import (
                 calibrate_challenger,
@@ -335,9 +377,6 @@ def main(argv: list[str] | None = None) -> int:
                 calibration = calibrate_challenger(
                     challenger, cases, threshold=args.audit_calibration_threshold
                 )
-            run_rows = []
-            for result in report.results:
-                run_rows.extend(store.rows_for_request(result.request_id))
             summary, _ = run_sampled_audit(
                 store,
                 run_rows,
@@ -347,6 +386,29 @@ def main(argv: list[str] | None = None) -> int:
                 seed=args.audit_seed,
             )
             report.audit = summary
+            # audit wrote audit_* fields; refresh rows for telemetry
+            if telemetry_requested:
+                run_rows = []
+                for result in report.results:
+                    run_rows.extend(store.rows_for_request(result.request_id))
+
+        telemetry = None
+        if telemetry_requested:
+            from ..telemetry import baseline_from_rows, build_telemetry_summary
+
+            baseline = None
+            if args.always_remote_baseline_db is not None:
+                baseline_store = TrajectoryStore(args.always_remote_baseline_db)
+                try:
+                    baseline = baseline_from_rows(baseline_store.all_rows())
+                finally:
+                    baseline_store.close()
+            telemetry = build_telemetry_summary(
+                report,
+                run_rows,
+                runtime_profile=local_provider.runtime_profile(),
+                always_remote_baseline=baseline,
+            )
     except (FireworksError, VllmError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
@@ -371,6 +433,19 @@ def main(argv: list[str] | None = None) -> int:
         if report.audit is not None:
             _print_audit(report.audit)
             print(_judge_line(report, report.audit))
+
+    if telemetry is not None:
+        from ..telemetry import render_summary_markdown, render_summary_text
+
+        if args.telemetry_summary:
+            print(render_summary_text(telemetry))
+        if args.telemetry_json:
+            print(telemetry.model_dump_json(indent=2))
+        if args.telemetry_markdown is not None:
+            args.telemetry_markdown.write_text(
+                render_summary_markdown(telemetry) + "\n", encoding="utf-8"
+            )
+            print(f"telemetry markdown written to {args.telemetry_markdown}")
     return 0
 
 
