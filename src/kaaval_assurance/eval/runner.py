@@ -28,6 +28,7 @@ class CaseResult(BaseModel):
     passed: bool
     escalated: bool
     attempts: int
+    routing_reason: str = ""
 
 
 class EvalRunReport(BaseModel):
@@ -65,6 +66,7 @@ def run_eval(
                 passed=outcome.verification.passed,
                 escalated=outcome.escalated,
                 attempts=outcome.attempts,
+                routing_reason=outcome.routing.reason,
             )
         )
         run_rows.extend(pipeline.store.rows_for_request(request_id))

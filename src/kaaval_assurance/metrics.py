@@ -62,6 +62,7 @@ class CategoryMetrics(BaseModel):
     pass_rate: float  # requests whose final attempt passed Layer 1
     local_pass_rate: float  # requests resolved locally, no escalation
     escalation_rate: float
+    preroute_remote_rate: float  # requests routed straight to remote by policy
     failure_counts: dict[str, int] = Field(default_factory=dict)  # check id -> n
     latency_ms_p50: float
     latency_ms_p95: float
@@ -75,6 +76,7 @@ class MetricsReport(BaseModel):
     attempts: int
     pass_rate: float
     escalation_rate: float
+    preroute_remote_rate: float
     failure_counts: dict[str, int] = Field(default_factory=dict)
     latency_ms_p50: float
     latency_ms_p95: float
@@ -101,12 +103,15 @@ def _summarize(
 
     final_passed = 0
     escalated = 0
+    prerouted_remote = 0
     request_latencies: list[float] = []
     for attempts in grouped.values():
         if attempts[-1].verifier_passed:
             final_passed += 1
         if any(a.escalated for a in attempts):
             escalated += 1
+        if attempts[0].tier == "remote":
+            prerouted_remote += 1
         request_latencies.append(sum(a.latency_ms for a in attempts))
 
     failure_counts: Counter = Counter()
@@ -124,6 +129,7 @@ def _summarize(
         "attempts": len(rows),
         "pass_rate": final_passed / n_requests if n_requests else 0.0,
         "escalation_rate": escalated / n_requests if n_requests else 0.0,
+        "preroute_remote_rate": prerouted_remote / n_requests if n_requests else 0.0,
         "latency_ms_p50": percentile(request_latencies, 50),
         "latency_ms_p95": percentile(request_latencies, 95),
         "total_cost_usd": total_cost,
@@ -145,7 +151,10 @@ def aggregate(
         fields, failures, drift = _summarize(cat_rows, alpha)
         grouped = _group_by_request(cat_rows)
         local_pass = sum(
-            1 for attempts in grouped.values() if not any(a.escalated for a in attempts)
+            1
+            for attempts in grouped.values()
+            if attempts[0].tier == "local"
+            and not any(a.escalated for a in attempts)
             and attempts[-1].verifier_passed
         )
         by_category[category] = CategoryMetrics(

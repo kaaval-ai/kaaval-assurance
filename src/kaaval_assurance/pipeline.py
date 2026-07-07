@@ -1,8 +1,9 @@
 """End-to-end request path: contract -> route -> generate -> verify -> store.
 
-One attempt per tier, maximum two attempts: local first, remote escalation
-only when Layer 1 rejects the local response. Every attempt writes its own
-replayable trajectory row. Layer 3 audit (sampled, offline, never inline)
+One attempt per request, or two attempts when local-first routing fails Layer 1:
+the router may pre-route high-drift categories directly to remote, otherwise
+it tries local first and escalates only when Layer 1 rejects the local response.
+Every attempt writes its own replayable trajectory row. Layer 3 audit (sampled, offline, never inline)
 attaches after this path returns — it must never gate the live response.
 """
 

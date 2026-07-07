@@ -49,11 +49,40 @@ def _print_text(report: EvalRunReport, dataset: Path) -> None:
             f"  {name}: requests {cat.requests} | pass {cat.pass_rate:.1%} | "
             f"local-pass {cat.local_pass_rate:.1%} | "
             f"escalation {cat.escalation_rate:.1%} | "
+            f"preroute-remote {cat.preroute_remote_rate:.1%} | "
             f"ewma drift {cat.ewma_drift:.3f}"
         )
     failed = [r for r in report.results if not r.passed]
     if failed:
         print(f"unverified after escalation: {', '.join(r.case_id for r in failed)}")
+
+
+def _print_demo(demo, dataset: Path) -> None:
+    from .closed_loop import ClosedLoopDemoReport  # noqa: F401 (type context)
+
+    def phase_line(label, report):
+        m = report.metrics
+        print(f"{label}: pass {m.pass_rate:.1%} | escalation {m.escalation_rate:.1%} | "
+              f"preroute-remote {m.preroute_remote_rate:.1%} | "
+              f"cost/verified {_fmt_cost(m.cost_per_verified_usd)}")
+        for name, cat in m.by_category.items():
+            print(f"    {name}: drift {cat.ewma_drift:.2f} | "
+                  f"local-pass {cat.local_pass_rate:.1%} | "
+                  f"escalation {cat.escalation_rate:.1%} | "
+                  f"preroute-remote {cat.preroute_remote_rate:.1%}")
+
+    print(f"closed-loop routing demo — {demo.phase_a.n_cases} cases from {dataset}")
+    phase_line("phase A (healthy local tier)", demo.phase_a)
+    phase_line("phase B (degraded local tier, default routing)", demo.phase_b)
+    print("policy applied from phase-B drift:")
+    for name, policy in demo.policy_after_b.items():
+        print(f"    {name}: drift {policy.drift:.2f} -> {policy.action} "
+              f"(threshold {policy.threshold:.2f})")
+    phase_line("phase C (degraded local tier, adapted routing)", demo.phase_c)
+    prerouted = [r for r in demo.phase_c.results if "forces remote" in r.routing_reason]
+    if prerouted:
+        print(f'example phase-C routing reason ({prerouted[0].case_id}): '
+              f'"{prerouted[0].routing_reason}"')
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -97,6 +126,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--json", action="store_true", help="emit full report as JSON instead of text"
     )
+    parser.add_argument(
+        "--closed-loop-demo",
+        action="store_true",
+        help="run the three-phase closed-loop routing demo: healthy baseline, "
+        "degraded local tier, then drift-driven routing adaptation",
+    )
     return parser
 
 
@@ -122,6 +157,24 @@ def main(argv: list[str] | None = None) -> int:
 
     store = TrajectoryStore(args.db)
     try:
+        if args.closed_loop_demo:
+            from .closed_loop import run_closed_loop_demo
+
+            demo = run_closed_loop_demo(
+                cases,
+                store,
+                remote_provider,
+                failure_mode=args.failure_mode or "bad_enum",
+                failure_rate=args.failure_rate,
+                seed=args.seed,
+                ewma_alpha=args.ewma_alpha,
+            )
+            if args.json:
+                print(demo.model_dump_json(indent=2))
+            else:
+                _print_demo(demo, args.dataset)
+            return 0
+
         pipeline = AssurancePipeline(
             router=Router(),
             local_provider=MockProvider(
