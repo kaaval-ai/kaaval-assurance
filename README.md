@@ -72,6 +72,19 @@ kaaval-eval --dataset data/eval/telecom_gold.jsonl \
 
 The local tier stays mock here; injected local failures escalate to the live Fireworks endpoint, and Layer 1 verifies whatever comes back — malformed or prose output is recorded as a `json_parse` failure, not silently accepted.
 
+### Local Gemma tier via vLLM
+
+`VllmProvider` is the planned local Gemma tier for AMD Developer Cloud, targeting any OpenAI-compatible vLLM endpoint (ROCm backend). Configuration is environment-only: `VLLM_MODEL` (required), `VLLM_BASE_URL`, `VLLM_TIMEOUT_SECONDS`, optional `VLLM_API_KEY`, plus runtime knobs mirroring vLLM engine args — `VLLM_DTYPE`, `VLLM_KV_CACHE_DTYPE` (FP8 KV cache), `VLLM_ENABLE_PREFIX_CACHING`, `VLLM_GPU_MEMORY_UTILIZATION`, `VLLM_TENSOR_PARALLEL_SIZE`, `VLLM_STRUCTURED_OUTPUTS`.
+
+A `RuntimeProfile` records the configured serving settings (dtype, KV-cache dtype, tensor parallelism, GPU memory utilization, prefix caching, structured-output mode) alongside eval output, so results state which runtime configuration produced them. These are recorded settings, not measured performance claims. When structured outputs are enabled the request asks for a JSON object, but Layer 1 verifies every output either way — prose or fenced responses fail the contract check and escalate.
+
+```bash
+# local Gemma via vLLM first, Fireworks escalation
+set -a; source .env; set +a
+kaaval-eval --dataset data/eval/telecom_gold.jsonl \
+  --local-provider vllm --remote-provider fireworks
+```
+
 ## Task contracts (initial set)
 
 Four telecom incident-triage contracts, versioned:

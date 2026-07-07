@@ -13,7 +13,7 @@ from pathlib import Path
 
 from ..metrics import DEFAULT_EWMA_ALPHA, MetricsReport
 from ..pipeline import AssurancePipeline
-from ..providers import FAILURE_MODES, FireworksError, MockProvider
+from ..providers import FAILURE_MODES, FireworksError, MockProvider, VllmError
 from ..router import Router
 from ..trajectory import TrajectoryStore
 from .dataset import load_dataset
@@ -100,6 +100,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="trajectory SQLite path (default in-memory)",
     )
     parser.add_argument(
+        "--local-provider",
+        choices=["mock", "vllm"],
+        default="mock",
+        help="local tier: deterministic mock (default) or a Gemma model on an "
+        "OpenAI-compatible vLLM endpoint (reads VLLM_* env vars)",
+    )
+    parser.add_argument(
         "--remote-provider",
         choices=["mock", "fireworks"],
         default="mock",
@@ -155,6 +162,35 @@ def main(argv: list[str] | None = None) -> int:
     else:
         remote_provider = MockProvider(tier="remote", model_id="mock-remote-strong")
 
+    if args.local_provider == "vllm":
+        if args.closed_loop_demo:
+            print(
+                "error: --closed-loop-demo drives the mock local tier only",
+                file=sys.stderr,
+            )
+            return 2
+        if args.failure_mode:
+            print(
+                "error: --failure-mode injects failures into the mock local "
+                "tier only",
+                file=sys.stderr,
+            )
+            return 2
+        from ..providers.vllm import VllmConfig, VllmProvider
+
+        try:
+            local_provider = VllmProvider(VllmConfig.from_env())
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
+    else:
+        local_provider = MockProvider(
+            tier="local",
+            failure_mode=args.failure_mode,
+            failure_rate=args.failure_rate,
+            seed=args.seed,
+        )
+
     store = TrajectoryStore(args.db)
     try:
         if args.closed_loop_demo:
@@ -177,17 +213,12 @@ def main(argv: list[str] | None = None) -> int:
 
         pipeline = AssurancePipeline(
             router=Router(),
-            local_provider=MockProvider(
-                tier="local",
-                failure_mode=args.failure_mode,
-                failure_rate=args.failure_rate,
-                seed=args.seed,
-            ),
+            local_provider=local_provider,
             remote_provider=remote_provider,
             store=store,
         )
         report = run_eval(pipeline, cases, ewma_alpha=args.ewma_alpha)
-    except FireworksError as e:
+    except (FireworksError, VllmError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
     finally:
@@ -196,6 +227,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(report.model_dump_json(indent=2))
     else:
+        profile = local_provider.runtime_profile()
+        if profile is not None:
+            print(
+                f"local runtime profile: {profile.provider} "
+                f"model={profile.model_id} target={profile.hardware_target} "
+                f"dtype={profile.dtype} kv-cache={profile.kv_cache_dtype} "
+                f"tp={profile.tensor_parallel_size} "
+                f"gpu-mem-util={profile.gpu_memory_utilization} "
+                f"prefix-caching={'on' if profile.prefix_caching_enabled else 'off'} "
+                f"structured-output={profile.structured_output_mode}"
+            )
         _print_text(report, args.dataset)
     return 0
 

@@ -7,9 +7,10 @@ Implementations planned:
 """
 
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from ..contracts import TaskContract
-from ..models import ModelResponse
+from ..models import ModelResponse, RuntimeProfile
 
 
 class Provider(ABC):
@@ -25,3 +26,7 @@ class Provider(ABC):
     ) -> ModelResponse:
         """Produce one response for the task input under the given contract."""
         raise NotImplementedError
+
+    def runtime_profile(self) -> Optional[RuntimeProfile]:
+        """Serving-runtime capability record; None when not applicable."""
+        return None

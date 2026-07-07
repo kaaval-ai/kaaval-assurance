@@ -29,6 +29,28 @@ class ModelResponse(BaseModel):
     created_at: datetime = Field(default_factory=_utcnow)
 
 
+class RuntimeProfile(BaseModel):
+    """Serving-runtime capability record for a provider tier.
+
+    Records configured settings only — never measured or assumed performance.
+    Fields that are unknown until a real deployment stay None.
+    """
+
+    provider: str
+    model_id: str
+    served_model_name: str
+    hardware_target: str
+    rocm_version: Optional[str] = None
+    vllm_version: Optional[str] = None
+    dtype: str = ""
+    kv_cache_dtype: str = ""
+    tensor_parallel_size: int = 1
+    gpu_memory_utilization: float = 0.0
+    prefix_caching_enabled: bool = False
+    max_context_tokens: Optional[int] = None
+    structured_output_mode: str = "none"
+
+
 class VerificationResult(BaseModel):
     """Layer 1 outcome: deterministic contract checks over one response."""
 
