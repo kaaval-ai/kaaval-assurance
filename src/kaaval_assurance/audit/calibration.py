@@ -40,12 +40,13 @@ def calibrate_challenger(
 
     total = len(gold_cases)
     rate = false_positives / total if total else 0.0
+    status = "passed" if rate <= threshold and parse_errors == 0 else "failed"
     return AuditCalibrationReport(
         total_gold=total,
         false_positives=false_positives,
         false_positive_rate=rate,
         threshold=threshold,
-        status="passed" if rate <= threshold else "failed",
+        status=status,
         parse_errors=parse_errors,
         flagged_case_ids=flagged,
     )

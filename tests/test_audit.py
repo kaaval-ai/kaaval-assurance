@@ -10,6 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from kaaval_assurance.audit import (
+    AuditResult,
     AuditViolation,
     ChallengerOutput,
     MockAuditChallenger,
@@ -33,6 +34,22 @@ from kaaval_assurance.trajectory import TrajectoryStore
 
 GOLD = "data/eval/telecom_gold.jsonl"
 SEVERITY = get_contract("telecom.severity_classification")
+
+
+class ErrorAuditChallenger:
+    challenger_name = "error-audit"
+    model_id = "broken-challenger"
+
+    def challenge(self, request_id, task_input, accepted_answer, contract):
+        return AuditResult(
+            request_id=request_id,
+            category=contract.category,
+            contract_id=contract.contract_id,
+            audit_provider=self.challenger_name,
+            audit_model_id=self.model_id,
+            result="error",
+            parse_ok=False,
+        )
 
 
 def make_pipeline(store, local_failure=None):
@@ -144,6 +161,12 @@ class TestCalibration:
         assert report.false_positive_rate > 0.20
         assert report.status == "failed"
         assert report.flagged_case_ids
+
+    def test_parse_errors_fail_calibration_even_without_false_positives(self):
+        report = calibrate_challenger(ErrorAuditChallenger(), load_dataset(GOLD))
+        assert report.false_positive_rate == 0.0
+        assert report.parse_errors == 16
+        assert report.status == "failed"
 
     def test_threshold_configurable(self):
         report = calibrate_challenger(
