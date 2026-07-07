@@ -84,10 +84,17 @@ src/kaaval_assurance/
 └── pipeline.py      # end-to-end request path
 ```
 
-## AMD deployment (target)
+## Deployment Targets
 
-- Local tier: `gemma-3-12b-it` served via **ROCm + vLLM** on **AMD Instinct MI300X** (192 GB HBM3), deployed on **AMD Developer Cloud**. Model ID, ROCm version, and GPU details will be recorded here once deployed.
-- Remote escalation/audit tier: Fireworks AI.
+kaaval-assurance is designed to run provider-neutral assurance flows across:
+
+- local/open-weight Gemma serving on AMD Developer Cloud via ROCm + vLLM
+- remote escalation through Fireworks AI-hosted model endpoints
+- deterministic MockProvider execution for tests, evals, and demos
+
+Provider configuration is intentionally injectable, and trajectory records remain provider-neutral: provider, model_id, tier, latency, token counts, cost, and verifier outcome.
+
+Planned local tier: `gemma-3-12b-it` on **AMD Instinct MI300X** (192 GB HBM3). Model ID, ROCm version, and GPU details will be recorded here once deployed.
 
 ## License
 
