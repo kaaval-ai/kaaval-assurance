@@ -1,14 +1,14 @@
-# Kaaval-AI: kaaval-assurance
+# kaaval-assurance
 
-The Kaaval **inference assurance plane**: task contracts, deterministic verification, per-category drift tracking, and sampled adversarial audit for AMD + Gemma agent workloads.
+The Kaaval **inference assurance plane** for AMD + Gemma workloads: task contracts, deterministic verification, provider-neutral routing, per-category drift tracking, and seams for sampled adversarial audit.
 
 *Route efficiently. Verify continuously. Escalate intelligently.*
 
-Built for the AMD Developer Hackathon ACT II (Track 3). Product wrapper: **KaavalAI**.
+Built for the AMD Developer Hackathon ACT II (Track 3). Hackathon product wrapper: **KaavalAI**.
 
 ## What it does
 
-Every request runs against an explicit **task contract**. The router sends it to the cheap local tier first (Gemma on AMD Instinct MI300X via ROCm + vLLM); **Layer 1** verifies the response deterministically against the contract (schema, required fields, enums, ranges); failures escalate to the remote tier (Fireworks). Every attempt writes a replayable row to the SQLite **trajectory store**.
+Every request runs against an explicit **task contract**. The router sends it to the cheap local tier first (MockProvider by default, or Gemma via ROCm + vLLM when configured for AMD Developer Cloud); **Layer 1** verifies the response deterministically against the contract (schema, required fields, enums, ranges); failures escalate to the remote tier (MockProvider or Fireworks AI). Every attempt writes a replayable row to the SQLite **trajectory store**.
 
 **Layer 2** aggregates that telemetry: pass rates, failure rates by verifier check, escalation rates, latency percentiles, cost per verified answer, and a per-category EWMA drift score over local-tier verification outcomes — deterministic code over replayable rows, no model calls.
 
@@ -102,7 +102,7 @@ Four telecom incident-triage contracts, versioned:
 src/kaaval_assurance/
 ├── models.py        # ModelResponse, VerificationResult, TrajectoryRow, ...
 ├── contracts/       # TaskContract model + telecom contract definitions
-├── providers/       # Provider interface + MockProvider (vLLM/Fireworks later)
+├── providers/       # Provider interface + MockProvider, Fireworks, vLLM Gemma
 ├── router.py        # per-category tier choice; Layer 2 tightening seam
 ├── verifier.py      # Layer 1 deterministic contract checks
 ├── trajectory.py    # SQLite store, replayable rows, audit columns reserved
