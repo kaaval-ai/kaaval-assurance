@@ -18,6 +18,9 @@ dev = [
     "pytest>=7.0",
 ]
 
+[project.scripts]
+kaaval-eval = "kaaval_assurance.eval.cli:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/kaaval_assurance"]
 

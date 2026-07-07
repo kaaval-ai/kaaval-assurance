@@ -10,9 +10,10 @@ Built for the AMD Developer Hackathon ACT II (Track 3). Product wrapper: **Kaava
 
 Every request runs against an explicit **task contract**. The router sends it to the cheap local tier first (Gemma on AMD Instinct MI300X via ROCm + vLLM); **Layer 1** verifies the response deterministically against the contract (schema, required fields, enums, ranges); failures escalate to the remote tier (Fireworks). Every attempt writes a replayable row to the SQLite **trajectory store**.
 
+**Layer 2** aggregates that telemetry: pass rates, failure rates by verifier check, escalation rates, latency percentiles, cost per verified answer, and a per-category EWMA drift score over local-tier verification outcomes — deterministic code over replayable rows, no model calls.
+
 Coming layers:
 
-- **Layer 2** — per-category EWMA trend detection over verification signals.
 - **Layer 3** — sampled, offline adversarial audit of accepted answers (5–10%). An LLM challenger produces structured violations JSON; deterministic code validates, aggregates, and thresholds it. It is a statistical sensor feeding trend statistics, never a per-response gate.
 
 ## Quickstart (mock mode, zero cloud access)
@@ -41,6 +42,23 @@ result = pipeline.handle_request(
 )
 print(result.verification.passed, result.routing.reason)
 ```
+
+## Eval harness
+
+Gold dataset: 16 telecom-triage cases (4 per contract) with known-good gold answers in [data/eval/telecom_gold.jsonl](data/eval/telecom_gold.jsonl). Gold answers double as the Layer-3 challenger false-positive calibration set later. All eval data is synthetic.
+
+```bash
+# healthy local tier
+python -m kaaval_assurance.eval.cli --dataset data/eval/telecom_gold.jsonl
+
+# simulate local-tier degradation -> escalations, drift, rescue cost
+python -m kaaval_assurance.eval.cli --failure-mode bad_enum --failure-rate 0.4 --db run.db
+
+# full report as JSON
+python -m kaaval_assurance.eval.cli --json
+```
+
+Installed entrypoint: `kaaval-eval` (same flags).
 
 ## Task contracts (initial set)
 

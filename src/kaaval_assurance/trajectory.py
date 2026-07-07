@@ -128,6 +128,10 @@ class TrajectoryStore:
         ).fetchall()
         return [self._to_row(r) for r in rows]
 
+    def all_rows(self) -> list[TrajectoryRow]:
+        rows = self._conn.execute("SELECT * FROM trajectory ORDER BY id").fetchall()
+        return [self._to_row(r) for r in rows]
+
     def count(self) -> int:
         return int(self._conn.execute("SELECT COUNT(*) FROM trajectory").fetchone()[0])
 
