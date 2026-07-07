@@ -13,6 +13,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from ..audit.models import AuditRunSummary
 from ..contracts import get_contract
 from ..metrics import DEFAULT_EWMA_ALPHA, MetricsReport, aggregate
 from ..models import TrajectoryRow
@@ -36,6 +37,9 @@ class EvalRunReport(BaseModel):
     n_cases: int
     results: list[CaseResult]
     metrics: MetricsReport
+    # Layer 3 offline sampled audit summary, attached after the run when audit
+    # is enabled. Reporting only — it never alters metrics above.
+    audit: Optional[AuditRunSummary] = None
 
 
 def run_eval(

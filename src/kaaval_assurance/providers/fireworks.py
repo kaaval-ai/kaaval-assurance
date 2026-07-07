@@ -118,6 +118,9 @@ class FireworksProvider(Provider):
         usage = data.get("usage") or {}
         prompt_tokens = int(usage.get("prompt_tokens") or 0)
         completion_tokens = int(usage.get("completion_tokens") or 0)
+        cached = usage.get("cached_tokens")
+        if cached is None:
+            cached = (usage.get("prompt_tokens_details") or {}).get("cached_tokens")
 
         try:
             parsed = json.loads(raw_text)
@@ -141,4 +144,5 @@ class FireworksProvider(Provider):
             completion_tokens=completion_tokens,
             latency_ms=latency_ms,
             cost_usd=cost_usd,
+            cached_tokens=int(cached) if cached is not None else None,
         )

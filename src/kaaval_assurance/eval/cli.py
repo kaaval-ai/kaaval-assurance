@@ -85,6 +85,59 @@ def _print_demo(demo, dataset: Path) -> None:
               f'"{prerouted[0].routing_reason}"')
 
 
+def _print_audit(summary) -> None:
+    cal = summary.calibration
+    if cal.status == "skipped":
+        cal_line = "calibration skipped (results untrusted)"
+    else:
+        cal_line = (
+            f"calibration {cal.status} (false-positive rate "
+            f"{cal.false_positive_rate:.1%}, threshold {cal.threshold:.1%})"
+        )
+    trust = "trusted" if summary.trusted else "UNTRUSTED — display only, no routing signal"
+    print(
+        f"layer-3 audit ({summary.audit_provider}, {summary.audit_model_id}): "
+        f"{cal_line} | signal {trust}"
+    )
+    if cal.status == "failed":
+        print(
+            "  audit disabled as a routing signal: challenger flagged "
+            f"{cal.false_positives}/{cal.total_gold} known-good gold answers "
+            f"({', '.join(cal.flagged_case_ids) or 'none listed'})"
+        )
+    severities = (
+        ", ".join(f"{k}={v}" for k, v in sorted(summary.violations_by_severity.items()))
+        or "none"
+    )
+    print(
+        f"  sampled {summary.sampled}/{summary.accepted_answers} accepted "
+        f"(rate {summary.sample_rate:.0%}) | pass {summary.passed} "
+        f"fail {summary.failed} errors {summary.errors} | violations: {severities}"
+    )
+    print(
+        f"  audit cost total {_fmt_cost(summary.total_cost_usd)} | "
+        f"per sampled {_fmt_cost(summary.cost_per_sampled_usd)} | "
+        f"per verified accepted {_fmt_cost(summary.cost_per_verified_accepted_usd)} | "
+        f"audit tokens {summary.audit_tokens}"
+    )
+
+
+def _judge_line(report, summary) -> str:
+    line = (
+        f"Layer 3 sampled {summary.sample_rate:.0%} of accepted answers, "
+        f"calibration false-positive rate was "
+        f"{summary.calibration.false_positive_rate:.1%}, "
+        f"audit cost per verified answer was "
+        f"{_fmt_cost(summary.cost_per_verified_accepted_usd)}"
+    )
+    if report.metrics.preroute_remote_rate > 0:
+        line += (
+            ", and high-drift categories were routed away from the local "
+            "Gemma tier until confidence recovered"
+        )
+    return line + "."
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="kaaval-eval",
@@ -139,6 +192,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="run the three-phase closed-loop routing demo: healthy baseline, "
         "degraded local tier, then drift-driven routing adaptation",
     )
+    parser.add_argument(
+        "--audit-provider",
+        choices=["none", "mock", "fireworks"],
+        default="none",
+        help="layer-3 offline sampled audit challenger (default: no audit)",
+    )
+    parser.add_argument(
+        "--audit-sample-rate",
+        type=float,
+        default=0.10,
+        help="fraction of accepted answers sampled for audit",
+    )
+    parser.add_argument(
+        "--audit-seed", type=int, default=0, help="audit sampling RNG seed"
+    )
+    parser.add_argument(
+        "--audit-calibration-threshold",
+        type=float,
+        default=0.20,
+        help="max challenger false-positive rate on gold answers before the "
+        "audit signal is marked untrusted",
+    )
+    parser.add_argument(
+        "--skip-audit-calibration",
+        action="store_true",
+        help="local development only: skip the gold-answer calibration gate; "
+        "audit results stay marked untrusted",
+    )
     return parser
 
 
@@ -161,6 +242,28 @@ def main(argv: list[str] | None = None) -> int:
             return 2
     else:
         remote_provider = MockProvider(tier="remote", model_id="mock-remote-strong")
+
+    if args.audit_provider != "none" and args.closed_loop_demo:
+        print(
+            "error: audit runs on the standard eval path, not the closed-loop "
+            "demo",
+            file=sys.stderr,
+        )
+        return 2
+
+    challenger = None
+    if args.audit_provider == "mock":
+        from ..audit import MockAuditChallenger
+
+        challenger = MockAuditChallenger(seed=args.audit_seed)
+    elif args.audit_provider == "fireworks":
+        from ..audit import FireworksAuditChallenger, FireworksAuditConfig
+
+        try:
+            challenger = FireworksAuditChallenger(FireworksAuditConfig.from_env())
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 2
 
     if args.local_provider == "vllm":
         if args.closed_loop_demo:
@@ -218,6 +321,32 @@ def main(argv: list[str] | None = None) -> int:
             store=store,
         )
         report = run_eval(pipeline, cases, ewma_alpha=args.ewma_alpha)
+
+        if challenger is not None:
+            from ..audit import (
+                calibrate_challenger,
+                run_sampled_audit,
+                skipped_calibration,
+            )
+
+            if args.skip_audit_calibration:
+                calibration = skipped_calibration(args.audit_calibration_threshold)
+            else:
+                calibration = calibrate_challenger(
+                    challenger, cases, threshold=args.audit_calibration_threshold
+                )
+            run_rows = []
+            for result in report.results:
+                run_rows.extend(store.rows_for_request(result.request_id))
+            summary, _ = run_sampled_audit(
+                store,
+                run_rows,
+                challenger,
+                calibration,
+                sample_rate=args.audit_sample_rate,
+                seed=args.audit_seed,
+            )
+            report.audit = summary
     except (FireworksError, VllmError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
@@ -239,6 +368,9 @@ def main(argv: list[str] | None = None) -> int:
                 f"structured-output={profile.structured_output_mode}"
             )
         _print_text(report, args.dataset)
+        if report.audit is not None:
+            _print_audit(report.audit)
+            print(_judge_line(report, report.audit))
     return 0
 
 

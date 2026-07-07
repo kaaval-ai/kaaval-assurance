@@ -26,6 +26,9 @@ class ModelResponse(BaseModel):
     # White-box seam: per-token logprobs from vLLM when serving open weights
     # on AMD infrastructure. Always None for mock and closed-API tiers.
     logprobs: Optional[list[float]] = None
+    # Provider-reported cached prompt tokens (prefix cache / prompt cache),
+    # None when the provider does not report it. Telemetry only.
+    cached_tokens: Optional[int] = None
     created_at: datetime = Field(default_factory=_utcnow)
 
 
@@ -39,6 +42,7 @@ class RuntimeProfile(BaseModel):
     provider: str
     model_id: str
     served_model_name: str
+    model_family: Optional[str] = None  # e.g. "gemma"; from config, not inferred
     hardware_target: str
     rocm_version: Optional[str] = None
     vllm_version: Optional[str] = None
@@ -49,6 +53,11 @@ class RuntimeProfile(BaseModel):
     prefix_caching_enabled: bool = False
     max_context_tokens: Optional[int] = None
     structured_output_mode: str = "none"
+    prompt_cache_key_enabled: bool = False
+    logprobs_requested: bool = False
+    top_logprobs: Optional[int] = None
+    temperature: float = 0.0
+    max_tokens: int = 1024
 
 
 class VerificationResult(BaseModel):
@@ -69,11 +78,12 @@ class RoutingDecision(BaseModel):
 class TrajectoryRow(BaseModel):
     """One replayable row per model attempt.
 
-    audit_* fields are reserved for Layer 3 (sampled adversarial audit) and
-    stay NULL until that lands; the schema exists now so trajectory data
-    collected from day one remains forward-compatible.
+    audit_* fields are populated by the Layer 3 sampled offline audit and
+    stay NULL/false for unsampled rows. db_id is the SQLite primary key when
+    the row was read back from the store (None before first insert).
     """
 
+    db_id: Optional[int] = None
     request_id: str
     ts: datetime = Field(default_factory=_utcnow)
     category: str

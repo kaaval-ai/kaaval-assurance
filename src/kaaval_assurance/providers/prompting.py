@@ -24,6 +24,11 @@ def _field_rule(spec: FieldSpec) -> str:
     return rule
 
 
+def contract_field_rules(contract: TaskContract) -> list[str]:
+    """One rule line per contract field; shared by generation and audit prompts."""
+    return [_field_rule(spec) for spec in contract.fields]
+
+
 def build_contract_prompt(contract: TaskContract) -> str:
     """Strict, contract-aware system instruction for JSON-only output."""
     lines = [

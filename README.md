@@ -12,9 +12,7 @@ Every request runs against an explicit **task contract**. The router sends it to
 
 **Layer 2** aggregates that telemetry: pass rates, failure rates by verifier check, escalation rates, latency percentiles, cost per verified answer, and a per-category EWMA drift score over local-tier verification outcomes — deterministic code over replayable rows, no model calls.
 
-Coming layers:
-
-- **Layer 3** — sampled, offline adversarial audit of accepted answers (5–10%). An LLM challenger produces structured violations JSON; deterministic code validates, aggregates, and thresholds it. It is a statistical sensor feeding trend statistics, never a per-response gate.
+**Layer 3** is a sampled, offline adversarial audit of accepted answers — see its section below. It is a statistical sensor feeding trend statistics, never a per-response gate.
 
 ## Quickstart (mock mode, zero cloud access)
 
@@ -85,6 +83,31 @@ kaaval-eval --dataset data/eval/telecom_gold.jsonl \
   --local-provider vllm --remote-provider fireworks
 ```
 
+## Layer 3: sampled adversarial audit
+
+An offline audit samples a configurable fraction (default 10%) of Layer-1-accepted answers and sends each to a challenger model with the task input, the contract rules, and the contract's semantic intent. The challenger returns strict violations JSON. Detection is model-generated; aggregation and thresholding over that structured output are deterministic code. The audit runs after responses are already served — it never gates the live path and never changes request success semantics.
+
+**Calibration gate.** Before any audit signal can be trusted, the challenger runs against the known-good gold answers in the eval set. If it flags more than the threshold (default 20%) of verified-correct answers, calibration fails and audit results are marked untrusted — displayed, but barred from feeding routing. This prevents an over-eager critic from poisoning the drift signal. It is a statistical sensor, not a judge of record.
+
+```bash
+# mock challenger, no keys, no network
+kaaval-eval --dataset data/eval/telecom_gold.jsonl --audit-provider mock --audit-sample-rate 1.0
+
+# Fireworks challenger (calibrates against gold answers first)
+set -a; source .env; set +a
+kaaval-eval --dataset data/eval/telecom_gold.jsonl --audit-provider fireworks
+```
+
+Audit results persist into the trajectory rows (`audit_sampled`, `audit_result`, `audit_violations`), and the report includes sampled counts, violation counts by severity, calibration false-positive rate, and audit cost per verified accepted answer.
+
+### Why this is AMD/Gemma-native
+
+- The local tier serves open-weight Gemma-family models through vLLM, intended for AMD Developer Cloud with the ROCm backend; the model id stays configurable and `RuntimeProfile` records the ROCm/vLLM/Gemma serving settings actually used.
+- Structured-output requests plus deterministic Layer-1 verification make small local models safely usable: malformed output fails the contract check instead of reaching users.
+- Audit prompts use a stable per-contract prefix (schema, scoring policy, contract rules) with case content appended last — designed to benefit from vLLM automatic prefix caching and Fireworks prompt cache keys when available. No cache-hit rates are claimed without measurement.
+- FP8 KV cache, tensor parallelism, and GPU memory utilization are recorded as serving knobs in the runtime profile, not claimed results.
+- Fireworks serves as the remote challenger/escalation tier with strict JSON output; optional prompt-cache keys and logprob telemetry are passed through when configured, and provider-reported cached tokens are recorded when returned.
+
 ## Task contracts (initial set)
 
 Four telecom incident-triage contracts, versioned:
@@ -100,13 +123,17 @@ Four telecom incident-triage contracts, versioned:
 
 ```
 src/kaaval_assurance/
-├── models.py        # ModelResponse, VerificationResult, TrajectoryRow, ...
-├── contracts/       # TaskContract model + telecom contract definitions
-├── providers/       # Provider interface + MockProvider, Fireworks, vLLM Gemma
-├── router.py        # per-category tier choice; Layer 2 tightening seam
-├── verifier.py      # Layer 1 deterministic contract checks
-├── trajectory.py    # SQLite store, replayable rows, audit columns reserved
-└── pipeline.py      # end-to-end request path
+├── models.py          # ModelResponse, VerificationResult, TrajectoryRow, RuntimeProfile
+├── contracts/         # TaskContract model + telecom contract definitions
+├── providers/         # Provider interface + MockProvider, Fireworks, vLLM Gemma
+├── router.py          # per-category tier choice, policy-note routing reasons
+├── routing_policy.py  # deterministic drift bands -> per-category thresholds
+├── verifier.py        # Layer 1 deterministic contract checks
+├── metrics.py         # Layer 2 aggregation + per-category EWMA drift
+├── trajectory.py      # SQLite store, replayable rows, audit fields
+├── audit/             # Layer 3: challenger prompts, calibration gate, sampled runner
+├── eval/              # gold dataset loader, eval runner, closed-loop demo, CLI
+└── pipeline.py        # end-to-end request path
 ```
 
 ## Deployment Targets

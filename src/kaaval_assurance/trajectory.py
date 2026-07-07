@@ -89,6 +89,7 @@ class TrajectoryStore:
 
     def _to_row(self, r: sqlite3.Row) -> TrajectoryRow:
         return TrajectoryRow(
+            db_id=r["id"],
             request_id=r["request_id"],
             ts=datetime.fromisoformat(r["ts"]),
             category=r["category"],
@@ -127,6 +128,20 @@ class TrajectoryStore:
             (category, limit),
         ).fetchall()
         return [self._to_row(r) for r in rows]
+
+    def update_audit(
+        self,
+        db_id: int,
+        audit_result: str,
+        audit_violations: list[dict],
+    ) -> None:
+        """Narrow audit-field update by row identity; touches nothing else."""
+        self._conn.execute(
+            "UPDATE trajectory SET audit_sampled = 1, audit_result = ?, "
+            "audit_violations = ? WHERE id = ?",
+            (audit_result, json.dumps(audit_violations), db_id),
+        )
+        self._conn.commit()
 
     def all_rows(self) -> list[TrajectoryRow]:
         rows = self._conn.execute("SELECT * FROM trajectory ORDER BY id").fetchall()

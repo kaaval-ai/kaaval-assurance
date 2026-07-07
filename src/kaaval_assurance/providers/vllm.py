@@ -58,6 +58,7 @@ class VllmConfig:
     vllm_version: Optional[str] = None
     cost_per_prompt_token: float = 0.0
     cost_per_completion_token: float = 0.0
+    model_family: str = "gemma"  # configurable; recorded, never inferred
 
     @classmethod
     def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "VllmConfig":
@@ -92,6 +93,7 @@ class VllmConfig:
             cost_per_completion_token=float(
                 env.get("VLLM_COST_PER_COMPLETION_TOKEN", "0")
             ),
+            model_family=env.get("VLLM_MODEL_FAMILY", "gemma"),
         )
 
 
@@ -125,6 +127,9 @@ class VllmProvider(Provider):
             structured_output_mode=(
                 "json_object" if cfg.structured_outputs else "none"
             ),
+            model_family=cfg.model_family,
+            temperature=0.0,
+            max_tokens=1024,
         )
 
     def generate(
@@ -171,6 +176,9 @@ class VllmProvider(Provider):
         usage = data.get("usage") or {}
         prompt_tokens = int(usage.get("prompt_tokens") or 0)
         completion_tokens = int(usage.get("completion_tokens") or 0)
+        cached = usage.get("cached_tokens")
+        if cached is None:
+            cached = (usage.get("prompt_tokens_details") or {}).get("cached_tokens")
 
         try:
             parsed = json.loads(raw_text)
@@ -194,4 +202,5 @@ class VllmProvider(Provider):
             completion_tokens=completion_tokens,
             latency_ms=latency_ms,
             cost_usd=cost_usd,
+            cached_tokens=int(cached) if cached is not None else None,
         )
