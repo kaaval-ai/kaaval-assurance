@@ -20,7 +20,7 @@
 
   <!-- Title block -->
   <text x="600" y="72" text-anchor="middle" font-family="ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
-        font-size="46" font-weight="700" letter-spacing="4" fill="#e6edf3">KAAVAL ASSURANCE</text>
+        font-size="46" font-weight="700" letter-spacing="4" fill="#ffd166">KAAVAL ASSURANCE</text>
   <text x="600" y="106" text-anchor="middle" font-family="ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
         font-size="20" fill="#8b9bb0">Inference Assurance Plane for Gemma-first AMD Workloads</text>
   <text x="600" y="132" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
@@ -67,7 +67,7 @@
   <text x="489" y="276" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
         font-size="10.8" fill="#8b9bb0">contract failure · re-verified</text>
   <path d="M 378 264 C 312 264, 302 226, 332 204" fill="none" stroke="#f5a623" stroke-width="1.7" stroke-dasharray="6 5" opacity="0.75" marker-end="url(#arrA)"/>
-  <text x="298" y="274" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
+  <text x="250" y="258" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
         font-size="10.8" fill="#5c6b80">retry through the same gate</text>
 
   <!-- chips row -->
