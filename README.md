@@ -80,7 +80,7 @@ Click the flow for the interactive walkthrough: [HTML](docs/kaaval-assurance-arc
 | Telemetry truth layer | Built | Every judge-facing claim maps to a stored field with a source tag |
 | Runtime probe | Built | Turns runtime claims from configured into measured; redacts secrets |
 | Streamlit demo console | Built | Live interactive runs plus replay of captured artifacts; hostable without secrets |
-| Inference Flight Deck UI (React) | Built | A premium, real-time observability dashboard surfacing live cost, latency, error rates, and trajectory replays — proving the financial and qualitative value of the local vs. remote routing. |
+| Inference Flight Deck UI (React) | Built | A premium observability UI with a toggle between high-level summary and live telemetry dashboards, surfacing real-time cost, latency, error rates, and trajectory replays to prove the financial and qualitative value of the local vs. remote routing. |
 
 The full test suite (220+ tests) runs network-free; live calls are explicit, opt-in CLI/script paths.
 
