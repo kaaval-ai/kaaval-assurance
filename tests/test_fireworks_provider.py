@@ -231,13 +231,24 @@ class TestPipelineIntegration:
 
 
 class TestCli:
-    def test_fireworks_without_key_exits_2(self, monkeypatch, capsys):
+    def test_fireworks_requires_confirmation_before_key_check(self, monkeypatch, capsys):
         from kaaval_assurance.eval.cli import main as cli_main
 
         monkeypatch.delenv("FIREWORKS_API_KEY", raising=False)
         rc = cli_main(
             ["--dataset", "data/eval/telecom_gold.jsonl",
              "--remote-provider", "fireworks"]
+        )
+        assert rc == 2
+        assert "spends credits" in capsys.readouterr().err
+
+    def test_confirmed_fireworks_without_key_exits_2(self, monkeypatch, capsys):
+        from kaaval_assurance.eval.cli import main as cli_main
+
+        monkeypatch.delenv("FIREWORKS_API_KEY", raising=False)
+        rc = cli_main(
+            ["--dataset", "data/eval/telecom_gold.jsonl",
+             "--remote-provider", "fireworks", "--confirm-spend"]
         )
         assert rc == 2
         assert "FIREWORKS_API_KEY" in capsys.readouterr().err

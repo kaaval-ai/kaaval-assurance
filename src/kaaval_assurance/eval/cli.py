@@ -169,6 +169,12 @@ def build_parser() -> argparse.ArgumentParser:
         "(reads FIREWORKS_* env vars)",
     )
     parser.add_argument(
+        "--confirm-spend",
+        action="store_true",
+        help="required when --remote-provider fireworks is used; confirms the "
+        "run may spend API credits",
+    )
+    parser.add_argument(
         "--failure-mode",
         choices=FAILURE_MODES,
         default=None,
@@ -258,16 +264,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 2
 
-    if args.remote_provider == "fireworks":
-        from ..providers.fireworks import FireworksConfig, FireworksProvider
+    from ..providers.factory import (
+        SpendConfirmationRequired,
+        create_local_provider,
+        create_remote_provider,
+    )
 
-        try:
-            remote_provider = FireworksProvider(FireworksConfig.from_env())
-        except ValueError as e:
-            print(f"error: {e}", file=sys.stderr)
-            return 2
-    else:
-        remote_provider = MockProvider(tier="remote", model_id="mock-remote-strong")
+    try:
+        remote_provider = create_remote_provider(
+            args.remote_provider,
+            confirm_spend=args.confirm_spend,
+        )
+    except (SpendConfirmationRequired, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
     if args.audit_provider != "none" and args.closed_loop_demo:
         print(
@@ -318,8 +328,6 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 2
-    from ..providers.factory import create_local_provider
-
     try:
         local_provider = create_local_provider(
             args.local_provider,

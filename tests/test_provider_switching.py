@@ -165,6 +165,12 @@ class TestCli:
         assert rc == 2
         assert "mock local" in capsys.readouterr().err
 
+    def test_cli_requires_spend_confirmation_for_fireworks(self, monkeypatch, capsys):
+        monkeypatch.setenv("FIREWORKS_API_KEY", "test-key")
+        rc = cli_main(["--dataset", GOLD, "--remote-provider", "fireworks"])
+        assert rc == 2
+        assert "spends credits" in capsys.readouterr().err
+
 
 class TestLiveDemoWithProviders:
     def test_live_demo_with_injected_ollama_provider(self):
@@ -227,6 +233,32 @@ class TestAttemptTelemetry:
         assert escalated.tier == "remote"
         assert "layer-1 verification failed" in escalated.escalation_reason
         assert escalated.latency_ms > 0
+
+    def test_ollama_runtime_claim_names_ollama_not_vllm(self):
+        provider = OllamaProvider(
+            ollama_config_from_env(OLLAMA_ENV), session=FakeSession()
+        )
+        store = TrajectoryStore(":memory:")
+        try:
+            pipeline = AssurancePipeline(
+                Router(),
+                provider,
+                MockProvider(tier="remote", model_id="mock-remote-strong"),
+                store,
+            )
+            report = run_eval(pipeline, load_dataset(GOLD)[:1])
+            rows = []
+            for r in report.results:
+                rows.extend(store.rows_for_request(r.request_id))
+            telemetry = build_telemetry_summary(
+                report, rows, runtime_profile=provider.runtime_profile()
+            )
+        finally:
+            store.close()
+
+        runtime_claim = next(c for c in telemetry.claims if c.claim == "Runtime")
+        assert "via Ollama" in runtime_claim.value
+        assert "via vLLM" not in runtime_claim.value
 
 
 class TestComparisonHelper:

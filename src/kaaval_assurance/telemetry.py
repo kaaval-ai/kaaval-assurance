@@ -451,11 +451,18 @@ def _build_claims(
         p = runtime.profile
         rocm = p.rocm_version or "recorded at deployment"
         vllm = p.vllm_version or "recorded at deployment"
+        runtime_label = (
+            "Ollama"
+            if p.provider == "ollama"
+            else "vLLM"
+            if p.provider == "vllm-gemma"
+            else p.provider
+        )
         claims.append(
             ClaimSupport(
                 claim="Runtime",
                 value=(
-                    f"{p.model_family or 'model'} '{p.model_id}' via vLLM, "
+                    f"{p.model_family or 'model'} '{p.model_id}' via {runtime_label}, "
                     f"target {p.hardware_target}; dtype {p.dtype}, "
                     f"kv-cache {p.kv_cache_dtype}, tp {p.tensor_parallel_size}; "
                     f"ROCm {rocm}, vLLM {vllm}"

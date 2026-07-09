@@ -16,6 +16,7 @@ mkdir -p artifacts
 PYTHONPATH=src python3 -m kaaval_assurance.eval.cli \
   --dataset data/eval/telecom_gold.jsonl \
   --remote-provider fireworks \
+  --confirm-spend \
   --failure-mode bad_enum --failure-rate 0.25 --seed 3 \
   --telemetry-summary \
   --db artifacts/trajectory-fireworks-smoke.db
