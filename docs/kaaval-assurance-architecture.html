@@ -6,10 +6,10 @@
 <title>Kaaval Assurance — Architecture Walkthrough</title>
 <style>
   :root{
-    --bg:#0b0e14; --panel:#10141c; --panel2:#151b26; --line:#1c2431;
+    --bg:#060a11; --panel:#0b1019; --panel2:#101724; --line:#172131;
     --ink:#e6edf3; --dim:#8b9bb0; --faint:#5c6b80;
     --cyan:#22d3ee; --amber:#f5a623; --red:#ef4453; --green:#34d399;
-    --violet:#a78bfa; --chipbg:#161d29;
+    --violet:#a78bfa; --chipbg:#111928; --glow:#60e7ff;
   }
   body.light{
     --bg:#eef1f6; --panel:#ffffff; --panel2:#f2f5fa; --line:#d5dce6;
@@ -18,38 +18,56 @@
   *{box-sizing:border-box; margin:0}
   html,body{height:100%}
   body{
-    background:var(--bg); color:var(--ink);
+    background:
+      radial-gradient(circle at 22% 18%, rgba(34,211,238,.13), transparent 30%),
+      radial-gradient(circle at 78% 82%, rgba(245,166,35,.08), transparent 28%),
+      linear-gradient(180deg,#05080e 0%,var(--bg) 58%,#05070c 100%);
+    color:var(--ink);
     font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     display:flex; flex-direction:column; overflow:hidden;
   }
   code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
   header{
     display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-    padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel);
+    padding:10px 16px; border-bottom:1px solid rgba(28,36,49,.7);
+    background:rgba(8,12,19,.82); backdrop-filter:blur(16px);
   }
   .brand{font-weight:700; letter-spacing:.14em; font-size:14px}
   .brand small{display:block; letter-spacing:.04em; font-weight:400; color:var(--dim); font-size:11px}
   .grp{display:flex; gap:6px; align-items:center}
   .grp label{font-size:10px; letter-spacing:.12em; color:var(--faint)}
   button{
-    background:var(--chipbg); color:var(--dim); border:1px solid var(--line);
-    border-radius:4px; padding:5px 10px; font-size:12px; cursor:pointer;
+    background:rgba(17,25,40,.78); color:var(--dim); border:1px solid rgba(86,111,140,.28);
+    border-radius:999px; padding:5px 10px; font-size:12px; cursor:pointer;
     font-family:inherit;
   }
   button:hover{color:var(--ink)}
-  button.on{color:var(--ink); border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan) inset}
+  button.on{color:var(--ink); border-color:var(--cyan); box-shadow:0 0 0 1px rgba(34,211,238,.55) inset,0 0 20px rgba(34,211,238,.14)}
   .spacer{flex:1}
   main{flex:1; display:flex; min-height:0}
-  #stage{flex:1; position:relative; min-width:0}
+  #stage{
+    flex:1; position:relative; min-width:0; margin:12px;
+    border:1px solid rgba(34,211,238,.12); border-radius:14px; overflow:hidden;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(34,211,238,.08), transparent 48%),
+      radial-gradient(circle at 52% 52%, rgba(245,166,35,.05), transparent 38%),
+      #060a11;
+  }
   #stage svg{width:100%; height:100%; display:block}
   #modeNote{
-    position:absolute; left:14px; bottom:12px; right:auto; max-width:60%;
-    font-size:11.5px; color:var(--dim); background:var(--panel);
-    border:1px solid var(--line); border-left:2px solid var(--amber);
-    padding:7px 10px; border-radius:4px;
+    position:absolute; left:18px; bottom:16px; right:auto; max-width:52%;
+    font-size:11.5px; color:var(--dim); background:rgba(8,12,19,.72);
+    border:1px solid rgba(86,111,140,.22); border-left:2px solid var(--amber);
+    padding:8px 11px; border-radius:10px; backdrop-filter:blur(12px);
+  }
+  #stepHud{
+    position:absolute; left:50%; bottom:18px; transform:translateX(-50%);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:11px; letter-spacing:.18em; color:var(--faint);
+    text-transform:uppercase; pointer-events:none;
   }
   aside{
-    width:340px; border-left:1px solid var(--line); background:var(--panel);
+    width:348px; border-left:1px solid rgba(28,36,49,.8); background:rgba(8,12,19,.92);
     display:flex; flex-direction:column; padding:14px; gap:10px; overflow-y:auto;
   }
   .stepmeta{font-size:10px; letter-spacing:.16em; color:var(--faint)}
@@ -64,7 +82,7 @@
   .tag.configured{border-color:var(--cyan); color:var(--cyan)}
   .tag.planned{border-color:var(--amber); color:var(--amber)}
   pre{
-    background:var(--panel2); border:1px solid var(--line); border-radius:4px;
+    background:rgba(16,23,36,.82); border:1px solid rgba(86,111,140,.22); border-radius:10px;
     padding:9px; font-size:11px; line-height:1.5; overflow-x:auto; color:var(--ink);
     white-space:pre-wrap; word-break:break-word;
   }
@@ -75,20 +93,26 @@
     font-size:10.5px; color:var(--faint); letter-spacing:.02em;
   }
   /* svg */
-  .grid line{stroke:var(--line); stroke-width:.5; opacity:.55}
-  .edge{fill:none; stroke:var(--line); stroke-width:1.6}
-  .edge.active{stroke-width:2.2; stroke-dasharray:7 5; animation:dash 1.1s linear infinite}
+  .grid line{stroke:#102033; stroke-width:.45; opacity:.28}
+  .grid circle{fill:#162234; opacity:.42}
+  .edge{fill:none; stroke:rgba(92,107,128,.38); stroke-width:1.5; stroke-dasharray:6 7}
+  .edge.active{
+    stroke-width:4.2; stroke-dasharray:none; animation:none;
+    filter:drop-shadow(0 0 7px currentColor) drop-shadow(0 0 18px currentColor);
+  }
   @keyframes dash{to{stroke-dashoffset:-24}}
-  .node rect{fill:var(--panel); stroke:var(--line); stroke-width:1.2; rx:5}
-  .node text.t{fill:var(--ink); font-size:13px; font-weight:600}
-  .node text.s{fill:var(--dim); font-size:10px}
-  .node.dimmed{opacity:.38}
-  .node.pulse rect{stroke-width:2.4; animation:pulse 1.1s ease-in-out infinite}
-  @keyframes pulse{50%{filter:brightness(1.5)}}
+  .node rect{fill:#0c111b; stroke:rgba(86,111,140,.55); stroke-width:1.3; rx:12}
+  .node text.t{fill:var(--ink); font-size:14px; font-weight:700; letter-spacing:.02em}
+  .node text.s{fill:var(--dim); font-size:10px; opacity:.72}
+  .node.dimmed{opacity:.28}
+  .node.pulse rect{stroke-width:2.4; animation:pulse 1.25s ease-in-out infinite}
+  @keyframes pulse{50%{filter:drop-shadow(0 0 18px currentColor) brightness(1.3)}}
   .node.p-cyan rect{stroke:var(--cyan)} .node.p-green rect{stroke:var(--green)}
   .node.p-red rect{stroke:var(--red)}   .node.p-amber rect{stroke:var(--amber)}
   .node.p-violet rect{stroke:var(--violet)}
-  #packet{filter:drop-shadow(0 0 6px currentColor)}
+  .hop text{fill:#07101a; font-size:10px; font-weight:800}
+  .hop circle{stroke:rgba(255,255,255,.22); stroke-width:1.2; filter:drop-shadow(0 0 7px currentColor)}
+  #packet{filter:drop-shadow(0 0 6px currentColor) drop-shadow(0 0 18px currentColor)}
   @media (max-width:900px){ aside{width:270px} }
 </style>
 </head>
@@ -117,8 +141,9 @@
 </header>
 <main>
   <div id="stage">
-    <svg id="svg" viewBox="0 0 1440 800" preserveAspectRatio="xMidYMid meet" aria-label="architecture diagram"></svg>
+    <svg id="svg" viewBox="0 0 1200 560" preserveAspectRatio="xMidYMid meet" aria-label="architecture diagram"></svg>
     <div id="modeNote"></div>
+    <div id="stepHud">step 00 / 00 · ready</div>
   </div>
   <aside>
     <div class="stepmeta" id="stepMeta">FLOW 1 · READY</div>
@@ -144,17 +169,17 @@ const NS = "http://www.w3.org/2000/svg";
 const svg = document.getElementById("svg");
 
 const NODES = {
-  input:     {x:60,  y:80,  w:180, h:56, t:"User / Task Input",        s:"telecom triage request"},
-  router:    {x:330, y:80,  w:200, h:56, t:"Provider Router",          s:"per-category thresholds"},
-  local:     {x:630, y:80,  w:230, h:56, t:"Gemma Local Tier",         s:"mock / ollama (dev)"},
-  l1:        {x:960, y:80,  w:220, h:56, t:"Layer 1 Contract Verifier",s:"schema · fields · enums · ranges"},
-  fireworks: {x:960, y:230, w:220, h:56, t:"Fireworks Escalation Tier",s:"remote model · verified again"},
-  store:     {x:630, y:380, w:230, h:56, t:"Trajectory Store",         s:"replayable rows · SQLite"},
-  l2:        {x:300, y:380, w:230, h:56, t:"Layer 2 EWMA Drift Tracker",s:"per-category quality trend"},
-  l3:        {x:960, y:380, w:220, h:56, t:"Layer 3 Sampled Audit",    s:"calibrated challenger · offline"},
-  telemetry: {x:630, y:540, w:230, h:56, t:"Telemetry Truth Layer",    s:"source-tagged claims"},
-  probe:     {x:300, y:540, w:230, h:56, t:"Runtime Probe",            s:"measured host + endpoint facts"},
-  console:   {x:960, y:540, w:220, h:56, t:"Demo Console / Artifacts", s:"replay · submission evidence"},
+  input:     {x:70,  y:220, w:170, h:68, t:"User",                    s:"task input"},
+  router:    {x:315, y:210, w:200, h:88, t:"Provider Router",         s:"threshold policy"},
+  local:     {x:610, y:70,  w:210, h:70, t:"Gemma Local Tier",        s:"Ollama / vLLM"},
+  l1:        {x:610, y:320, w:210, h:76, t:"Layer 1 Verifier",        s:"contract gate"},
+  fireworks: {x:940, y:220, w:190, h:68, t:"Fireworks",               s:"escalation tier"},
+  store:     {x:610, y:448, w:210, h:64, t:"Trajectory Store",        s:"replayable rows"},
+  l2:        {x:260, y:448, w:220, h:64, t:"EWMA Drift",              s:"Layer 2"},
+  l3:        {x:925, y:448, w:220, h:64, t:"Sampled Audit",           s:"Layer 3"},
+  telemetry: {x:610, y:210, w:210, h:88, t:"Telemetry Truth",         s:"source tags"},
+  probe:     {x:260, y:70,  w:220, h:70, t:"Runtime Probe",           s:"AMD proof pending"},
+  console:   {x:925, y:70,  w:220, h:70, t:"Demo Replay",             s:"submission artifacts"},
 };
 const EDGES = {
   "input-router":"", "router-local":"", "local-l1":"",
@@ -163,6 +188,13 @@ const EDGES = {
   "l3-store":"", "store-telemetry":"", "probe-telemetry":"",
   "telemetry-console":"",
 };
+const FLOW_VISIBLE_NODES = [
+  ["input","router","local","l1","store","telemetry","console"],
+  ["input","router","local","l1","fireworks","store"],
+  ["input","router","fireworks","store","l2","telemetry"],
+  ["l1","store","l3","telemetry"],
+  ["input","router","local","l1","store","telemetry","probe","console"],
+];
 function center(n){ return {cx:n.x+n.w/2, cy:n.y+n.h/2}; }
 function edgePath(a, b){
   const A = center(NODES[a]), B = center(NODES[b]);
@@ -171,22 +203,37 @@ function edgePath(a, b){
   if (Math.abs(dx) > Math.abs(dy)) { sx += Math.sign(dx)*NODES[a].w/2; ex -= Math.sign(dx)*NODES[b].w/2; }
   else { sy += Math.sign(dy)*NODES[a].h/2; ey -= Math.sign(dy)*NODES[b].h/2; }
   const mx=(sx+ex)/2, my=(sy+ey)/2;
+  const bend = Math.min(130, Math.max(44, Math.abs(dx + dy) / 5));
+  if (a === "router" && b === "local") return `M ${sx} ${sy} C ${sx+54} ${sy}, ${ex-80} ${ey-bend}, ${ex} ${ey}`;
+  if (a === "router" && b === "fireworks") return `M ${sx} ${sy} C ${sx+92} ${sy-80}, ${ex-92} ${ey-80}, ${ex} ${ey}`;
+  if (a === "l2" && b === "router") return `M ${sx} ${sy} C ${sx-80} ${sy-190}, ${ex-100} ${ey+126}, ${ex} ${ey}`;
+  if (a === "telemetry" && b === "console") return `M ${sx} ${sy} C ${sx+80} ${sy-180}, ${ex-120} ${ey+10}, ${ex} ${ey}`;
   return `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ey}, ${ex} ${ey}`;
 }
 // grid
 const grid = document.createElementNS(NS,"g"); grid.setAttribute("class","grid");
-for(let x=0;x<=1440;x+=48){ const l=document.createElementNS(NS,"line");
-  l.setAttribute("x1",x);l.setAttribute("y1",0);l.setAttribute("x2",x);l.setAttribute("y2",800); grid.appendChild(l);}
-for(let y=0;y<=800;y+=48){ const l=document.createElementNS(NS,"line");
-  l.setAttribute("x1",0);l.setAttribute("y1",y);l.setAttribute("x2",1440);l.setAttribute("y2",y); grid.appendChild(l);}
+for(let x=0;x<=1200;x+=32){ const l=document.createElementNS(NS,"line");
+  l.setAttribute("x1",x);l.setAttribute("y1",0);l.setAttribute("x2",x);l.setAttribute("y2",560); grid.appendChild(l);}
+for(let y=0;y<=560;y+=32){ const l=document.createElementNS(NS,"line");
+  l.setAttribute("x1",0);l.setAttribute("y1",y);l.setAttribute("x2",1200);l.setAttribute("y2",y); grid.appendChild(l);}
+for(let x=16;x<=1200;x+=32){ for(let y=16;y<=560;y+=32){ const c=document.createElementNS(NS,"circle");
+  c.setAttribute("cx",x); c.setAttribute("cy",y); c.setAttribute("r",".9"); grid.appendChild(c); } }
 svg.appendChild(grid);
 // edges
 const edgeEls = {};
+const hopEls = {};
 for(const key of Object.keys(EDGES)){
   const [a,b] = key.split("-");
   const p = document.createElementNS(NS,"path");
   p.setAttribute("d", edgePath(a,b)); p.setAttribute("class","edge");
   svg.appendChild(p); edgeEls[key] = p;
+  const h = document.createElementNS(NS,"g");
+  h.setAttribute("class","hop"); h.style.display="none";
+  const hc = document.createElementNS(NS,"circle");
+  hc.setAttribute("r",10); hc.setAttribute("fill","currentColor");
+  const ht = document.createElementNS(NS,"text");
+  ht.setAttribute("text-anchor","middle"); ht.setAttribute("dy","3.8");
+  h.appendChild(hc); h.appendChild(ht); svg.appendChild(h); hopEls[key]=h;
 }
 // nodes
 const nodeEls = {};
@@ -196,10 +243,10 @@ for(const [id,n] of Object.entries(NODES)){
   r.setAttribute("x",n.x); r.setAttribute("y",n.y); r.setAttribute("width",n.w);
   r.setAttribute("height",n.h); r.setAttribute("rx",5); g.appendChild(r);
   const t = document.createElementNS(NS,"text");
-  t.setAttribute("x",n.x+12); t.setAttribute("y",n.y+24); t.setAttribute("class","t");
+  t.setAttribute("x",n.x+n.w/2); t.setAttribute("y",n.y+31); t.setAttribute("text-anchor","middle"); t.setAttribute("class","t");
   t.textContent = n.t; g.appendChild(t);
   const s = document.createElementNS(NS,"text");
-  s.setAttribute("x",n.x+12); s.setAttribute("y",n.y+42); s.setAttribute("class","s");
+  s.setAttribute("x",n.x+n.w/2); s.setAttribute("y",n.y+50); s.setAttribute("text-anchor","middle"); s.setAttribute("class","s");
   s.textContent = n.s; g.appendChild(s);
   svg.appendChild(g); nodeEls[id] = {g, title:t, sub:s};
 }
@@ -344,8 +391,16 @@ function applyMode(k){
   document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("on",b.dataset.mode===k));
 }
 function clearHighlights(){
-  Object.values(edgeEls).forEach(p=>{p.classList.remove("active"); p.style.stroke="";});
-  Object.values(nodeEls).forEach(n=>n.g.setAttribute("class","node"));
+  const visible = new Set(FLOW_VISIBLE_NODES[flowIdx] || Object.keys(nodeEls));
+  Object.entries(edgeEls).forEach(([key,p])=>{
+    p.classList.remove("active");
+    p.style.stroke="";
+    p.style.color="";
+    const [a,b]=key.split("-");
+    p.style.opacity=(visible.has(a) && visible.has(b)) ? ".52" : ".08";
+  });
+  Object.entries(hopEls).forEach(([,h])=>{h.style.display="none"; h.style.color="";});
+  Object.entries(nodeEls).forEach(([id,n])=>n.g.setAttribute("class",visible.has(id) ? "node" : "node dimmed"));
   packet.style.display="none";
   if(raf) cancelAnimationFrame(raf), raf=null;
 }
@@ -359,10 +414,12 @@ function showStep(i, animate){
     $("stepWhy").textContent="Press play, or step through with ▶▶.";
     $("stepTag").textContent="—"; $("stepTag").className="tag";
     $("payload").textContent="// payload appears here per step";
+    $("stepHud").textContent=`step 00 / ${String(flow.steps.length).padStart(2,"0")} · ${flow.name.slice(4)}`;
     return;
   }
   const st=flow.steps[i];
   $("stepMeta").textContent=`FLOW ${flowIdx+1} · STEP ${i+1}/${flow.steps.length}`;
+  $("stepHud").textContent=`step ${String(i+1).padStart(2,"0")} / ${String(flow.steps.length).padStart(2,"0")} · ${flow.name.slice(4)}`;
   $("stepTitle").textContent=st.title;
   $("stepWhy").textContent=st.why;
   $("stepTag").textContent=st.tag;
@@ -372,9 +429,17 @@ function showStep(i, animate){
     const p=edgeEls[st.edge];
     p.classList.add("active");
     p.style.stroke=COLORS[st.color]||COLORS.cyan;
+    p.style.color=COLORS[st.color]||COLORS.cyan;
+    p.style.opacity="1";
     const len=p.getTotalLength();
     packet.style.display="";
     packet.style.color=COLORS[st.color]||COLORS.cyan;
+    const hop=hopEls[st.edge];
+    const hp=p.getPointAtLength(len*.5);
+    hop.style.display="";
+    hop.style.color=COLORS[st.color]||COLORS.cyan;
+    hop.setAttribute("transform",`translate(${hp.x},${hp.y})`);
+    hop.querySelector("text").textContent=String(i+1);
     if(animate){
       animStart=performance.now();
       const dur=1500;
