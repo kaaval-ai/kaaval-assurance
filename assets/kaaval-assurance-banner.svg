@@ -60,32 +60,32 @@
         font-size="12" fill="#34d399">verified answer</text>
 
   <!-- escalation branch: gate down to fireworks and back -->
-  <path d="M 711 232 C 692 262, 622 262, 590 234" fill="none" stroke="#f5a623" stroke-width="2.1" stroke-dasharray="6 5" marker-end="url(#arrA)"/>
-  <rect x="400" y="236" width="190" height="52" rx="7" fill="#10141c" stroke="#f5a623" stroke-width="1.7"/>
-  <text x="495" y="257" text-anchor="middle" font-family="ui-sans-serif,-apple-system,'Segoe UI',sans-serif"
+  <path d="M 711 232 C 686 266, 608 266, 570 234" fill="none" stroke="#f5a623" stroke-width="2.1" stroke-dasharray="6 5" marker-end="url(#arrA)"/>
+  <rect x="378" y="236" width="222" height="56" rx="7" fill="#10141c" stroke="#f5a623" stroke-width="1.7"/>
+  <text x="489" y="258" text-anchor="middle" font-family="ui-sans-serif,-apple-system,'Segoe UI',sans-serif"
         font-size="14.2" font-weight="600" fill="#e6edf3">Fireworks Escalation</text>
-  <text x="495" y="275" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
+  <text x="489" y="276" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
         font-size="10.8" fill="#8b9bb0">contract failure · re-verified</text>
-  <path d="M 400 262 C 338 262, 316 226, 340 206" fill="none" stroke="#f5a623" stroke-width="1.7" stroke-dasharray="6 5" opacity="0.75" marker-end="url(#arrA)"/>
-  <text x="340" y="286" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
+  <path d="M 378 264 C 312 264, 302 226, 332 204" fill="none" stroke="#f5a623" stroke-width="1.7" stroke-dasharray="6 5" opacity="0.75" marker-end="url(#arrA)"/>
+  <text x="298" y="274" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
         font-size="10.8" fill="#5c6b80">retry through the same gate</text>
 
   <!-- chips row -->
   <g font-family="ui-monospace,Menlo,Consolas,monospace" font-size="13.8">
-    <rect x="40"  y="310" width="240" height="34" rx="17" fill="#10141c" stroke="#22d3ee" stroke-width="1.2"/>
-    <text x="160" y="332" text-anchor="middle" fill="#22d3ee">Layer 1 Contract Verification</text>
+    <rect x="20"  y="312" width="250" height="36" rx="18" fill="#10141c" stroke="#22d3ee" stroke-width="1.2"/>
+    <text x="145" y="335" text-anchor="middle" fill="#22d3ee">Layer 1 Contract Verification</text>
 
-    <rect x="302" y="310" width="190" height="34" rx="17" fill="#10141c" stroke="#8b9bb0" stroke-width="1.2"/>
-    <text x="397" y="332" text-anchor="middle" fill="#c3cfdd">Layer 2 EWMA Drift</text>
+    <rect x="290" y="312" width="198" height="36" rx="18" fill="#10141c" stroke="#8b9bb0" stroke-width="1.2"/>
+    <text x="389" y="335" text-anchor="middle" fill="#c3cfdd">Layer 2 EWMA Drift</text>
 
-    <rect x="514" y="310" width="204" height="34" rx="17" fill="#10141c" stroke="#a78bfa" stroke-width="1.2"/>
-    <text x="616" y="332" text-anchor="middle" fill="#a78bfa">Layer 3 Sampled Audit</text>
+    <rect x="508" y="312" width="214" height="36" rx="18" fill="#10141c" stroke="#a78bfa" stroke-width="1.2"/>
+    <text x="615" y="335" text-anchor="middle" fill="#a78bfa">Layer 3 Sampled Audit</text>
 
-    <rect x="740" y="310" width="214" height="34" rx="17" fill="#10141c" stroke="#34d399" stroke-width="1.2"/>
-    <text x="847" y="332" text-anchor="middle" fill="#34d399">Telemetry Truth Layer</text>
+    <rect x="742" y="312" width="226" height="36" rx="18" fill="#10141c" stroke="#34d399" stroke-width="1.2"/>
+    <text x="855" y="335" text-anchor="middle" fill="#34d399">Telemetry Truth Layer</text>
 
-    <rect x="976" y="310" width="204" height="34" rx="17" fill="#10141c" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="5 4"/>
-    <text x="1078" y="332" text-anchor="middle" fill="#f5a623">AMD GPU Proof Pending</text>
+    <rect x="990" y="312" width="210" height="36" rx="18" fill="#10141c" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <text x="1095" y="335" text-anchor="middle" fill="#f5a623">AMD GPU Proof Pending</text>
   </g>
 
   <rect x="0" y="358" width="1200" height="2" fill="#1c2431"/>
