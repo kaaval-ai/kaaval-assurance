@@ -124,15 +124,16 @@ git clone https://github.com/kaaval-ai/kaaval-assurance.git
 cd kaaval-assurance
 pip install -e ".[dev]"
 
-# Example from the event FAQ; replace with the selected local model.
-vllm serve Qwen/Qwen2-7B-Instruct --port 8000 --gpu-memory-utilization 0.3
+# Gemma-first: pick a Gemma model that fits the pod GPU (see docs/hackathon-ops.md).
+vllm serve <chosen-gemma-model> --port 8000 --gpu-memory-utilization 0.3
 ```
 
 In a second terminal:
 
 ```bash
 export VLLM_BASE_URL=http://localhost:8000/v1
-export VLLM_MODEL=Qwen/Qwen2-7B-Instruct
+export VLLM_MODEL=<chosen-gemma-model>
+export VLLM_MODEL_FAMILY=gemma
 export VLLM_HARDWARE_TARGET=amd-hackathon-gpu
 
 kaaval-eval --dataset data/eval/telecom_gold.jsonl \
@@ -142,6 +143,10 @@ kaaval-eval --dataset data/eval/telecom_gold.jsonl \
   --audit-sample-rate 1.0 \
   --telemetry-summary
 ```
+
+If Gemma cannot be served reliably on the pod, use the FAQ Qwen command only as an operational fallback and set `VLLM_MODEL_FAMILY=qwen` so telemetry stays truthful.
+
+Track 3 submission framing: no Docker image is required for Track 3; AMD compute proof comes from the runtime probe and telemetry artifacts; a public hosted URL can replay captured AMD telemetry rather than serving a live endpoint.
 
 Use Fireworks credits for the expensive path: remote escalation, always-remote baselines, and challenger audits. The core demo should show that local/open-weight tokens are verified first and external Fireworks calls are minimized.
 
