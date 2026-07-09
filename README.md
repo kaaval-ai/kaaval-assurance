@@ -61,20 +61,15 @@ verified answer you can defend line by line.
 
 ## Architecture
 
-```
-Task Input
-  └─> Provider Router            (per-category thresholds from Layer-2 drift)
-        └─> Gemma Local Tier     (Ollama dev / ROCm + vLLM on AMD GPU VM)
-              └─> Layer 1 Contract Verifier
-                    ├─ pass ──> accepted answer
-                    └─ fail ──> Fireworks Escalation ──> Layer 1 again
-        every attempt ──> Trajectory Store (replayable rows)
-                             ├─> Layer 2 Drift + Cost Metrics
-                             └─> Layer 3 Sampled Audit (calibrated challenger)
-                                       └─> Demo Console / Submission Artifacts
-```
+Open the animated walkthrough: [docs/kaaval-assurance-architecture.html](docs/kaaval-assurance-architecture.html)
 
-Interactive architecture walkthrough (animated flows, offline, single file): [docs/kaaval-assurance-architecture.html](docs/kaaval-assurance-architecture.html) · notes: [docs/kaaval-assurance-architecture.md](docs/kaaval-assurance-architecture.md)
+The walkthrough is a single offline HTML file with packet animation, step
+controls, flow tabs, and source-tagged side-panel explanations. It replaces a
+static architecture diagram because Kaaval's value is in the motion: local
+verification, gated escalation, drift feedback, sampled audit, and AMD proof
+capture.
+
+Companion notes: [docs/kaaval-assurance-architecture.md](docs/kaaval-assurance-architecture.md)
 
 ## Built features
 
