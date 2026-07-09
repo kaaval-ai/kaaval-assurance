@@ -152,7 +152,7 @@ Use Fireworks credits for the expensive path: remote escalation, always-remote b
 
 ## Demo console and submission
 
-A lightweight Streamlit console ([apps/demo_console/app.py](apps/demo_console/app.py)) replays recorded assurance telemetry: request flow, runtime profile with source tags, the telemetry truth table, and a replayable trajectory example. It prefers real artifacts from `artifacts/` and ships with synthetic sample data ([demo_artifacts/sample/](demo_artifacts/sample)) so it runs anywhere without secrets or AMD access — suitable for Streamlit Community Cloud or Hugging Face Spaces as a hosted replay surface.
+A lightweight Streamlit console ([apps/demo_console/app.py](apps/demo_console/app.py)) with two tabs: a **live demo run** that drives the real assurance pipeline interactively (pick a contract, a gold input, and an injected local failure; watch Layer-1 verification and escalation; export the run as artifacts) and an **artifact replay** view showing request flow, runtime profile with source tags, the telemetry truth table, and a replayable trajectory example. It prefers real artifacts from `artifacts/` and ships with synthetic sample data ([demo_artifacts/sample/](demo_artifacts/sample)) so it runs anywhere without secrets or AMD access — suitable for Streamlit Community Cloud or Hugging Face Spaces as a hosted replay surface.
 
 ```bash
 pip install -e ".[demo]"
