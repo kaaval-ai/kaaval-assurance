@@ -1,5 +1,7 @@
 # Kaaval Assurance
 
+![Kaaval Assurance — inference assurance plane for Gemma-first AMD workloads](assets/kaaval-assurance-banner.svg)
+
 **An inference assurance plane for Gemma-first AMD workloads.**
 
 Kaaval Assurance sits between a task and a model answer. It runs a local
@@ -71,6 +73,8 @@ Task Input
                              └─> Layer 3 Sampled Audit (calibrated challenger)
                                        └─> Demo Console / Submission Artifacts
 ```
+
+Interactive architecture walkthrough (animated flows, offline, single file): [docs/kaaval-assurance-architecture.html](docs/kaaval-assurance-architecture.html) · notes: [docs/kaaval-assurance-architecture.md](docs/kaaval-assurance-architecture.md)
 
 ## Built features
 
