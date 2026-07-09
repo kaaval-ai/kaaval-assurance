@@ -80,6 +80,7 @@ Click the flow for the interactive walkthrough: [HTML](docs/kaaval-assurance-arc
 | Telemetry truth layer | Built | Every judge-facing claim maps to a stored field with a source tag |
 | Runtime probe | Built | Turns runtime claims from configured into measured; redacts secrets |
 | Streamlit demo console | Built | Live interactive runs plus replay of captured artifacts; hostable without secrets |
+| Inference Flight Deck UI (React) | Built | A premium, real-time observability dashboard surfacing live cost, latency, error rates, and trajectory replays — proving the financial and qualitative value of the local vs. remote routing. |
 
 The full test suite (220+ tests) runs network-free; live calls are explicit, opt-in CLI/script paths.
 
@@ -233,6 +234,7 @@ Configuration is environment-only — copy [.env.example](.env.example) to `.env
 | AMD GPU measured run | **Pending** — awaiting credits/pod; final artifact outstanding |
 | Telemetry truth layer + runtime probe | Complete |
 | Demo console (live + replay) | Complete |
+| Inference Flight Deck UI (React) | Complete |
 | Deck / video | To be finalized from captured artifacts |
 
 ## Limitations
