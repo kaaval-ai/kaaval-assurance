@@ -53,7 +53,7 @@ class VllmConfig:
     tensor_parallel_size: int = 1
     structured_outputs: bool = True
     max_context_tokens: Optional[int] = None
-    hardware_target: str = "amd-mi300x"
+    hardware_target: str = "amd-hackathon-gpu"
     rocm_version: Optional[str] = None
     vllm_version: Optional[str] = None
     cost_per_prompt_token: float = 0.0
@@ -86,7 +86,7 @@ class VllmConfig:
             tensor_parallel_size=int(env.get("VLLM_TENSOR_PARALLEL_SIZE", "1")),
             structured_outputs=_parse_bool(env.get("VLLM_STRUCTURED_OUTPUTS", ""), True),
             max_context_tokens=int(max_context) if max_context else None,
-            hardware_target=env.get("VLLM_HARDWARE_TARGET", "amd-mi300x"),
+            hardware_target=env.get("VLLM_HARDWARE_TARGET", "amd-hackathon-gpu"),
             rocm_version=env.get("VLLM_ROCM_VERSION") or None,
             vllm_version=env.get("VLLM_VERSION") or None,
             cost_per_prompt_token=float(env.get("VLLM_COST_PER_PROMPT_TOKEN", "0")),

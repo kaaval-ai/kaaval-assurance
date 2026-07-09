@@ -110,7 +110,7 @@ class TestConfig:
         assert cfg.tensor_parallel_size == 1
         assert cfg.structured_outputs is True
         assert cfg.max_context_tokens is None
-        assert cfg.hardware_target == "amd-mi300x"
+        assert cfg.hardware_target == "amd-hackathon-gpu"
 
     def test_missing_model_raises(self):
         with pytest.raises(ValueError, match="VLLM_MODEL"):
@@ -127,7 +127,7 @@ class TestRuntimeProfile:
         assert p.provider == "vllm-gemma"
         assert p.model_id == "gemma-3-12b-it"
         assert p.served_model_name == "gemma-3-12b-it"
-        assert p.hardware_target == "amd-mi300x"
+        assert p.hardware_target == "amd-hackathon-gpu"
         assert p.rocm_version == "6.3"
         assert p.vllm_version == "0.8.4"
         assert p.dtype == "bfloat16"

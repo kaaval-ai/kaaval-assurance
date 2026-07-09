@@ -60,7 +60,7 @@ Installed entrypoint: `kaaval-eval` (same flags).
 
 ### Remote escalation via Fireworks AI
 
-The escalation tier can target a Fireworks-hosted model instead of the remote mock. Configuration is environment-only (`FIREWORKS_API_KEY`, `FIREWORKS_MODEL`, `FIREWORKS_BASE_URL`, `FIREWORKS_TIMEOUT_SECONDS`, optional `FIREWORKS_COST_PER_PROMPT_TOKEN` / `FIREWORKS_COST_PER_COMPLETION_TOKEN`). Keep secrets in an untracked local env file and source it — never commit keys.
+The escalation tier can target a Fireworks-hosted model instead of the remote mock. Configuration is environment-only (`FIREWORKS_API_KEY`, `FIREWORKS_MODEL`, `FIREWORKS_BASE_URL`, `FIREWORKS_TIMEOUT_SECONDS`, optional `FIREWORKS_COST_PER_PROMPT_TOKEN` / `FIREWORKS_COST_PER_COMPLETION_TOKEN`). Keep secrets in an untracked local env file and source it — never commit keys. For the AMD hackathon, set `FIREWORKS_MODEL` to a model available in your credit allocation, such as the Kimi or MiniMax endpoints listed for the event, rather than assuming any default model is eligible.
 
 ```bash
 set -a; source .env; set +a
@@ -72,7 +72,7 @@ The local tier stays mock here; injected local failures escalate to the live Fir
 
 ### Local Gemma tier via vLLM
 
-`VllmProvider` is the planned local Gemma tier for AMD Developer Cloud, targeting any OpenAI-compatible vLLM endpoint (ROCm backend). Configuration is environment-only: `VLLM_MODEL` (required), `VLLM_BASE_URL`, `VLLM_TIMEOUT_SECONDS`, optional `VLLM_API_KEY`, plus runtime knobs mirroring vLLM engine args — `VLLM_DTYPE`, `VLLM_KV_CACHE_DTYPE` (FP8 KV cache), `VLLM_ENABLE_PREFIX_CACHING`, `VLLM_GPU_MEMORY_UTILIZATION`, `VLLM_TENSOR_PARALLEL_SIZE`, `VLLM_STRUCTURED_OUTPUTS`.
+`VllmProvider` is the planned local Gemma tier for the AMD hackathon notebook pod, targeting any OpenAI-compatible vLLM endpoint (ROCm backend). Configuration is environment-only: `VLLM_MODEL` (required), `VLLM_BASE_URL`, `VLLM_TIMEOUT_SECONDS`, optional `VLLM_API_KEY`, plus runtime knobs mirroring vLLM engine args — `VLLM_DTYPE`, `VLLM_KV_CACHE_DTYPE` (FP8 KV cache when supported), `VLLM_ENABLE_PREFIX_CACHING`, `VLLM_GPU_MEMORY_UTILIZATION`, `VLLM_TENSOR_PARALLEL_SIZE`, `VLLM_STRUCTURED_OUTPUTS`.
 
 A `RuntimeProfile` records the configured serving settings (dtype, KV-cache dtype, tensor parallelism, GPU memory utilization, prefix caching, structured-output mode) alongside eval output, so results state which runtime configuration produced them. These are recorded settings, not measured performance claims. When structured outputs are enabled the request asks for a JSON object, but Layer 1 verifies every output either way — prose or fenced responses fail the contract check and escalate.
 
@@ -107,6 +107,37 @@ Audit results persist into the trajectory rows (`audit_sampled`, `audit_result`,
 - Audit prompts use a stable per-contract prefix (schema, scoring policy, contract rules) with case content appended last — designed to benefit from vLLM automatic prefix caching and Fireworks prompt cache keys when available. No cache-hit rates are claimed without measurement.
 - FP8 KV cache, tensor parallelism, and GPU memory utilization are recorded as serving knobs in the runtime profile, not claimed results.
 - Fireworks serves as the remote challenger/escalation tier with strict JSON output; optional prompt-cache keys and logprob telemetry are passed through when configured, and provider-reported cached tokens are recorded when returned.
+
+## AMD Hackathon Runtime Notes
+
+The hackathon notebook environment is accessed through `https://notebooks.amd.com/hackathon`. Keep the repo, virtual environment, generated SQLite runs, and telemetry artifacts under `/workspace` so they survive pod restarts. The FAQ describes about 48 GB of GPU memory for the hackathon compute instance, so the local model must fit alongside vLLM, KV cache, and runtime overhead. Start with conservative serving settings, then record the actual values in `RuntimeProfile`.
+
+```bash
+cd /workspace
+git clone https://github.com/kaaval-ai/kaaval-assurance.git
+cd kaaval-assurance
+pip install -e ".[dev]"
+
+# Example from the event FAQ; replace with the selected local model.
+vllm serve Qwen/Qwen2-7B-Instruct --port 8000 --gpu-memory-utilization 0.3
+```
+
+In a second terminal:
+
+```bash
+export VLLM_BASE_URL=http://localhost:8000/v1
+export VLLM_MODEL=Qwen/Qwen2-7B-Instruct
+export VLLM_HARDWARE_TARGET=amd-hackathon-gpu
+
+kaaval-eval --dataset data/eval/telecom_gold.jsonl \
+  --local-provider vllm \
+  --remote-provider mock \
+  --audit-provider mock \
+  --audit-sample-rate 1.0 \
+  --telemetry-summary
+```
+
+Use Fireworks credits for the expensive path: remote escalation, always-remote baselines, and challenger audits. The core demo should show that local/open-weight tokens are verified first and external Fireworks calls are minimized.
 
 ## Telemetry Truth Layer
 
@@ -158,13 +189,13 @@ src/kaaval_assurance/
 
 kaaval-assurance is designed to run provider-neutral assurance flows across:
 
-- local/open-weight Gemma serving on AMD Developer Cloud via ROCm + vLLM
+- local/open-weight serving on the AMD hackathon notebook GPU via ROCm + vLLM
 - remote escalation through Fireworks AI-hosted model endpoints
 - deterministic MockProvider execution for tests, evals, and demos
 
 Provider configuration is intentionally injectable, and trajectory records remain provider-neutral: provider, model_id, tier, latency, token counts, cost, and verifier outcome.
 
-Planned local tier: `gemma-3-12b-it` on **AMD Instinct MI300X** (192 GB HBM3). Model ID, ROCm version, and GPU details will be recorded here once deployed.
+Planned local tier: a model that fits the AMD hackathon notebook GPU memory budget (the event FAQ says about 48 GB, with KV cache and runtime overhead also consuming memory). Model ID, ROCm version, vLLM version, GPU details, and serving knobs are recorded in telemetry once deployed.
 
 ## License
 

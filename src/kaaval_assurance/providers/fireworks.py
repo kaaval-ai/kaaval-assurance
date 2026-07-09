@@ -4,8 +4,8 @@ Calls the OpenAI-compatible /chat/completions endpoint over HTTP via
 `requests`. Configuration comes from environment variables only — no file
 coupling — so the same code runs locally, in CI, and on AMD Developer Cloud.
 
-The system prompt is contract-aware and demands a bare JSON object, but the
-model may still disobey (glm-5p2 tends to explain on weak prompts). Layer 1
+The system prompt is contract-aware and demands a bare JSON object, but any
+remote model may still disobey on weak prompts. Layer 1
 verification remains the source of truth for acceptability; this provider
 never pre-judges its own output beyond attempting a JSON parse.
 """

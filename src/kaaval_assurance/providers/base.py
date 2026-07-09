@@ -2,7 +2,7 @@
 
 Implementations planned:
 - MockProvider (Jul 5): deterministic, zero cloud access.
-- vLLM/ROCm Gemma on AMD Instinct MI300X (Jul 8): local tier.
+- vLLM/ROCm Gemma on the AMD hackathon GPU pod: local tier.
 - Fireworks (Jul 7): remote escalation + Layer 3 challenger tier.
 """
 
