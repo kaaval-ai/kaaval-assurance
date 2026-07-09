@@ -18,7 +18,7 @@ from .eval.runner import CaseResult, EvalRunReport
 from .metrics import aggregate
 from .models import PipelineResult, TrajectoryRow
 from .pipeline import AssurancePipeline
-from .providers import MockProvider
+from .providers import MockProvider, Provider
 from .router import Router
 from .telemetry import TelemetrySummary, build_telemetry_summary
 from .trajectory import TrajectoryStore
@@ -49,17 +49,30 @@ def run_live_demo(
     contract_id: str,
     failure_mode: Optional[str] = None,
     case_id: str = "live",
+    local_provider: Optional[Provider] = None,
+    remote_provider: Optional[Provider] = None,
 ) -> LiveDemoResult:
-    """One request through the assurance pipeline, mock tiers, in-memory store."""
+    """One request through the assurance pipeline, in-memory store.
+
+    Defaults to mock tiers. Custom providers (e.g. Ollama local, Fireworks
+    remote from the provider factory) may be injected; failure injection is a
+    mock-tier concept and cannot combine with a custom local provider.
+    """
     if failure_mode is not None and failure_mode not in LIVE_FAILURE_MODES:
         raise ValueError(f"failure_mode must be one of {LIVE_FAILURE_MODES} or None")
+    if failure_mode is not None and local_provider is not None:
+        raise ValueError(
+            "failure injection applies to the default mock local tier only"
+        )
     contract = get_contract(contract_id)
     store = TrajectoryStore(":memory:")
     try:
         pipeline = AssurancePipeline(
             router=Router(),
-            local_provider=MockProvider(tier="local", failure_mode=failure_mode),
-            remote_provider=MockProvider(tier="remote", model_id="mock-remote-strong"),
+            local_provider=local_provider
+            or MockProvider(tier="local", failure_mode=failure_mode),
+            remote_provider=remote_provider
+            or MockProvider(tier="remote", model_id="mock-remote-strong"),
             store=store,
         )
         request_id = f"live-{uuid.uuid4().hex[:8]}-{case_id}"

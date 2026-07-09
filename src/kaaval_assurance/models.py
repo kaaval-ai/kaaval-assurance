@@ -43,6 +43,10 @@ class RuntimeProfile(BaseModel):
     model_id: str
     served_model_name: str
     model_family: Optional[str] = None  # e.g. "gemma"; from config, not inferred
+    tier: str = "local"
+    endpoint_type: str = ""  # e.g. "openai_compatible"; "" for mock
+    # Host (and port) only — never the full URL, never credentials.
+    base_url_host: Optional[str] = None
     hardware_target: str
     rocm_version: Optional[str] = None
     vllm_version: Optional[str] = None

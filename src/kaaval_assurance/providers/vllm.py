@@ -17,6 +17,7 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Mapping, Optional
+from urllib.parse import urlparse
 
 import requests
 
@@ -37,7 +38,17 @@ def _parse_bool(value: str, default: bool) -> bool:
 
 
 class VllmError(RuntimeError):
-    """vLLM API call failed. Messages never contain credentials."""
+    """OpenAI-compatible endpoint call failed. Messages never contain credentials."""
+
+
+def base_url_host(base_url: str) -> Optional[str]:
+    """Host (and port) only — safe for telemetry; never the full URL."""
+    parsed = urlparse(base_url)
+    if not parsed.hostname:
+        return None
+    return (
+        f"{parsed.hostname}:{parsed.port}" if parsed.port else parsed.hostname
+    )
 
 
 @dataclass(frozen=True)
@@ -98,6 +109,11 @@ class VllmConfig:
 
 
 class VllmProvider(Provider):
+    # Subclasses serving other OpenAI-compatible runtimes (e.g. Ollama)
+    # override these labels; the request/verify path is identical.
+    label = "vllm"
+    endpoint_type = "openai_compatible"
+
     def __init__(
         self,
         config: Optional[VllmConfig] = None,
@@ -115,6 +131,9 @@ class VllmProvider(Provider):
             provider=self.provider_name,
             model_id=cfg.model,
             served_model_name=cfg.model,
+            tier=self.tier,
+            endpoint_type=self.endpoint_type,
+            base_url_host=base_url_host(cfg.base_url),
             hardware_target=cfg.hardware_target,
             rocm_version=cfg.rocm_version,
             vllm_version=cfg.vllm_version,
@@ -160,17 +179,21 @@ class VllmProvider(Provider):
                 timeout=self.config.timeout_seconds,
             )
         except requests.RequestException as e:
-            raise VllmError(f"vllm request failed: {type(e).__name__}: {e}") from e
+            raise VllmError(
+                f"{self.label} request failed: {type(e).__name__}: {e}"
+            ) from e
         latency_ms = (time.perf_counter() - started) * 1000.0
 
         if resp.status_code != 200:
-            raise VllmError(f"vllm HTTP {resp.status_code}: {resp.text[:200]}")
+            raise VllmError(
+                f"{self.label} HTTP {resp.status_code}: {resp.text[:200]}"
+            )
         try:
             data = resp.json()
             raw_text = data["choices"][0]["message"]["content"] or ""
         except (ValueError, KeyError, IndexError, TypeError) as e:
             raise VllmError(
-                f"unexpected vllm response shape: {type(e).__name__}: {e}"
+                f"unexpected {self.label} response shape: {type(e).__name__}: {e}"
             ) from e
 
         usage = data.get("usage") or {}

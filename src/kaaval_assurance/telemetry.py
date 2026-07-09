@@ -86,6 +86,29 @@ class CostTelemetry(BaseModel):
     estimated_cost_saved_vs_always_remote_usd: Optional[float] = None
 
 
+class AttemptTelemetry(BaseModel):
+    """Per-attempt proof record derived from a trajectory row (measured)."""
+
+    request_id: str
+    contract_id: str
+    category: str
+    provider: str
+    model_id: str
+    tier: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    cached_tokens: Optional[int] = None  # not persisted per-row; None = not reported
+    latency_ms: float
+    cost_usd: float
+    verifier_passed: bool
+    verifier_failure_count: int
+    verifier_failure_types: list[str] = Field(default_factory=list)  # check prefixes
+    verifier_failures: list[str] = Field(default_factory=list)  # full check ids
+    escalated: bool = False
+    escalation_reason: Optional[str] = None
+
+
 class ClaimSupport(BaseModel):
     claim: str
     value: str
@@ -105,6 +128,7 @@ class TelemetrySummary(BaseModel):
     routing: RoutingTelemetry
     audit: AuditTelemetry
     cost: CostTelemetry
+    attempts_detail: list[AttemptTelemetry] = Field(default_factory=list)
     claims: list[ClaimSupport] = Field(default_factory=list)
 
 
@@ -262,6 +286,34 @@ def build_telemetry_summary(
             ),
         )
 
+    reason_by_request = {r.request_id: r.routing_reason for r in report.results}
+    attempts_detail = []
+    for row in rows:
+        failure_types = sorted({f.split(":", 1)[0] for f in row.verifier_failures})
+        attempts_detail.append(
+            AttemptTelemetry(
+                request_id=row.request_id,
+                contract_id=row.contract_id,
+                category=row.category,
+                provider=row.provider,
+                model_id=row.model_id,
+                tier=row.tier,
+                prompt_tokens=row.prompt_tokens,
+                completion_tokens=row.completion_tokens,
+                total_tokens=row.prompt_tokens + row.completion_tokens,
+                latency_ms=row.latency_ms,
+                cost_usd=row.cost_usd,
+                verifier_passed=row.verifier_passed,
+                verifier_failure_count=len(row.verifier_failures),
+                verifier_failure_types=failure_types,
+                verifier_failures=row.verifier_failures,
+                escalated=row.escalated,
+                escalation_reason=(
+                    reason_by_request.get(row.request_id) if row.escalated else None
+                ),
+            )
+        )
+
     claims = _build_claims(verification, routing, audit_telemetry, cost, runtime)
 
     return TelemetrySummary(
@@ -276,6 +328,7 @@ def build_telemetry_summary(
         routing=routing,
         audit=audit_telemetry,
         cost=cost,
+        attempts_detail=attempts_detail,
         claims=claims,
     )
 

@@ -154,10 +154,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--local-provider",
-        choices=["mock", "vllm"],
+        choices=["mock", "ollama", "vllm"],
         default="mock",
-        help="local tier: deterministic mock (default) or a Gemma model on an "
-        "OpenAI-compatible vLLM endpoint (reads VLLM_* env vars)",
+        help="local tier: deterministic mock (default), a local Ollama "
+        "OpenAI-compatible endpoint (reads OLLAMA_* env vars; dev "
+        "comparison/fallback), or a Gemma model on an OpenAI-compatible vLLM "
+        "endpoint (reads VLLM_* env vars; the AMD proof target)",
     )
     parser.add_argument(
         "--remote-provider",
@@ -302,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {e}", file=sys.stderr)
             return 2
 
-    if args.local_provider == "vllm":
+    if args.local_provider != "mock":
         if args.closed_loop_demo:
             print(
                 "error: --closed-loop-demo drives the mock local tier only",
@@ -316,20 +318,18 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 2
-        from ..providers.vllm import VllmConfig, VllmProvider
+    from ..providers.factory import create_local_provider
 
-        try:
-            local_provider = VllmProvider(VllmConfig.from_env())
-        except ValueError as e:
-            print(f"error: {e}", file=sys.stderr)
-            return 2
-    else:
-        local_provider = MockProvider(
-            tier="local",
+    try:
+        local_provider = create_local_provider(
+            args.local_provider,
             failure_mode=args.failure_mode,
             failure_rate=args.failure_rate,
             seed=args.seed,
         )
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
     store = TrajectoryStore(args.db)
     try:

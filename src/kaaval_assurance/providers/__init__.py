@@ -1,6 +1,14 @@
 from .base import Provider
+from .factory import (
+    LOCAL_PROVIDERS,
+    REMOTE_PROVIDERS,
+    SpendConfirmationRequired,
+    create_local_provider,
+    create_remote_provider,
+)
 from .fireworks import FireworksConfig, FireworksError, FireworksProvider
 from .mock import FAILURE_MODES, MockProvider
+from .ollama import OllamaProvider, ollama_config_from_env
 from .vllm import VllmConfig, VllmError, VllmProvider
 
 __all__ = [
@@ -10,7 +18,14 @@ __all__ = [
     "FireworksConfig",
     "FireworksError",
     "FireworksProvider",
+    "OllamaProvider",
+    "ollama_config_from_env",
     "VllmConfig",
     "VllmError",
     "VllmProvider",
+    "LOCAL_PROVIDERS",
+    "REMOTE_PROVIDERS",
+    "SpendConfirmationRequired",
+    "create_local_provider",
+    "create_remote_provider",
 ]

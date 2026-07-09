@@ -29,6 +29,12 @@ from kaaval_assurance.demo import (  # noqa: E402
     run_live_demo,
 )
 from kaaval_assurance.eval import load_dataset  # noqa: E402
+from kaaval_assurance.providers import (  # noqa: E402
+    SpendConfirmationRequired,
+    create_local_provider,
+    create_remote_provider,
+    ollama_config_from_env,
+)
 
 ARTIFACTS = ROOT / "artifacts"
 SAMPLE = ROOT / "demo_artifacts" / "sample"
@@ -119,21 +125,97 @@ def render_live() -> None:
         cases,
         format_func=lambda c: f"{c.case_id}: {c.task_input[:90]}",
     )
+
+    col_local, col_remote = st.columns(2)
+    with col_local:
+        local_choice = st.selectbox(
+            "Local provider",
+            ["mock", "ollama"],
+            help="mock = deterministic stand-in; ollama = local "
+            "OpenAI-compatible endpoint (dev comparison/fallback). The AMD "
+            "proof target remains Gemma via vLLM on the pod.",
+        )
+        if local_choice == "ollama":
+            try:
+                ollama_cfg = ollama_config_from_env()
+                st.caption(
+                    f"Ollama configured: `{ollama_cfg.model}` "
+                    f"(family {ollama_cfg.model_family}) at "
+                    f"`{ollama_cfg.base_url}`"
+                )
+            except ValueError as e:
+                st.error(f"Ollama not configured: {e}")
+    with col_remote:
+        remote_choice = st.selectbox(
+            "Remote provider",
+            ["mock", "fireworks"],
+            help="fireworks spends credits and needs FIREWORKS_* env vars.",
+        )
+        confirm_spend = False
+        if remote_choice == "fireworks":
+            import os
+
+            if not os.environ.get("FIREWORKS_API_KEY", "").strip():
+                st.error("FIREWORKS_API_KEY is not set in the environment.")
+            confirm_spend = st.checkbox(
+                "I confirm this run may spend Fireworks credits"
+            )
+
     mode = st.radio(
-        "Inject local-tier failure",
+        "Inject local-tier failure (mock local only)",
         ["none", *LIVE_FAILURE_MODES],
         horizontal=True,
+        disabled=local_choice != "mock",
         help="Simulates local-model degradation so Layer 1 and escalation "
         "are visible on demand.",
     )
 
+    # Runtime profile preview for the selected local provider.
+    try:
+        preview_provider = create_local_provider(local_choice)
+        profile = preview_provider.runtime_profile()
+        if profile is not None:
+            st.caption(
+                f"Runtime profile ({badge('configured')}): "
+                f"provider `{profile.provider}` · model `{profile.model_id}` · "
+                f"family `{profile.model_family}` · endpoint "
+                f"`{profile.endpoint_type}` on `{profile.base_url_host}` · "
+                f"target `{profile.hardware_target}`"
+            )
+        else:
+            st.caption(
+                f"Runtime profile: mock tier — {badge('planned')} stand-in "
+                "for Gemma via vLLM on the AMD pod."
+            )
+    except ValueError:
+        pass  # unconfigured provider already reported above
+
     if st.button("Run assurance pipeline", type="primary"):
-        st.session_state["live_demo"] = run_live_demo(
-            task_input=case.task_input,
-            contract_id=contract.contract_id,
-            failure_mode=None if mode == "none" else mode,
-            case_id=case.case_id,
-        )
+        try:
+            local_provider = (
+                None
+                if local_choice == "mock"
+                else create_local_provider(local_choice)
+            )
+            remote_provider = (
+                None
+                if remote_choice == "mock"
+                else create_remote_provider(
+                    remote_choice, confirm_spend=confirm_spend
+                )
+            )
+            st.session_state["live_demo"] = run_live_demo(
+                task_input=case.task_input,
+                contract_id=contract.contract_id,
+                failure_mode=None if mode == "none" else mode,
+                case_id=case.case_id,
+                local_provider=local_provider,
+                remote_provider=remote_provider,
+            )
+        except SpendConfirmationRequired as e:
+            st.error(str(e))
+        except Exception as e:  # config or endpoint errors, shown not raised
+            st.error(f"run failed: {e}")
 
     demo = st.session_state.get("live_demo")
     if demo is None:
