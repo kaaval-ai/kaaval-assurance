@@ -19,73 +19,73 @@
   <rect x="0" y="0" width="1200" height="2" fill="#22d3ee" opacity="0.55"/>
 
   <!-- Title block -->
-  <text x="56" y="118" font-family="ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
-        font-size="52" font-weight="700" letter-spacing="4" fill="#e6edf3">KAAVAL ASSURANCE</text>
-  <text x="58" y="152" font-family="ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
-        font-size="19" fill="#8b9bb0">Inference Assurance Plane for Gemma-first AMD Workloads</text>
-  <text x="58" y="180" font-family="ui-monospace,Menlo,Consolas,monospace"
-        font-size="12.5" fill="#5c6b80">route efficiently · verify continuously · escalate intelligently</text>
+  <text x="600" y="72" text-anchor="middle" font-family="ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+        font-size="46" font-weight="700" letter-spacing="4" fill="#e6edf3">KAAVAL ASSURANCE</text>
+  <text x="600" y="106" text-anchor="middle" font-family="ui-sans-serif,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+        font-size="20" fill="#8b9bb0">Inference Assurance Plane for Gemma-first AMD Workloads</text>
+  <text x="600" y="132" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
+        font-size="13.5" fill="#5c6b80">route efficiently · verify continuously · escalate intelligently</text>
 
   <!-- Flow motif -->
   <!-- task input -->
-  <circle cx="640" cy="96" r="7" fill="#22d3ee"/>
-  <text x="640" y="72" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
-        font-size="11" fill="#8b9bb0">task input</text>
+  <circle cx="280" cy="198" r="7" fill="#22d3ee"/>
+  <text x="280" y="174" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
+        font-size="12" fill="#8b9bb0">task input</text>
 
   <!-- input -> gemma -->
-  <path d="M 652 96 C 690 96, 700 96, 730 96" fill="none" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrC)"/>
+  <path d="M 292 198 C 340 198, 354 198, 394 198" fill="none" stroke="#22d3ee" stroke-width="2.2" marker-end="url(#arrC)"/>
 
   <!-- Gemma local tier -->
-  <rect x="734" y="70" width="168" height="52" rx="6" fill="#10141c" stroke="#22d3ee" stroke-width="1.6"/>
-  <text x="818" y="92" text-anchor="middle" font-family="ui-sans-serif,-apple-system,'Segoe UI',sans-serif"
-        font-size="14" font-weight="600" fill="#e6edf3">Gemma Local Tier</text>
-  <text x="818" y="110" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
-        font-size="10" fill="#8b9bb0">open weights · ROCm + vLLM</text>
+  <rect x="400" y="170" width="190" height="56" rx="7" fill="#10141c" stroke="#22d3ee" stroke-width="1.7"/>
+  <text x="495" y="194" text-anchor="middle" font-family="ui-sans-serif,-apple-system,'Segoe UI',sans-serif"
+        font-size="15" font-weight="600" fill="#e6edf3">Gemma Local Tier</text>
+  <text x="495" y="213" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
+        font-size="10.8" fill="#8b9bb0">open weights · ROCm + vLLM</text>
 
   <!-- gemma -> gate -->
-  <path d="M 902 96 C 936 96, 944 96, 972 96" fill="none" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrC)"/>
+  <path d="M 590 198 C 632 198, 648 198, 684 198" fill="none" stroke="#22d3ee" stroke-width="2.2" marker-end="url(#arrC)"/>
 
   <!-- contract gate -->
-  <rect x="976" y="66" width="14" height="60" rx="3" fill="#10141c" stroke="#e6edf3" stroke-width="1.4"/>
-  <rect x="998" y="66" width="14" height="60" rx="3" fill="#10141c" stroke="#e6edf3" stroke-width="1.4"/>
-  <text x="994" y="54" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
-        font-size="11" fill="#8b9bb0">contract gate</text>
-  <path d="M 985 96 l 6 7 l 12 -14" fill="none" stroke="#34d399" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="690" y="164" width="16" height="68" rx="3" fill="#10141c" stroke="#e6edf3" stroke-width="1.4"/>
+  <rect x="716" y="164" width="16" height="68" rx="3" fill="#10141c" stroke="#e6edf3" stroke-width="1.4"/>
+  <text x="711" y="151" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
+        font-size="12" fill="#8b9bb0">contract gate</text>
+  <path d="M 700 198 l 7 8 l 14 -16" fill="none" stroke="#34d399" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
 
   <!-- gate -> verified -->
-  <path d="M 1014 96 C 1046 96, 1052 96, 1078 96" fill="none" stroke="#34d399" stroke-width="2" marker-end="url(#arrG)"/>
-  <circle cx="1096" cy="96" r="9" fill="none" stroke="#34d399" stroke-width="2.4"/>
-  <path d="M 1091 96 l 4 4.5 l 7 -9" fill="none" stroke="#34d399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="1096" y="128" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
-        font-size="11" fill="#34d399">verified answer</text>
+  <path d="M 732 198 C 780 198, 792 198, 828 198" fill="none" stroke="#34d399" stroke-width="2.2" marker-end="url(#arrG)"/>
+  <circle cx="850" cy="198" r="10" fill="none" stroke="#34d399" stroke-width="2.5"/>
+  <path d="M 844 198 l 5 5 l 8 -10" fill="none" stroke="#34d399" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="850" y="231" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
+        font-size="12" fill="#34d399">verified answer</text>
 
   <!-- escalation branch: gate down to fireworks and back -->
-  <path d="M 994 128 C 994 158, 940 168, 906 168" fill="none" stroke="#f5a623" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrA)"/>
-  <rect x="716" y="144" width="186" height="48" rx="6" fill="#10141c" stroke="#f5a623" stroke-width="1.6"/>
-  <text x="809" y="164" text-anchor="middle" font-family="ui-sans-serif,-apple-system,'Segoe UI',sans-serif"
-        font-size="13.5" font-weight="600" fill="#e6edf3">Fireworks Escalation</text>
-  <text x="809" y="181" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
-        font-size="10" fill="#8b9bb0">on contract failure · re-verified</text>
-  <path d="M 716 168 C 672 168, 660 130, 700 106" fill="none" stroke="#f5a623" stroke-width="1.6" stroke-dasharray="6 5" opacity="0.7" marker-end="url(#arrA)"/>
-  <text x="656" y="196" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
-        font-size="10" fill="#5c6b80">retry through the same gate</text>
+  <path d="M 711 232 C 692 262, 622 262, 590 234" fill="none" stroke="#f5a623" stroke-width="2.1" stroke-dasharray="6 5" marker-end="url(#arrA)"/>
+  <rect x="400" y="236" width="190" height="52" rx="7" fill="#10141c" stroke="#f5a623" stroke-width="1.7"/>
+  <text x="495" y="257" text-anchor="middle" font-family="ui-sans-serif,-apple-system,'Segoe UI',sans-serif"
+        font-size="14.2" font-weight="600" fill="#e6edf3">Fireworks Escalation</text>
+  <text x="495" y="275" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
+        font-size="10.8" fill="#8b9bb0">contract failure · re-verified</text>
+  <path d="M 400 262 C 338 262, 316 226, 340 206" fill="none" stroke="#f5a623" stroke-width="1.7" stroke-dasharray="6 5" opacity="0.75" marker-end="url(#arrA)"/>
+  <text x="340" y="286" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace"
+        font-size="10.8" fill="#5c6b80">retry through the same gate</text>
 
   <!-- chips row -->
-  <g font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12">
-    <rect x="56"  y="270" width="216" height="30" rx="15" fill="#10141c" stroke="#22d3ee" stroke-width="1.2"/>
-    <text x="164" y="289" text-anchor="middle" fill="#22d3ee">Layer 1 Contract Verification</text>
+  <g font-family="ui-monospace,Menlo,Consolas,monospace" font-size="13.8">
+    <rect x="40"  y="310" width="240" height="34" rx="17" fill="#10141c" stroke="#22d3ee" stroke-width="1.2"/>
+    <text x="160" y="332" text-anchor="middle" fill="#22d3ee">Layer 1 Contract Verification</text>
 
-    <rect x="288" y="270" width="170" height="30" rx="15" fill="#10141c" stroke="#8b9bb0" stroke-width="1.2"/>
-    <text x="373" y="289" text-anchor="middle" fill="#c3cfdd">Layer 2 EWMA Drift</text>
+    <rect x="302" y="310" width="190" height="34" rx="17" fill="#10141c" stroke="#8b9bb0" stroke-width="1.2"/>
+    <text x="397" y="332" text-anchor="middle" fill="#c3cfdd">Layer 2 EWMA Drift</text>
 
-    <rect x="474" y="270" width="184" height="30" rx="15" fill="#10141c" stroke="#a78bfa" stroke-width="1.2"/>
-    <text x="566" y="289" text-anchor="middle" fill="#a78bfa">Layer 3 Sampled Audit</text>
+    <rect x="514" y="310" width="204" height="34" rx="17" fill="#10141c" stroke="#a78bfa" stroke-width="1.2"/>
+    <text x="616" y="332" text-anchor="middle" fill="#a78bfa">Layer 3 Sampled Audit</text>
 
-    <rect x="674" y="270" width="188" height="30" rx="15" fill="#10141c" stroke="#34d399" stroke-width="1.2"/>
-    <text x="768" y="289" text-anchor="middle" fill="#34d399">Telemetry Truth Layer</text>
+    <rect x="740" y="310" width="214" height="34" rx="17" fill="#10141c" stroke="#34d399" stroke-width="1.2"/>
+    <text x="847" y="332" text-anchor="middle" fill="#34d399">Telemetry Truth Layer</text>
 
-    <rect x="878" y="270" width="196" height="30" rx="15" fill="#10141c" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="5 4"/>
-    <text x="976" y="289" text-anchor="middle" fill="#f5a623">AMD GPU Proof Pending</text>
+    <rect x="976" y="310" width="204" height="34" rx="17" fill="#10141c" stroke="#f5a623" stroke-width="1.4" stroke-dasharray="5 4"/>
+    <text x="1078" y="332" text-anchor="middle" fill="#f5a623">AMD GPU Proof Pending</text>
   </g>
 
   <rect x="0" y="358" width="1200" height="2" fill="#1c2431"/>
