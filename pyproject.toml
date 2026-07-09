@@ -18,6 +18,9 @@ dependencies = [
 dev = [
     "pytest>=7.0",
 ]
+demo = [
+    "streamlit>=1.28",
+]
 
 [project.scripts]
 kaaval-eval = "kaaval_assurance.eval.cli:main"

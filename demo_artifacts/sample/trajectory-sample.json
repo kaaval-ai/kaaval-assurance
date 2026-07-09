@@ -1,0 +1,50 @@
+[
+  {
+    "db_id": 1,
+    "request_id": "eval-sample-sev-001",
+    "ts": "2026-07-09T03:52:28.168387Z",
+    "category": "severity_classification",
+    "contract_id": "telecom.severity_classification",
+    "contract_version": "1.0",
+    "tier": "local",
+    "provider": "mock",
+    "model_id": "mock-gemma-3-12b-it",
+    "verifier_passed": false,
+    "verifier_failures": [
+      "enum:severity"
+    ],
+    "escalated": false,
+    "latency_ms": 5.0,
+    "cost_usd": 0.0,
+    "prompt_tokens": 24,
+    "completion_tokens": 7,
+    "task_input": "Core router CR-04 dropped all BGP sessions at 02:13; downstream OLT sites in region south lost upstream connectivity. Customer impact confirmed across 40k subscribers.",
+    "raw_text": "{\"severity\": \"NOT_IN_ENUM\", \"confidence\": 0.5, \"rationale\": \"mock rationale\"}",
+    "audit_sampled": false,
+    "audit_result": null,
+    "audit_violations": null
+  },
+  {
+    "db_id": 2,
+    "request_id": "eval-sample-sev-001",
+    "ts": "2026-07-09T03:52:28.168699Z",
+    "category": "severity_classification",
+    "contract_id": "telecom.severity_classification",
+    "contract_version": "1.0",
+    "tier": "remote",
+    "provider": "mock",
+    "model_id": "mock-remote-strong",
+    "verifier_passed": true,
+    "verifier_failures": [],
+    "escalated": true,
+    "latency_ms": 50.0,
+    "cost_usd": 0.001,
+    "prompt_tokens": 24,
+    "completion_tokens": 7,
+    "task_input": "Core router CR-04 dropped all BGP sessions at 02:13; downstream OLT sites in region south lost upstream connectivity. Customer impact confirmed across 40k subscribers.",
+    "raw_text": "{\"severity\": \"P1\", \"confidence\": 0.5, \"rationale\": \"mock rationale\"}",
+    "audit_sampled": true,
+    "audit_result": "pass",
+    "audit_violations": []
+  }
+]

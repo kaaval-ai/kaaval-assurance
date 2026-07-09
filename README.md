@@ -150,6 +150,17 @@ Track 3 submission framing: no Docker image is required for Track 3; AMD compute
 
 Use Fireworks credits for the expensive path: remote escalation, always-remote baselines, and challenger audits. The core demo should show that local/open-weight tokens are verified first and external Fireworks calls are minimized.
 
+## Demo console and submission
+
+A lightweight Streamlit console ([apps/demo_console/app.py](apps/demo_console/app.py)) replays recorded assurance telemetry: request flow, runtime profile with source tags, the telemetry truth table, and a replayable trajectory example. It prefers real artifacts from `artifacts/` and ships with synthetic sample data ([demo_artifacts/sample/](demo_artifacts/sample)) so it runs anywhere without secrets or AMD access — suitable for Streamlit Community Cloud or Hugging Face Spaces as a hosted replay surface.
+
+```bash
+pip install -e ".[demo]"
+streamlit run apps/demo_console/app.py
+```
+
+Track 3 submission assets and the 2-minute video plan: [docs/submission-checklist.md](docs/submission-checklist.md) · [docs/demo-script.md](docs/demo-script.md).
+
 ## Telemetry Truth Layer
 
 Every demo claim maps to a stored telemetry field. `--telemetry-summary` prints a judge-ready block where each line carries its source tag: `measured` (derived from trajectory rows and run results), `configured` (recorded runtime settings from the vLLM/Gemma profile — settings, not measurements), `not_available` (the provider or run did not produce the value), or `planned` (intended AMD Developer Cloud deployment not yet executed). AMD/Gemma/vLLM runtime settings are recorded, never invented; the audit challenger signal is model-generated while aggregation and thresholding stay deterministic; and cost-savings figures appear only when a cached always-remote baseline run exists.

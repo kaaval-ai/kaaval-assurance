@@ -1,0 +1,141 @@
+{
+  "run_id": "sample",
+  "requests": 16,
+  "attempts": 20,
+  "latency_ms_p50": 5.0,
+  "latency_ms_p95": 55.0,
+  "provider_mix": {
+    "attempts_by_provider": {
+      "mock": 20
+    },
+    "requests_by_first_tier": {
+      "local": 16
+    },
+    "local_attempts": 16,
+    "remote_attempts": 4,
+    "audit_calls": 16
+  },
+  "runtime": {
+    "status": "planned",
+    "profile": null,
+    "cached_tokens_total": null,
+    "note": "mock local tier in this run; Gemma via vLLM on AMD Developer Cloud is the planned deployment"
+  },
+  "verification": {
+    "local_verified_rate": 0.75,
+    "final_verified_rate": 1.0,
+    "failures_by_check": {
+      "enum:severity": 2,
+      "enum:urgency": 2
+    }
+  },
+  "routing": {
+    "escalation_rate": 0.25,
+    "preroute_remote_rate": 0.0,
+    "ewma_drift_by_category": {
+      "component_extraction": 0.0,
+      "incident_summary": 0.0,
+      "next_action_recommendation": 0.6429999999999999,
+      "severity_classification": 0.6429999999999999
+    },
+    "high_drift_categories": [
+      "next_action_recommendation",
+      "severity_classification"
+    ],
+    "watch_categories": []
+  },
+  "audit": {
+    "enabled": true,
+    "sampled": 16,
+    "accepted_answers": 16,
+    "trusted": true,
+    "calibration_status": "passed",
+    "calibration_fp_rate": 0.0,
+    "calibration_threshold": 0.2,
+    "passed": 16,
+    "failed": 0,
+    "errors": 0,
+    "violations_by_severity": {},
+    "audit_tokens": 0
+  },
+  "cost": {
+    "total_cost_usd": 0.004,
+    "local_cost_usd": 0.0,
+    "remote_cost_usd": 0.004,
+    "audit_cost_usd": 0.0,
+    "cost_per_verified_answer_usd": 0.00025,
+    "audit_cost_per_verified_accepted_usd": 0.0,
+    "remote_calls_avoided": null,
+    "remote_calls_avoided_rate": null,
+    "remote_tokens_avoided": null,
+    "estimated_cost_saved_vs_always_remote_usd": null
+  },
+  "claims": [
+    {
+      "claim": "Local verified rate",
+      "value": "75.0%",
+      "source": "measured",
+      "field": "verification.local_verified_rate"
+    },
+    {
+      "claim": "Final verified rate",
+      "value": "100.0%",
+      "source": "measured",
+      "field": "verification.final_verified_rate"
+    },
+    {
+      "claim": "Escalation rate",
+      "value": "25.0%",
+      "source": "measured",
+      "field": "routing.escalation_rate"
+    },
+    {
+      "claim": "Preroute remote rate",
+      "value": "0.0%",
+      "source": "measured",
+      "field": "routing.preroute_remote_rate"
+    },
+    {
+      "claim": "High-drift categories",
+      "value": "next_action_recommendation, severity_classification",
+      "source": "measured",
+      "field": "routing.high_drift_categories"
+    },
+    {
+      "claim": "Layer 3 audit trusted",
+      "value": "yes",
+      "source": "measured",
+      "field": "audit.trusted"
+    },
+    {
+      "claim": "Calibration FP rate",
+      "value": "0.0% / threshold 20.0%",
+      "source": "measured",
+      "field": "audit.calibration_fp_rate"
+    },
+    {
+      "claim": "Cost per verified answer",
+      "value": "$0.0003",
+      "source": "measured",
+      "field": "cost.cost_per_verified_answer_usd"
+    },
+    {
+      "claim": "Audit cost per verified accepted answer",
+      "value": "$0.0000",
+      "source": "measured",
+      "field": "cost.audit_cost_per_verified_accepted_usd"
+    },
+    {
+      "claim": "Remote calls avoided vs always-remote",
+      "value": "n/a (no always-remote baseline)",
+      "source": "not_available",
+      "field": "cost.remote_calls_avoided_rate"
+    },
+    {
+      "claim": "Runtime",
+      "value": "Gemma via vLLM planned for AMD Developer Cloud; mock local tier in this run",
+      "source": "planned",
+      "field": "runtime.status"
+    }
+  ]
+}
