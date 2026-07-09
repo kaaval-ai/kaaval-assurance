@@ -110,6 +110,8 @@ Audit results persist into the trajectory rows (`audit_sampled`, `audit_result`,
 
 ## AMD Hackathon Runtime Notes
 
+Full operational runbook — pod setup, Gemma-first serving with truthful fallback, runtime probe, smoke sequence, Fireworks budget guardrails, and demo artifact export — lives in [docs/hackathon-ops.md](docs/hackathon-ops.md). Copy [.env.example](.env.example) to `.env` to configure; `python -m kaaval_assurance.runtime_probe` reports what the endpoint actually serves (secrets redacted) and turns runtime claims from configured into measured.
+
 The hackathon notebook environment is accessed through `https://notebooks.amd.com/hackathon`. Keep the repo, virtual environment, generated SQLite runs, and telemetry artifacts under `/workspace` so they survive pod restarts. The FAQ describes about 48 GB of GPU memory for the hackathon compute instance, so the local model must fit alongside vLLM, KV cache, and runtime overhead. Start with conservative serving settings, then record the actual values in `RuntimeProfile`.
 
 ```bash
