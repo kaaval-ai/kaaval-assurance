@@ -159,7 +159,7 @@ pip install -e ".[demo]"
 streamlit run apps/demo_console/app.py
 ```
 
-Track 3 submission assets and the 2-minute video plan: [docs/submission-checklist.md](docs/submission-checklist.md) · [docs/demo-script.md](docs/demo-script.md).
+Track 3 submission assets, video plan, deck outline, and hosting guide: [docs/submission-checklist.md](docs/submission-checklist.md) · [docs/demo-script.md](docs/demo-script.md) · [docs/deck-outline.md](docs/deck-outline.md) · [docs/hosted-demo.md](docs/hosted-demo.md).
 
 ## Telemetry Truth Layer
 
