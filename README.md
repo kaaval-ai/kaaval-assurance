@@ -167,32 +167,60 @@ lives in this repo's telemetry artifacts and the deck built from them.
 
 ## Quickstart
 
+### 1. Backend & CLI Setup
 ```bash
-pip install -e ".[dev]"
-pytest                                              # full suite, network-free
+# Install dependencies including FastAPI and Streamlit
+pip install -e ".[dev,demo]"
 
-# mock eval: full loop, zero cloud access
+# Run full test suite network-free
+pytest
+
+# Run a mock evaluation (zero cloud access)
 kaaval-eval --dataset data/eval/telecom_gold.jsonl \
   --audit-provider mock --audit-sample-rate 1.0 --telemetry-summary
+```
 
-# demo console
-pip install -e ".[demo]"
-streamlit run apps/demo_console/app.py
+### 2. Flight Deck UI (React Dashboard)
+To view the live telemetry dashboard, you need to start the API and the React UI:
+```bash
+# Terminal 1: Start the backend API server
+uv run uvicorn apps.api.server:app --reload
 
-# Fireworks escalation smoke (spends credits; explicit confirmation required)
+# Terminal 2: Start the React frontend
+cd apps/flight-deck
+npm install
+npm run dev
+```
+
+### 3. Using Local Ollama Gemma & Fireworks API Simultaneously
+You can run the full assurance pipeline, routing requests first to your local open-weight Gemma model (via Ollama), and intelligently escalating failing/drifting requests to the Fireworks remote tier.
+
+1. Copy `.env.example` to `.env` and fill in the required keys:
+   - `FIREWORKS_API_KEY`: Your Fireworks API token.
+   - `FIREWORKS_MODEL`: The Fireworks model to use for escalation.
+   - `OLLAMA_MODEL`: Your local model (e.g., `gemma:7b` or `gemma2:9b`).
+   - `KAAVAL_CONFIRM_SPEND=1`: Allows the script to spend credits.
+
+2. Execute the run with both providers active:
+```bash
 set -a; source .env; set +a
 kaaval-eval --dataset data/eval/telecom_gold.jsonl \
-  --remote-provider fireworks --confirm-spend \
-  --failure-mode bad_enum --failure-rate 0.25
+  --local-provider ollama \
+  --remote-provider fireworks \
+  --confirm-spend \
+  --telemetry-summary
+```
+*Note: You can use `--failure-mode bad_enum --failure-rate 0.25` to simulate local failures and observe the escalations happen in real-time.*
 
-# Gemma on AMD GPU VM via ROCm + vLLM (once the endpoint exists)
+### 4. Gemma on AMD GPU VM via ROCm + vLLM
+*(Once the endpoint exists on your AMD hardware)*
+```bash
 python -m kaaval_assurance.runtime_probe --output artifacts/runtime-probe.json
 kaaval-eval --dataset data/eval/telecom_gold.jsonl \
   --local-provider vllm --telemetry-summary
 ```
 
-Configuration is environment-only — copy [.env.example](.env.example) to
-`.env` (never committed) and fill in. No secrets live in this repo.
+Configuration is environment-only — copy [.env.example](.env.example) to `.env` (never committed) and fill in. No secrets live in this repo.
 
 ## Current submission status
 
