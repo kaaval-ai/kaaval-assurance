@@ -13,6 +13,9 @@ claims.
   cache decisions inside it; everything else may not survive pod restarts.
 - GPU memory: about 48 GB. Describe the pod only by this FAQ figure — never
   by data-center GPU specs that were not probed on this pod.
+- The local model must fit in GPU memory together with the vLLM runtime and
+  KV cache overhead — size the model choice against the ~48 GB figure, not
+  against the model weights alone.
 - vLLM runs from the Jupyter pod terminal.
 - No live endpoint is required for judging. The submission needs the GitHub
   URL, a demo video, and a ~5-slide deck — demo artifacts can all be produced
@@ -51,41 +54,75 @@ set -a; source .env; set +a
 ## Runtime probe (turns "configured" into "measured")
 
 ```bash
-python -m kaaval_assurance.runtime_probe
+python -m kaaval_assurance.runtime_probe                                  # JSON
+python -m kaaval_assurance.runtime_probe --text                           # human
 python -m kaaval_assurance.runtime_probe --output artifacts/runtime-probe.json
 ```
 
-Reports endpoint reachability, served models, whether `VLLM_MODEL` is actually
-served, vLLM version when exposed, and a family-consistency check. Env output
-is redacted — secrets never print. Exit code 0 = reachable, 1 = not.
+Collects, without ever failing on missing host tools: working directory and
+whether it is under `/workspace`, Python version, import checks for `vllm` /
+`torch` / `requests` / `pydantic`, `rocm-smi --showproductname` and
+`--showmeminfo vram` when available, `vllm --version` when available, plus the
+vLLM endpoint probe (served models, whether `VLLM_MODEL` is actually served,
+vLLM server version, family-consistency check). Every section carries a
+source tag — measured, configured, or not_available — and env output is
+redacted so secrets never print. `--require-endpoint` makes the exit code 1
+when the endpoint is down (used by the vLLM smoke script); otherwise the
+probe always exits 0.
 
 ## Smoke sequence (run in this order)
 
 | Step | Script | Network | Spend |
 |---|---|---|---|
-| 1. Mock truth run | `scripts/run_mock_truth.sh` | none | none |
-| 2. Runtime probe + vLLM smoke | `scripts/smoke_vllm.sh` | pod only | none |
-| 3. Fireworks smoke | `scripts/smoke_fireworks.sh` | Fireworks | **credits** |
-| 4. Demo artifact export | `scripts/export_demo_artifacts.sh` | none | none |
+| 1. Mock truth run | `scripts/mock_truth_run.sh` | none | none |
+| 2. Runtime probe + vLLM smoke | `scripts/vllm_smoke_run.sh` | pod only | none |
+| 3. Fireworks smoke | `scripts/fireworks_smoke_run.sh` | Fireworks | **credits** |
+| 4. Demo artifact export | `scripts/write_demo_artifacts.sh` | none | none |
 
 ## Fireworks budget guardrails
 
-- `scripts/smoke_fireworks.sh` refuses to run unless `KAAVAL_CONFIRM_SPEND=1`.
-- Credit-pool discipline: Pool 1 (one key) for development churn; Pool 2
-  preserved for eval runs, Layer 3 audit calls, proof runs, and demo recording.
+- `scripts/fireworks_smoke_run.sh` refuses to run unless
+  `KAAVAL_CONFIRM_SPEND=1`.
+- Credits are for escalation, challenger audit, and the baseline — never for
+  wasteful full-grid runs.
 - The always-remote baseline runs **once** and its trajectory DB is cached;
   reuse it via `--always-remote-baseline-db` — never re-run the baseline
   during polish.
-- Layer 3 audit is sampled (default 10%) and calibrates against the 16 gold
-  answers first; a full mock rehearsal costs nothing, so rehearse in mock
-  before any live audit run.
+- Prefer the mock audit challenger for repeated dashboard/demo iteration; a
+  full mock rehearsal costs nothing.
+- Plan for **one** final live remote-escalation run and **one** final
+  challenger audit sample with Fireworks — not repeated live runs.
+- Avoid repeated `--audit-sample-rate 1.0` with `--audit-provider fireworks`
+  unless intentionally spending credits (see optional full audit below).
+- Credit-pool discipline: Pool 1 (one key) for development churn; Pool 2
+  preserved for eval runs, Layer 3 audit calls, proof runs, and demo recording.
 - Set `FIREWORKS_MODEL` to a model from the event credit allocation (the FAQ
   mentions Kimi and MiniMax endpoints).
+- Prove the economics with telemetry fields, not assertions: cost per
+  verified answer and remote-calls-avoided come from
+  `--telemetry-summary` with the cached baseline DB.
+
+### Optional: full Fireworks challenger audit (intentional spend)
+
+The default audit path samples 10% and the smoke script uses failure
+injection with no audit at all. A 100% Fireworks audit is a deliberate,
+one-off spend for the final proof run only:
+
+```bash
+KAAVAL_CONFIRM_SPEND=1  # your explicit decision, not a default
+set -a; source .env; set +a
+kaaval-eval --dataset data/eval/telecom_gold.jsonl \
+  --audit-provider fireworks --audit-sample-rate 1.0 \
+  --telemetry-summary --db artifacts/trajectory-final-audit.db
+```
+
+Calibration against the 16 gold answers runs first and also costs credits —
+16 challenger calls before sampling starts. Budget for it.
 
 ## Demo artifact export
 
 ```bash
-scripts/export_demo_artifacts.sh
+scripts/write_demo_artifacts.sh
 ```
 
 Writes to `artifacts/` (git-ignored): eval output text, telemetry truth

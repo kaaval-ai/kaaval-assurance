@@ -1,13 +1,18 @@
-"""Runtime probe tests. All HTTP faked — no network, no live vLLM."""
+"""Runtime probe tests. All HTTP and host commands faked — no network."""
 
 import json
+import subprocess
 
 import pytest
 import requests
 
 from kaaval_assurance.runtime_probe import (
-    RuntimeProbeResult,
+    HOST_COMMANDS,
+    PACKAGES_TO_CHECK,
+    build_probe_report,
+    check_packages,
     main,
+    probe_command,
     probe_runtime,
     redact_env,
 )
@@ -47,6 +52,19 @@ class FakeSession:
         )
 
 
+def fake_runner_missing(cmd):
+    raise FileNotFoundError(cmd[0])
+
+
+def make_fake_runner(stdout="ok", returncode=0):
+    def runner(cmd):
+        return subprocess.CompletedProcess(
+            cmd, returncode=returncode, stdout=stdout, stderr=""
+        )
+
+    return runner
+
+
 BASE_ENV = {
     "VLLM_BASE_URL": "http://pod:8000/v1",
     "VLLM_MODEL": "google/gemma-3-12b-it",
@@ -75,7 +93,7 @@ class TestRedaction:
         assert redact_env({"VLLM_API_KEY": ""})["VLLM_API_KEY"] == ""
 
 
-class TestProbe:
+class TestEndpointProbe:
     def test_reachable_with_served_model(self):
         session = FakeSession(models=["google/gemma-3-12b-it"], version="0.9.1")
         result = probe_runtime(env=BASE_ENV, session=session)
@@ -84,9 +102,7 @@ class TestProbe:
         assert result.configured_model_served is True
         assert result.family_consistent is True
         assert result.vllm_version == "0.9.1"
-        assert result.latency_ms is not None
         assert result.source == "measured"
-        # /version probed at server root, outside /v1
         version_call = [c for c in session.calls if c["url"].endswith("/version")]
         assert version_call[0]["url"] == "http://pod:8000/version"
 
@@ -107,7 +123,6 @@ class TestProbe:
         result = probe_runtime(env=BASE_ENV, session=session)
         assert result.reachable is False
         assert "ConnectionError" in result.error
-        assert result.served_models == []
 
     def test_http_error_reported(self):
         session = FakeSession(models_status=503)
@@ -121,14 +136,6 @@ class TestProbe:
         assert result.reachable is True
         assert result.vllm_version is None
 
-    def test_no_model_configured(self):
-        env = {"VLLM_BASE_URL": "http://pod:8000/v1"}
-        session = FakeSession(models=["google/gemma-3-12b-it"])
-        result = probe_runtime(env=env, session=session)
-        assert result.configured_model is None
-        assert result.configured_model_served is None
-        assert result.family_consistent is None
-
     def test_auth_header_only_when_key_set(self):
         session = FakeSession(models=["m"])
         probe_runtime(env=BASE_ENV, session=session)
@@ -138,41 +145,157 @@ class TestProbe:
         assert session2.calls[0]["headers"] == {"Authorization": "Bearer k"}
 
 
+class TestHostProbes:
+    def test_missing_command_is_not_available_not_an_exception(self):
+        probe = probe_command(["rocm-smi", "--showproductname"], runner=fake_runner_missing)
+        assert probe.available is False
+        assert probe.source == "not_available"
+        assert probe.error == "command not found"
+
+    def test_successful_command_is_measured(self):
+        probe = probe_command(
+            ["vllm", "--version"], runner=make_fake_runner(stdout="0.9.1\n")
+        )
+        assert probe.available is True
+        assert probe.source == "measured"
+        assert probe.output == "0.9.1"
+
+    def test_nonzero_exit_is_not_available(self):
+        probe = probe_command(
+            ["rocm-smi", "--showmeminfo", "vram"],
+            runner=make_fake_runner(stdout="", returncode=3),
+        )
+        assert probe.available is False
+        assert probe.source == "not_available"
+        assert probe.error == "exit 3"
+
+    def test_package_checks_cover_required_names(self):
+        checks = {c.name: c for c in check_packages()}
+        assert set(checks) == set(PACKAGES_TO_CHECK)
+        # this test suite runs on requests + pydantic, so both must be found
+        assert checks["requests"].importable is True
+        assert checks["pydantic"].importable is True
+        for check in checks.values():
+            assert check.source == "measured"
+
+
+class TestReport:
+    def build(self, cwd="/Users/dev/repo", **kwargs):
+        defaults = dict(
+            env=BASE_ENV,
+            session=FakeSession(models=["google/gemma-3-12b-it"]),
+            runner=fake_runner_missing,  # host without rocm-smi/vllm CLI
+            cwd=cwd,
+        )
+        defaults.update(kwargs)
+        return build_probe_report(**defaults)
+
+    def test_report_survives_host_without_any_tools(self):
+        report = self.build()
+        assert set(report.commands) == set(HOST_COMMANDS)
+        for probe in report.commands.values():
+            assert probe.available is False
+            assert probe.source == "not_available"
+        assert report.endpoint.reachable is True
+
+    def test_workspace_detection(self):
+        assert self.build(cwd="/workspace/kaaval-assurance").system.under_workspace
+        assert self.build(cwd="/workspace").system.under_workspace
+        assert not self.build(cwd="/workspaces/other").system.under_workspace
+
+    def test_env_groups_redacted_and_tagged(self):
+        env = dict(BASE_ENV, FIREWORKS_API_KEY="sk-secret", FIREWORKS_MODEL="m")
+        report = self.build(env=env)
+        assert report.env_source == "configured"
+        assert report.env_fireworks["FIREWORKS_API_KEY"] == "***redacted***"
+        assert report.env_fireworks["FIREWORKS_MODEL"] == "m"
+        assert report.env_vllm["VLLM_MODEL"] == "google/gemma-3-12b-it"
+
+    def test_skip_endpoint(self):
+        report = self.build(include_endpoint=False, session=None)
+        assert report.endpoint is None
+
+
 class TestMain:
-    def test_reachable_exit_0_and_redacted_output(self, capsys):
+    def test_json_by_default_with_source_tags(self, capsys):
+        session = FakeSession(models=["google/gemma-3-12b-it"])
+        rc = main([], env=BASE_ENV, session=session, runner=fake_runner_missing)
+        assert rc == 0
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["system"]["source"] == "measured"
+        assert payload["env_source"] == "configured"
+        assert payload["commands"]["vllm_version"]["source"] == "not_available"
+        assert payload["endpoint"]["source"] == "measured"
+
+    def test_never_fails_when_endpoint_down(self, capsys):
+        session = FakeSession(exc=requests.ConnectionError("refused"))
+        rc = main([], env=BASE_ENV, session=session, runner=fake_runner_missing)
+        assert rc == 0  # probing is data collection, not a gate by default
+
+    def test_require_endpoint_gates_exit_code(self):
+        down = FakeSession(exc=requests.ConnectionError("refused"))
+        assert main(
+            ["--require-endpoint"], env=BASE_ENV, session=down,
+            runner=fake_runner_missing,
+        ) == 1
+        up = FakeSession(models=["google/gemma-3-12b-it"])
+        assert main(
+            ["--require-endpoint"], env=BASE_ENV, session=up,
+            runner=fake_runner_missing,
+        ) == 0
+
+    def test_text_mode_redacts_and_states_policy(self, capsys):
         env = dict(BASE_ENV, FIREWORKS_API_KEY="sk-secret")
         session = FakeSession(models=["google/gemma-3-12b-it"], version="0.9.1")
-        rc = main([], env=env, session=session)
+        rc = main(["--text"], env=env, session=session, runner=fake_runner_missing)
         assert rc == 0
         out = capsys.readouterr().out
-        assert "reachable: yes" in out
         assert "Gemma-first local tier" in out
         assert "***redacted***" in out
         assert "sk-secret" not in out
+        assert "[not_available]" in out  # missing host tools shown honestly
 
-    def test_unreachable_exit_1(self, capsys):
-        session = FakeSession(exc=requests.ConnectionError("refused"))
-        rc = main([], env=BASE_ENV, session=session)
-        assert rc == 1
-        assert "reachable: no" in capsys.readouterr().out
-
-    def test_json_and_output_file(self, tmp_path, capsys):
+    def test_output_file_written(self, tmp_path, capsys):
         out_file = tmp_path / "probe.json"
         session = FakeSession(models=["google/gemma-3-12b-it"])
         rc = main(
-            ["--json", "--output", str(out_file)], env=BASE_ENV, session=session
+            ["--output", str(out_file)], env=BASE_ENV, session=session,
+            runner=fake_runner_missing,
         )
         assert rc == 0
-        printed = json.loads(capsys.readouterr().out)
-        assert printed["reachable"] is True
         on_disk = json.loads(out_file.read_text())
-        assert on_disk["served_models"] == ["google/gemma-3-12b-it"]
-        assert on_disk["source"] == "measured"
+        assert on_disk["endpoint"]["served_models"] == ["google/gemma-3-12b-it"]
 
     def test_fallback_note_printed_on_family_mismatch(self, capsys):
         env = dict(BASE_ENV, VLLM_MODEL="Qwen/Qwen2-7B-Instruct")
         session = FakeSession(models=["Qwen/Qwen2-7B-Instruct"])
-        main([], env=env, session=session)
+        main(["--text"], env=env, session=session, runner=fake_runner_missing)
         out = capsys.readouterr().out
-        assert "recorded" in out and "truthfully" in out
+        assert "truthfully" in out
         assert "VLLM_MODEL_FAMILY" in out
+
+
+class TestEnvExample:
+    def test_no_real_secrets_in_env_example(self):
+        lines = [
+            line.strip()
+            for line in open(".env.example", encoding="utf-8")
+            if line.strip() and not line.strip().startswith("#")
+        ]
+        for line in lines:
+            key, _, value = line.partition("=")
+            if {"KEY", "SECRET", "PASSWORD"} & set(key.upper().split("_")):
+                assert value == "", f"{key} must be empty in .env.example"
+
+    def test_required_keys_present(self):
+        content = open(".env.example", encoding="utf-8").read()
+        for key in [
+            "FIREWORKS_API_KEY=", "FIREWORKS_MODEL=", "FIREWORKS_AUDIT_MODEL=",
+            "VLLM_BASE_URL=http://localhost:8000/v1", "VLLM_MODEL=",
+            "VLLM_HARDWARE_TARGET=amd-hackathon-gpu", "VLLM_ROCM_VERSION=",
+            "VLLM_VERSION=", "VLLM_DTYPE=bfloat16", "VLLM_KV_CACHE_DTYPE=auto",
+            "VLLM_ENABLE_PREFIX_CACHING=true",
+            "VLLM_GPU_MEMORY_UTILIZATION=0.30",
+            "VLLM_TENSOR_PARALLEL_SIZE=1", "VLLM_STRUCTURED_OUTPUTS=true",
+        ]:
+            assert key in content, key

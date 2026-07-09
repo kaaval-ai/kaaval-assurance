@@ -6,8 +6,10 @@ cd "$(dirname "$0")/.."
 if [ -f .env ]; then set -a; . ./.env; set +a; fi
 mkdir -p artifacts
 
+# Probe gates the run: measured evidence first, and no point evaluating
+# against an endpoint that is not serving.
 PYTHONPATH=src python3 -m kaaval_assurance.runtime_probe \
-  --output artifacts/runtime-probe.json
+  --text --require-endpoint --output artifacts/runtime-probe.json
 
 : "${VLLM_MODEL:?VLLM_MODEL not set; pick one of the served models listed by the probe}"
 
