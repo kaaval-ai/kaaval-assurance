@@ -206,7 +206,7 @@ Configuration is environment-only — copy [.env.example](.env.example) to
 | Item | Status |
 |---|---|
 | Core assurance engine (contracts, Layer 1–3, routing, trajectories) | Complete |
-| Fireworks API escalation path | Complete, live smoke captured |
+| Fireworks API escalation path | Complete, smoke-tested locally; public proof artifact pending final submission run |
 | Local Ollama development path | Complete |
 | vLLM/ROCm provider for AMD GPU VM | Implemented |
 | AMD GPU measured run | **Pending** — awaiting credits/pod; final artifact outstanding |
