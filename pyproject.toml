@@ -20,6 +20,8 @@ dev = [
 ]
 demo = [
     "streamlit>=1.28",
+    "fastapi",
+    "uvicorn",
 ]
 
 [project.scripts]
