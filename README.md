@@ -61,15 +61,9 @@ verified answer you can defend line by line.
 
 ## Architecture
 
-Open the animated walkthrough: [docs/kaaval-assurance-architecture.html](docs/kaaval-assurance-architecture.html)
+[![Kaaval Assurance architecture flow](assets/kaaval-architecture-flow.svg)](docs/kaaval-assurance-architecture.html)
 
-The walkthrough is a single offline HTML file with packet animation, step
-controls, flow tabs, and source-tagged side-panel explanations. It replaces a
-static architecture diagram because Kaaval's value is in the motion: local
-verification, gated escalation, drift feedback, sampled audit, and AMD proof
-capture.
-
-Companion notes: [docs/kaaval-assurance-architecture.md](docs/kaaval-assurance-architecture.md)
+Click the flow for the interactive walkthrough: [HTML](docs/kaaval-assurance-architecture.html) · [notes](docs/kaaval-assurance-architecture.md)
 
 ## Built features
 
