@@ -219,12 +219,12 @@ class ArtifactStore:
             has_rocm = rocm.get("available") and rocm.get("source") == "measured"
             
             attempts = telemetry.get("attempts_detail") or []
-            has_vllm_attempt = any(a.get("provider") == "vllm" and a.get("tier") == "local" for a in attempts)
+            has_vllm_attempt = any(a.get("provider") == "vllm-gemma" and a.get("tier") == "local" for a in attempts)
             
             runtime = telemetry.get("runtime") or {}
             profile = runtime.get("profile") or {}
             endpoint_type = profile.get("endpoint_type")
-            is_vllm_endpoint = endpoint_type in ("vllm", "openai")
+            is_vllm_endpoint = endpoint_type == "openai_compatible" and profile.get("provider") == "vllm-gemma"
             
             tel_model = profile.get("model_id") or profile.get("model_family")
             endpoint_info = probe.get("endpoint") or {}
@@ -246,8 +246,8 @@ class ArtifactStore:
             reasons = []
             if not is_coherent: reasons.append("bundle not coherent manifest")
             if not has_rocm: reasons.append("no measured rocm-smi output")
-            if not has_vllm_attempt: reasons.append("no local vllm attempt")
-            if not is_vllm_endpoint: reasons.append("endpoint_type not vllm/openai")
+            if not has_vllm_attempt: reasons.append("no local vllm-gemma attempt")
+            if not is_vllm_endpoint: reasons.append("endpoint_type not openai_compatible or provider not vllm-gemma")
             if not model_matches: reasons.append("model mismatch between telemetry and probe")
             if not configured_served: reasons.append("configured model not confirmed served")
             if not no_sample: reasons.append("sample data in bundle")
@@ -273,11 +273,14 @@ class ArtifactStore:
         telemetry: Optional[dict],
         telemetry_prov: dict,
         amd: dict,
+        bundle_consistent: bool = False,
     ) -> str:
         if telemetry is None:
             return "UNAVAILABLE"
         if telemetry_prov.get("origin") == "sample":
             return "SAMPLE"
+        if not bundle_consistent:
+            return "UNVERIFIED (INCONSISTENT BUNDLE)"
         if amd["status"] == "measured":
             return "MEASURED AMD RUN"
         attempts = telemetry.get("attempts_detail") or []
@@ -300,7 +303,7 @@ class ArtifactStore:
         return {
             "generated_at": _utcnow_iso(),
             "mode": "captured",
-            "label": self._label(telemetry, prov["telemetry"], amd),
+            "label": self._label(telemetry, prov["telemetry"], amd, bundle.get("bundle_consistent", False)),
             "used_sample": used_sample,
             "amd": amd,
             "bundle_consistent": bundle.get("bundle_consistent", False),

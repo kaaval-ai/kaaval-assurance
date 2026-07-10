@@ -134,10 +134,11 @@ class TestDashboardLabels:
             "run_id": "r1",
             "requests": 1,
             "attempts": 1,
-            "attempts_detail": [{"provider": "vllm", "tier": "local"}],
+            "attempts_detail": [{"provider": "vllm-gemma", "tier": "local"}],
             "runtime": {
                 "profile": {
-                    "endpoint_type": "vllm",
+                    "provider": "vllm-gemma",
+                    "endpoint_type": "openai_compatible",
                     "model_id": "gemma-test"
                 }
             },
@@ -203,7 +204,7 @@ class TestDashboardLabels:
         )
         dash = store.dashboard()
         assert dash["amd"]["status"] == "pending"
-        assert "no local vllm attempt" in dash["amd"]["reason"]
+        assert "no local vllm-gemma attempt" in dash["amd"]["reason"]
         assert dash["label"] == "CAPTURED FIREWORKS RUN"
 
     def test_unrelated_amd_probe_mock_telemetry_not_amd(self, tmp_path):
@@ -230,14 +231,14 @@ class TestDashboardLabels:
         )
         dash = store.dashboard()
         assert dash["amd"]["status"] == "pending"
-        assert "no local vllm attempt" in dash["amd"]["reason"]
+        assert "no local vllm-gemma attempt" in dash["amd"]["reason"]
         assert dash["label"] == "CAPTURED LOCAL RUN"
         
     def test_vllm_telemetry_without_served_model_not_amd(self, tmp_path):
         telemetry = {
             "run_id": "r1",
-            "attempts_detail": [{"provider": "vllm", "tier": "local"}],
-            "runtime": {"profile": {"endpoint_type": "vllm", "model_id": "gemma-test"}},
+            "attempts_detail": [{"provider": "vllm-gemma", "tier": "local"}],
+            "runtime": {"profile": {"provider": "vllm-gemma", "endpoint_type": "openai_compatible", "model_id": "gemma-test"}},
             "claims": []
         }
         probe = {
@@ -268,8 +269,8 @@ class TestDashboardLabels:
     def test_sample_probe_cannot_claim_measured(self, tmp_path):
         telemetry = {
             "run_id": "r1",
-            "attempts_detail": [{"provider": "vllm", "tier": "local"}],
-            "runtime": {"profile": {"endpoint_type": "vllm", "model_id": "gemma-test"}},
+            "attempts_detail": [{"provider": "vllm-gemma", "tier": "local"}],
+            "runtime": {"profile": {"provider": "vllm-gemma", "endpoint_type": "openai_compatible", "model_id": "gemma-test"}},
             "claims": []
         }
         probe = {

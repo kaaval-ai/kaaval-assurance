@@ -117,3 +117,11 @@ class TestExportArtifacts:
         assert "not needed" in md
         rows = json.loads(files["demo-live-trajectory.json"].read_text())
         assert len(rows) == 1
+
+    def test_e2e_dashboard_bundle_consistency(self, tmp_path):
+        from apps.api.artifacts import ArtifactStore
+        demo, _ = self.export(tmp_path, failure_mode=None)
+        store = ArtifactStore(artifacts_dir=tmp_path, sample_dir=tmp_path / "sample")
+        dash = store.dashboard()
+        assert dash["bundle_consistent"] is True
+        assert dash["bundle_id"] == demo.result.request_id

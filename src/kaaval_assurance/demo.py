@@ -98,7 +98,7 @@ def run_live_demo(
 def telemetry_for(demo: LiveDemoResult) -> TelemetrySummary:
     """Telemetry truth summary for one live demo run (public API surface)."""
     report = EvalRunReport(
-        run_id=f"live-{demo.case_id}",
+        run_id=demo.result.request_id,
         n_cases=1,
         results=[
             CaseResult(
@@ -208,6 +208,9 @@ def export_live_demo_artifacts(
             "failure_mode": demo.failure_mode
         }
     }
+    if (out_dir / "runtime-probe.json").exists():
+        manifest["artifacts"]["runtime_probe"] = "runtime-probe.json"
+        
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")
 
     summary_path = out_dir / "demo-live-summary.md"
