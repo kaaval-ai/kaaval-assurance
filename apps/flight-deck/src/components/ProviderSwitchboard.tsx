@@ -47,7 +47,7 @@ function deriveProviders(telemetry: TelemetrySummary): ProviderRow[] {
   }));
 }
 
-export default function ProviderSwitchboard({ telemetry }: { telemetry: TelemetrySummary | null }) {
+export default function ProviderSwitchboard({ telemetry, usedSample }: { telemetry: TelemetrySummary | null; usedSample: boolean }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const providers = telemetry ? deriveProviders(telemetry) : [];
   const profile = telemetry?.runtime.profile ?? null;
@@ -90,7 +90,7 @@ export default function ProviderSwitchboard({ telemetry }: { telemetry: Telemetr
                       {ms(p.meanLatencyMs)} mean
                     </span>
                   </div>
-                  <SourceChip tag="measured" />
+                  <SourceChip tag={usedSample ? 'sample' : 'measured'} />
                   <span className="text-muted flex-shrink-0">
                     {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                   </span>

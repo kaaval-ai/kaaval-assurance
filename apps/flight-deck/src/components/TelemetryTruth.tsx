@@ -77,7 +77,7 @@ function Stat({
   );
 }
 
-export default function TelemetryTruth({ telemetry }: { telemetry: TelemetrySummary | null }) {
+export default function TelemetryTruth({ telemetry, usedSample }: { telemetry: TelemetrySummary | null; usedSample: boolean }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [tab, setTab] = useState<'stats' | 'claims'>('stats');
 
@@ -155,7 +155,7 @@ export default function TelemetryTruth({ telemetry }: { telemetry: TelemetrySumm
               key={s.label}
               label={s.label}
               value={s.value}
-              source={s.source}
+              source={s.source === 'measured' && usedSample ? 'sample' : s.source as any}
               expanded={expanded === s.label}
               onToggle={() => setExpanded(expanded === s.label ? null : s.label)}
             />
@@ -175,7 +175,7 @@ export default function TelemetryTruth({ telemetry }: { telemetry: TelemetrySumm
                   <tr key={c.claim} className="border-b border-border/40">
                     <td className="py-1.5 pr-2 text-foreground">{c.claim}</td>
                     <td className="px-1.5 py-1.5 text-foreground/80">{c.value}</td>
-                    <td className="pl-1.5 py-1.5 text-right"><SourceChip tag={c.source} /></td>
+                    <td className="pl-1.5 py-1.5 text-right"><SourceChip tag={c.source === 'measured' && usedSample ? 'sample' : c.source} /></td>
                   </tr>
                 ))}
               </tbody>

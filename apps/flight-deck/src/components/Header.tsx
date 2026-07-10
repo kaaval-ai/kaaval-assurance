@@ -45,7 +45,7 @@ export default function Header({
             KAAVAL ASSURANCE
           </h1>
           <p className="text-[10px] text-muted font-mono leading-tight">
-            INFERENCE FLIGHT DECK · captured-run observability
+            INFERENCE FLIGHT DECK · {mode === 'live' ? 'live assurance execution' : 'captured-run observability'}
           </p>
         </div>
         {label && <DataLabelBadge label={label} />}

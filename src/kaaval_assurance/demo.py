@@ -173,15 +173,17 @@ def _summary_markdown(demo: LiveDemoResult, telemetry: TelemetrySummary) -> str:
 def export_live_demo_artifacts(
     demo: LiveDemoResult, out_dir: Path
 ) -> list[Path]:
-    """Write telemetry JSON, trajectory JSON, and a markdown summary."""
+    """Write telemetry JSON, trajectory JSON, manifest, and a markdown summary."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     telemetry = telemetry_for(demo)
 
-    telemetry_path = out_dir / "demo-live-telemetry.json"
+    telemetry_filename = "demo-live-telemetry.json"
+    telemetry_path = out_dir / telemetry_filename
     telemetry_path.write_text(telemetry.model_dump_json(indent=2) + "\n", "utf-8")
 
-    trajectory_path = out_dir / "demo-live-trajectory.json"
+    trajectory_filename = "demo-live-trajectory.json"
+    trajectory_path = out_dir / trajectory_filename
     trajectory_path.write_text(
         "[\n"
         + ",\n".join(row.model_dump_json(indent=2) for row in demo.rows)
@@ -189,7 +191,26 @@ def export_live_demo_artifacts(
         "utf-8",
     )
 
+    import json
+    manifest_filename = "demo-live-manifest.json"
+    manifest_path = out_dir / manifest_filename
+    manifest = {
+        "schema_version": 1,
+        "run_id": demo.result.request_id,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "artifacts": {
+            "telemetry": telemetry_filename,
+            "trajectory": trajectory_filename,
+        },
+        "metadata": {
+            "mode": "live",
+            "category": demo.category,
+            "failure_mode": demo.failure_mode
+        }
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", "utf-8")
+
     summary_path = out_dir / "demo-live-summary.md"
     summary_path.write_text(_summary_markdown(demo, telemetry) + "\n", "utf-8")
 
-    return [telemetry_path, trajectory_path, summary_path]
+    return [telemetry_path, trajectory_path, manifest_path, summary_path]

@@ -3,7 +3,7 @@
    RuntimeProbeReport) and the /api/dashboard envelope. Nothing here models
    invented concepts: every field corresponds to a stored artifact value. */
 
-export type SourceTag = 'measured' | 'configured' | 'not_available' | 'planned';
+export type SourceTag = 'measured' | 'configured' | 'not_available' | 'planned' | 'sample';
 
 export interface Claim {
   claim: string;

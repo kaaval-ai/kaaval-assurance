@@ -31,7 +31,9 @@ AMD_PROBE = {
 }
 
 
-def make_store(tmp_path, artifacts=None, sample=None):
+VALID_TRAJECTORY = [{"request_id": "r1"}]
+
+def make_store(tmp_path, artifacts=None, sample=None, manifest=None):
     a_dir = tmp_path / "artifacts"
     s_dir = tmp_path / "sample"
     a_dir.mkdir()
@@ -44,8 +46,10 @@ def make_store(tmp_path, artifacts=None, sample=None):
         (s_dir / name).write_text(
             data if isinstance(data, str) else json.dumps(data)
         )
+    if manifest:
+        # Create manifest in artifacts by default unless specified otherwise
+        (a_dir / "demo-live-manifest.json").write_text(json.dumps(manifest))
     return ArtifactStore(artifacts_dir=a_dir, sample_dir=s_dir)
-
 
 def client_for(store):
     return TestClient(create_app(store))
@@ -53,10 +57,18 @@ def client_for(store):
 
 class TestArtifactResolution:
     def test_real_artifact_preferred_over_sample(self, tmp_path):
+        manifest_real = {
+            "run_id": "real",
+            "artifacts": {"telemetry": "demo-live-telemetry.json", "trajectory": "demo-live-trajectory.json"}
+        }
+        manifest_sample = {
+            "run_id": "sample",
+            "artifacts": {"telemetry": "demo-live-telemetry.json", "trajectory": "demo-live-trajectory.json"}
+        }
         store = make_store(
             tmp_path,
-            artifacts={"telemetry-truth.json": {**VALID_TELEMETRY, "run_id": "real"}},
-            sample={"telemetry-truth.json": {**VALID_TELEMETRY, "run_id": "sample"}},
+            artifacts={"demo-live-telemetry.json": {**VALID_TELEMETRY, "run_id": "real"}, "demo-live-trajectory.json": [{"request_id": "real"}], "demo-live-manifest.json": manifest_real},
+            sample={"demo-live-telemetry.json": {**VALID_TELEMETRY, "run_id": "sample"}, "demo-live-trajectory.json": [{"request_id": "sample"}], "demo-live-manifest.json": manifest_sample},
         )
         data, prov = store.resolve("telemetry")
         assert data["run_id"] == "real"
@@ -64,7 +76,7 @@ class TestArtifactResolution:
 
     def test_sample_fallback_labeled_sample(self, tmp_path):
         store = make_store(
-            tmp_path, sample={"telemetry-truth.json": VALID_TELEMETRY}
+            tmp_path, sample={"telemetry-truth.json": VALID_TELEMETRY, "trajectory-sample.json": [{"request_id": "r1"}]}
         )
         data, prov = store.resolve("telemetry")
         assert data is not None
@@ -88,16 +100,20 @@ class TestArtifactResolution:
         store = make_store(
             tmp_path,
             artifacts={"telemetry-truth.json": "{not json"},
-            sample={"telemetry-truth.json": VALID_TELEMETRY},
+            sample={"telemetry-truth.json": VALID_TELEMETRY, "trajectory-sample.json": [{"request_id": "r1"}]},
         )
         data, prov = store.resolve("telemetry")
         assert data["run_id"] == "r1"  # sample content, never a stale mix
         assert prov["origin"] == "sample"
 
     def test_alias_names_supported(self, tmp_path):
+        manifest = {
+            "run_id": "r1",
+            "artifacts": {"telemetry": "demo-live-telemetry.json", "trajectory": "demo-live-trajectory.json"}
+        }
         store = make_store(
             tmp_path,
-            artifacts={"demo-live-telemetry.json": VALID_TELEMETRY},
+            artifacts={"demo-live-telemetry.json": VALID_TELEMETRY, "demo-live-trajectory.json": [{"request_id": "r1"}], "demo-live-manifest.json": manifest},
         )
         data, prov = store.resolve("telemetry")
         assert data is not None
@@ -105,7 +121,7 @@ class TestArtifactResolution:
 
     def test_provenance_never_leaks_paths(self, tmp_path):
         store = make_store(
-            tmp_path, sample={"telemetry-truth.json": VALID_TELEMETRY}
+            tmp_path, sample={"telemetry-truth.json": VALID_TELEMETRY, "trajectory-sample.json": [{"request_id": "r1"}]}
         )
         payload = json.dumps(store.dashboard()["provenance"])
         assert str(tmp_path) not in payload
@@ -113,48 +129,173 @@ class TestArtifactResolution:
 
 
 class TestDashboardLabels:
-    def test_amd_measured_requires_real_probe_with_rocm_facts(self, tmp_path):
+    def test_amd_measured_requires_coherent_bundle_with_all_checks(self, tmp_path):
+        telemetry = {
+            "run_id": "r1",
+            "requests": 1,
+            "attempts": 1,
+            "attempts_detail": [{"provider": "vllm", "tier": "local"}],
+            "runtime": {
+                "profile": {
+                    "endpoint_type": "vllm",
+                    "model_id": "gemma-test"
+                }
+            },
+            "claims": []
+        }
+        probe = {
+            "system": {"cwd": "/workspace", "under_workspace": True},
+            "commands": {
+                "rocm_smi_product": {
+                    "available": True,
+                    "source": "measured",
+                    "output": "GPU"
+                }
+            },
+            "endpoint": {
+                "configured_model": "gemma-test",
+                "configured_model_served": True
+            }
+        }
+        manifest = {
+            "run_id": "r1",
+            "artifacts": {
+                "telemetry": "demo-live-telemetry.json",
+                "trajectory": "demo-live-trajectory.json",
+                "runtime_probe": "runtime-probe.json"
+            }
+        }
         store = make_store(
             tmp_path,
             artifacts={
-                "telemetry-truth.json": VALID_TELEMETRY,
-                "runtime-probe.json": AMD_PROBE,
-            },
+                "demo-live-telemetry.json": telemetry,
+                "demo-live-trajectory.json": [{"request_id": "r1"}],
+                "runtime-probe.json": probe,
+                "demo-live-manifest.json": manifest
+            }
         )
         dash = store.dashboard()
         assert dash["amd"]["status"] == "measured"
         assert dash["label"] == "MEASURED AMD RUN"
+        assert dash["bundle_consistent"] is True
+
+    def test_unrelated_amd_probe_fireworks_telemetry_not_amd(self, tmp_path):
+        telemetry = {
+            **VALID_TELEMETRY,
+            "attempts_detail": [{"provider": "fireworks", "tier": "remote"}],
+        }
+        manifest = {
+            "run_id": "r1",
+            "artifacts": {
+                "telemetry": "demo-live-telemetry.json",
+                "trajectory": "demo-live-trajectory.json",
+                "runtime_probe": "runtime-probe.json"
+            }
+        }
+        store = make_store(
+            tmp_path,
+            artifacts={
+                "demo-live-telemetry.json": telemetry,
+                "demo-live-trajectory.json": [{"request_id": "r1"}],
+                "runtime-probe.json": AMD_PROBE,
+                "demo-live-manifest.json": manifest
+            }
+        )
+        dash = store.dashboard()
+        assert dash["amd"]["status"] == "pending"
+        assert "no local vllm attempt" in dash["amd"]["reason"]
+        assert dash["label"] == "CAPTURED FIREWORKS RUN"
+
+    def test_unrelated_amd_probe_mock_telemetry_not_amd(self, tmp_path):
+        telemetry = {
+            **VALID_TELEMETRY,
+            "attempts_detail": [{"provider": "mock", "tier": "local"}],
+        }
+        manifest = {
+            "run_id": "r1",
+            "artifacts": {
+                "telemetry": "demo-live-telemetry.json",
+                "trajectory": "demo-live-trajectory.json",
+                "runtime_probe": "runtime-probe.json"
+            }
+        }
+        store = make_store(
+            tmp_path,
+            artifacts={
+                "demo-live-telemetry.json": telemetry,
+                "demo-live-trajectory.json": [{"request_id": "r1"}],
+                "runtime-probe.json": AMD_PROBE,
+                "demo-live-manifest.json": manifest
+            }
+        )
+        dash = store.dashboard()
+        assert dash["amd"]["status"] == "pending"
+        assert "no local vllm attempt" in dash["amd"]["reason"]
+        assert dash["label"] == "CAPTURED LOCAL RUN"
+        
+    def test_vllm_telemetry_without_served_model_not_amd(self, tmp_path):
+        telemetry = {
+            "run_id": "r1",
+            "attempts_detail": [{"provider": "vllm", "tier": "local"}],
+            "runtime": {"profile": {"endpoint_type": "vllm", "model_id": "gemma-test"}},
+            "claims": []
+        }
+        probe = {
+            "commands": {"rocm_smi_product": {"available": True, "source": "measured"}},
+            "endpoint": {"configured_model": "gemma-test", "configured_model_served": False}
+        }
+        manifest = {
+            "run_id": "r1",
+            "artifacts": {
+                "telemetry": "demo-live-telemetry.json",
+                "trajectory": "demo-live-trajectory.json",
+                "runtime_probe": "runtime-probe.json"
+            }
+        }
+        store = make_store(
+            tmp_path,
+            artifacts={
+                "demo-live-telemetry.json": telemetry,
+                "demo-live-trajectory.json": [{"request_id": "r1"}],
+                "runtime-probe.json": probe,
+                "demo-live-manifest.json": manifest
+            }
+        )
+        dash = store.dashboard()
+        assert dash["amd"]["status"] == "pending"
+        assert "configured model not confirmed served" in dash["amd"]["reason"]
 
     def test_sample_probe_cannot_claim_measured(self, tmp_path):
+        telemetry = {
+            "run_id": "r1",
+            "attempts_detail": [{"provider": "vllm", "tier": "local"}],
+            "runtime": {"profile": {"endpoint_type": "vllm", "model_id": "gemma-test"}},
+            "claims": []
+        }
+        probe = {
+            "commands": {"rocm_smi_product": {"available": True, "source": "measured"}},
+            "endpoint": {"configured_model": "gemma-test", "configured_model_served": True}
+        }
+        manifest = {
+            "run_id": "r1",
+            "artifacts": {
+                "telemetry": "demo-live-telemetry.json",
+                "trajectory": "demo-live-trajectory.json",
+                "runtime_probe": "runtime-probe.json"
+            }
+        }
         store = make_store(
             tmp_path,
             sample={
-                "telemetry-truth.json": VALID_TELEMETRY,
-                "runtime-probe.json": AMD_PROBE,
-            },
+                "demo-live-telemetry.json": telemetry,
+                "demo-live-trajectory.json": [{"request_id": "r1"}],
+                "runtime-probe.json": probe,
+                "demo-live-manifest.json": manifest
+            }
         )
         dash = store.dashboard()
         assert dash["amd"]["status"] != "measured"
         assert dash["label"] == "SAMPLE"
-
-    def test_probe_without_rocm_stays_pending(self, tmp_path):
-        probe = {"commands": {"rocm_smi_product": {"available": False, "source": "not_available"}}}
-        store = make_store(
-            tmp_path,
-            artifacts={
-                "telemetry-truth.json": VALID_TELEMETRY,
-                "runtime-probe.json": probe,
-            },
-        )
-        assert store.dashboard()["amd"]["status"] == "pending"
-
-    def test_fireworks_attempts_labeled_fireworks_run(self, tmp_path):
-        telemetry = {
-            **VALID_TELEMETRY,
-            "attempts_detail": [{"provider": "mock"}, {"provider": "fireworks"}],
-        }
-        store = make_store(tmp_path, artifacts={"telemetry-truth.json": telemetry})
-        assert store.dashboard()["label"] == "CAPTURED FIREWORKS RUN"
 
 
 class TestApiEndpoints:

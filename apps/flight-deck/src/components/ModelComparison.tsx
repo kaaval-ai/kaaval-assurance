@@ -32,12 +32,12 @@ function tierStats(telemetry: TelemetrySummary, tier: 'local' | 'remote'): TierS
   };
 }
 
-function TierColumn({ title, stats }: { title: string; stats: TierStats | null }) {
+function TierColumn({ title, stats, usedSample }: { title: string; stats: TierStats | null; usedSample: boolean }) {
   return (
     <div className="flex-1 min-w-[220px] px-3 py-2 rounded border border-border/60 bg-surface/40">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-[10px] font-mono uppercase tracking-wider text-muted">{title}</span>
-        {stats ? <SourceChip tag="measured" /> : <SourceChip tag="not_available" />}
+        {stats ? <SourceChip tag={usedSample ? 'sample' : 'measured'} /> : <SourceChip tag="not_available" />}
       </div>
       {stats ? (
         <div className="space-y-1 text-[10px] font-mono">
@@ -60,7 +60,7 @@ function TierColumn({ title, stats }: { title: string; stats: TierStats | null }
   );
 }
 
-export default function ModelComparison({ telemetry }: { telemetry: TelemetrySummary | null }) {
+export default function ModelComparison({ telemetry, usedSample }: { telemetry: TelemetrySummary | null; usedSample: boolean }) {
   const local = telemetry ? tierStats(telemetry, 'local') : null;
   const remote = telemetry ? tierStats(telemetry, 'remote') : null;
 
@@ -80,8 +80,8 @@ export default function ModelComparison({ telemetry }: { telemetry: TelemetrySum
           <div className="py-6 text-center text-muted text-xs">No telemetry artifact loaded.</div>
         ) : (
           <div className="flex flex-col sm:flex-row gap-2">
-            <TierColumn title="Local tier (Gemma-first)" stats={local} />
-            <TierColumn title="Remote tier (Fireworks escalation)" stats={remote} />
+            <TierColumn title="Local tier (Gemma-first)" stats={local} usedSample={usedSample} />
+            <TierColumn title="Remote tier (Fireworks escalation)" stats={remote} usedSample={usedSample} />
           </div>
         )}
         <p className="pt-2 text-[9px] font-mono text-muted leading-relaxed">

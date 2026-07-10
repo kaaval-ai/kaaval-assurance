@@ -71,6 +71,7 @@ class TestExportArtifacts:
             "demo-live-telemetry.json",
             "demo-live-trajectory.json",
             "demo-live-summary.md",
+            "demo-live-manifest.json",
         }
         for path in files.values():
             assert path.exists() and path.stat().st_size > 0

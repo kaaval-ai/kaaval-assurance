@@ -7,6 +7,7 @@ export const TAG_STYLES: Record<SourceTag, string> = {
   configured: 'text-accent border-accent/40 bg-accent/5',
   planned: 'text-warning border-warning/40 bg-warning/5',
   not_available: 'text-muted border-border bg-elevated/40',
+  sample: 'text-warning border-warning/50 bg-warning/10 italic',
 };
 
 export function SourceChip({ tag }: { tag: SourceTag }) {

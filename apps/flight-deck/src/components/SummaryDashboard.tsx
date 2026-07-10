@@ -105,7 +105,7 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
           <div className="panel panel-sweep">
             <div className="panel-header">
               <span className="panel-title">Provider Mix</span>
-              <SourceChip tag="measured" />
+              <SourceChip tag={payload?.used_sample ? 'sample' : 'measured'} />
             </div>
             <div className="panel-body space-y-1.5">
               {Object.entries(t.provider_mix.attempts_by_provider).map(([provider, attempts]) => (
@@ -124,7 +124,7 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
           <div className="panel panel-sweep">
             <div className="panel-header">
               <span className="panel-title">Layer-2 Drift</span>
-              <SourceChip tag="measured" />
+              <SourceChip tag={payload?.used_sample ? 'sample' : 'measured'} />
             </div>
             <div className="panel-body space-y-1.5">
               {Object.entries(t.routing.ewma_drift_by_category).map(([category, drift]) => (
@@ -146,7 +146,7 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
           <div className="panel panel-sweep">
             <div className="panel-header">
               <span className="panel-title">Layer-3 Audit</span>
-              <SourceChip tag={t.audit.enabled ? 'measured' : 'not_available'} />
+              <SourceChip tag={t.audit.enabled ? (payload?.used_sample ? 'sample' : 'measured') : 'not_available'} />
             </div>
             <div className="panel-body space-y-1.5 text-[10px] font-mono">
               {t.audit.enabled ? (
@@ -180,7 +180,7 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
                 <div key={c.claim} className="flex items-center gap-2 px-2 py-1 rounded border border-border/40 text-[10px] font-mono">
                   <span className="text-muted flex-1 truncate">{c.claim}</span>
                   <span className="text-foreground truncate max-w-[45%]" title={c.value}>{c.value}</span>
-                  <SourceChip tag={c.source} />
+                  <SourceChip tag={c.source === 'measured' && payload?.used_sample ? 'sample' : c.source} />
                 </div>
               ))}
             </div>

@@ -14,7 +14,7 @@ import { SourceChip } from './Tags';
 
 const FAILURE_MODES = ['none', 'missing_field', 'bad_enum', 'unparseable'] as const;
 
-export default function LiveRunPanel() {
+export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunResponse | null; onRunComplete: (r: LiveRunResponse) => void }) {
   const [contractId, setContractId] = useState(CONTRACTS[0].id);
   const [taskInput, setTaskInput] = useState(SAMPLE_INPUTS[CONTRACTS[0].id] ?? '');
   const [localProvider, setLocalProvider] = useState<'mock' | 'ollama' | 'vllm'>('mock');
@@ -24,7 +24,6 @@ export default function LiveRunPanel() {
   const [exportArtifacts, setExportArtifacts] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [run, setRun] = useState<LiveRunResponse | null>(null);
 
   const selectContract = (id: string) => {
     setContractId(id);
@@ -44,7 +43,7 @@ export default function LiveRunPanel() {
         failure_mode: failureMode === 'none' ? null : failureMode,
         export_artifacts: exportArtifacts,
       });
-      setRun(result);
+      onRunComplete(result);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'request failed');
     } finally {
@@ -198,7 +197,7 @@ export default function LiveRunPanel() {
               escalationReason={run.result.escalated ? run.result.routing_reason : null}
               autoPlay
             />
-            <TelemetryTruth telemetry={run.telemetry} />
+            <TelemetryTruth telemetry={run.telemetry} usedSample={false} />
           </div>
         </>
       )}

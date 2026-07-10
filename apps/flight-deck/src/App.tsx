@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { ConnectionStatus, DashboardPayload } from './types';
+import type { ConnectionStatus, DashboardPayload, LiveRunResponse } from './types';
 import { fetchDashboard } from './api';
 import Header, { type AppMode, type DashboardView } from './components/Header';
 import StatusBar from './components/StatusBar';
@@ -22,6 +22,7 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [view, setView] = useState<DashboardView>('summary');
   const [mode, setMode] = useState<AppMode>('captured');
+  const [liveRun, setLiveRun] = useState<LiveRunResponse | null>(null);
   const hasPayload = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -67,7 +68,7 @@ export default function App() {
 
       <main className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
         {mode === 'live' ? (
-          <LiveRunPanel />
+          <LiveRunPanel run={liveRun} onRunComplete={setLiveRun} />
         ) : status === 'unavailable' ? (
           <div className="panel px-4 py-10 text-center space-y-2">
             <p className="text-sm font-mono text-destructive">API unavailable — no artifacts to display.</p>
@@ -85,7 +86,7 @@ export default function App() {
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <PipelinePanel trajectory={trajectory} telemetry={telemetry} />
-              <ProviderSwitchboard telemetry={telemetry} />
+              <ProviderSwitchboard telemetry={telemetry} usedSample={payload?.used_sample ?? false} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -93,11 +94,11 @@ export default function App() {
                 <ContractGate telemetry={telemetry} />
               </div>
               <div className="lg:col-span-2">
-                <TelemetryTruth telemetry={telemetry} />
+                <TelemetryTruth telemetry={telemetry} usedSample={payload?.used_sample ?? false} />
               </div>
             </div>
 
-            <ModelComparison telemetry={telemetry} />
+            <ModelComparison telemetry={telemetry} usedSample={payload?.used_sample ?? false} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <div className="lg:col-span-2">
@@ -118,7 +119,13 @@ export default function App() {
         )}
       </main>
 
-      <StatusBar payload={payload} status={status} lastRefresh={lastRefresh} />
+      <StatusBar 
+        mode={mode} 
+        payload={payload} 
+        status={status} 
+        lastRefresh={lastRefresh} 
+        liveRun={liveRun} 
+      />
     </div>
   );
 }
