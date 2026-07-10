@@ -101,8 +101,8 @@ class TestExportArtifacts:
         md = files["demo-live-summary.md"].read_text()
         assert "Escalation:" in md
         assert "| Claim | Value | Source |" in md
-        assert "Gemma" in md and "vLLM" in md  # AMD framing present
-        assert "measured amd claims require" in md.lower()
+        assert "mock local tier" in md
+        assert "measured AMD claims require" in md
 
     def test_no_secrets_in_exports(self, tmp_path):
         _, files = self.export(tmp_path)
@@ -125,3 +125,27 @@ class TestExportArtifacts:
         dash = store.dashboard()
         assert dash["bundle_consistent"] is True
         assert dash["bundle_id"] == demo.result.request_id
+
+    def test_summary_markdown_provider_aware(self, tmp_path):
+        from kaaval_assurance.providers import MockProvider
+
+        # Test Ollama
+        demo = run_live_demo(INCIDENT, SEVERITY, failure_mode=None, case_id="x2", local_provider=MockProvider(tier="local", provider_name="ollama"))
+        export_live_demo_artifacts(demo, tmp_path / "ollama")
+        md = (tmp_path / "ollama" / "demo-live-summary.md").read_text()
+        assert "Ollama" in md
+        assert "not an AMD proof" in md
+
+        # Test vLLM-Gemma
+        demo = run_live_demo(INCIDENT, SEVERITY, failure_mode=None, case_id="x3", local_provider=MockProvider(tier="local", provider_name="vllm-gemma"))
+        export_live_demo_artifacts(demo, tmp_path / "vllm")
+        md = (tmp_path / "vllm" / "demo-live-summary.md").read_text()
+        assert "vLLM execution" in md
+        assert "AMD status requires matching" in md
+
+        # Test unknown/other
+        demo = run_live_demo(INCIDENT, SEVERITY, failure_mode=None, case_id="x4", local_provider=MockProvider(tier="local", provider_name="unknown-provider"))
+        export_live_demo_artifacts(demo, tmp_path / "unknown")
+        md = (tmp_path / "unknown" / "demo-live-summary.md").read_text()
+        assert "unknown-provider" in md
+        assert "AMD claims require vLLM execution" in md

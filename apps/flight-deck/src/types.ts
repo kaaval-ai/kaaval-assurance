@@ -189,7 +189,8 @@ export type DataLabel =
   | 'CAPTURED LOCAL RUN'
   | 'CAPTURED FIREWORKS RUN'
   | 'MEASURED AMD RUN'
-  | 'UNAVAILABLE';
+  | 'UNAVAILABLE'
+  | 'UNVERIFIED (INCONSISTENT BUNDLE)';
 
 export interface DashboardPayload {
   generated_at: string;

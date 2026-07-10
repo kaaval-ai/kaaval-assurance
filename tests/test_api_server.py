@@ -298,6 +298,30 @@ class TestDashboardLabels:
         assert dash["amd"]["status"] != "measured"
         assert dash["label"] == "SAMPLE"
 
+    def test_inconsistent_bundle_labeled_unverified(self, tmp_path):
+        telemetry = {
+            **VALID_TELEMETRY,
+            "run_id": "r1",
+        }
+        trajectory = [{"request_id": "r2"}] # Mismatched run ID!
+        manifest = {
+            "run_id": "r1",
+            "artifacts": {
+                "telemetry": "demo-live-telemetry.json",
+                "trajectory": "demo-live-trajectory.json"
+            }
+        }
+        store = make_store(
+            tmp_path,
+            artifacts={
+                "demo-live-telemetry.json": telemetry,
+                "demo-live-trajectory.json": trajectory,
+                "demo-live-manifest.json": manifest
+            }
+        )
+        dash = store.dashboard()
+        assert dash["bundle_consistent"] is False
+        assert dash["label"] == "UNVERIFIED (INCONSISTENT BUNDLE)"
 
 class TestApiEndpoints:
     def test_dashboard_endpoint_provenance(self, tmp_path):

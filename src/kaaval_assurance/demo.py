@@ -159,14 +159,33 @@ def _summary_markdown(demo: LiveDemoResult, telemetry: TelemetrySummary) -> str:
     lines += [
         f"| {c.claim} | {c.value} | {c.source} |" for c in telemetry.claims
     ]
-    lines += [
-        "",
-        "This run uses the deterministic mock local tier as the development "
-        "stand-in for Gemma served via vLLM on the AMD hackathon GPU — same "
-        "Provider interface, swapped by environment configuration. Runtime "
-        "values stay tagged planned/configured; measured AMD claims require "
-        "runtime probe artifacts from the pod.",
-    ]
+    provider_name = local.provider if local else "mock"
+    
+    if provider_name == "mock":
+        lines += [
+            "",
+            "This run uses a deterministic development stand-in (mock local tier). "
+            "Runtime values stay tagged planned/configured; measured AMD claims require "
+            "runtime probe artifacts from the pod.",
+        ]
+    elif provider_name == "ollama":
+        lines += [
+            "",
+            "This run uses a local open-weight development run (Ollama); this is not "
+            "an AMD proof.",
+        ]
+    elif provider_name == "vllm-gemma":
+        lines += [
+            "",
+            "This run captures vLLM execution. AMD status requires matching "
+            "runtime-probe evidence captured from the host.",
+        ]
+    else:
+        lines += [
+            "",
+            f"This run uses the {provider_name} local tier. AMD claims "
+            "require vLLM execution and matching runtime-probe evidence.",
+        ]
     return "\n".join(lines)
 
 

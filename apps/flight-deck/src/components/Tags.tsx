@@ -26,6 +26,7 @@ export const LABEL_STYLES: Record<DataLabel | 'LIVE RUN', string> = {
   'CAPTURED FIREWORKS RUN': 'text-accent border-accent/50 bg-accent/10',
   'MEASURED AMD RUN': 'text-success border-success/50 bg-success/10',
   'UNAVAILABLE': 'text-destructive border-destructive/50 bg-destructive/10',
+  'UNVERIFIED (INCONSISTENT BUNDLE)': 'text-destructive border-destructive/50 bg-destructive/10',
   'LIVE RUN': 'text-success border-success/50 bg-success/10',
 };
 

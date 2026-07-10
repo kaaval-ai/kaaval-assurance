@@ -44,10 +44,11 @@ class MockProvider(Provider):
         failure_mode: Optional[str] = None,
         failure_rate: float = 0.0,
         seed: int = 0,
+        provider_name: str = "mock",
     ):
         if failure_mode is not None and failure_mode not in FAILURE_MODES:
             raise ValueError(f"failure_mode must be one of {FAILURE_MODES}")
-        self.provider_name = "mock"
+        self.provider_name = provider_name
         self.tier = tier
         self.model_id = model_id
         self.failure_mode = failure_mode
