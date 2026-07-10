@@ -1,0 +1,103 @@
+{
+  "probed_at": "2026-07-10T07:58:43.255933Z",
+  "system": {
+    "cwd": "/workspace/kaaval-assurance",
+    "under_workspace": true,
+    "python_version": "3.10.12",
+    "source": "measured"
+  },
+  "packages": [
+    {
+      "name": "vllm",
+      "importable": true,
+      "version": "0.16.1.dev0+g89a77b108.d20260318.rocm721",
+      "source": "measured"
+    },
+    {
+      "name": "torch",
+      "importable": true,
+      "version": "2.9.1+gitff65f5b",
+      "source": "measured"
+    },
+    {
+      "name": "requests",
+      "importable": true,
+      "version": "2.32.5",
+      "source": "measured"
+    },
+    {
+      "name": "pydantic",
+      "importable": true,
+      "version": "2.12.5",
+      "source": "measured"
+    }
+  ],
+  "commands": {
+    "rocm_smi_product": {
+      "command": [
+        "rocm-smi",
+        "--showproductname"
+      ],
+      "available": true,
+      "output": "============================ ROCm System Management Interface ============================\n====================================== Product Info ======================================\nGPU[0]\t\t: get_name, Error when calling libdrm\nGPU[0]\t\t: Card Series: \t\tN/A\nGPU[0]\t\t: Card Model: \t\t0x744b\nGPU[0]\t\t: Card Vendor: \t\tAdvanced Micro Devices, Inc. [AMD/ATI]\nGPU[0]\t\t: Card SKU: \t\tD7070910\nGPU[0]\t\t: Subsystem ID: \t0x0e0c\nGPU[0]\t\t: Device Rev: \t\t0x00\nGPU[0]\t\t: Node ID: \t\t4\nGPU[0]\t\t: GUID: \t\t60148\nGPU[0]\t\t:",
+      "error": null,
+      "source": "measured"
+    },
+    "rocm_smi_vram": {
+      "command": [
+        "rocm-smi",
+        "--showmeminfo",
+        "vram"
+      ],
+      "available": true,
+      "output": "============================ ROCm System Management Interface ============================\n================================== Memory Usage (Bytes) ==================================\nGPU[0]\t\t: VRAM Total Memory (B): 51522830336\nGPU[0]\t\t: VRAM Total Used Memory (B): 36303298560\n==========================================================================================\n================================== End of ROCm SMI Log ===================================",
+      "error": null,
+      "source": "measured"
+    },
+    "vllm_version": {
+      "command": [
+        "vllm",
+        "--version"
+      ],
+      "available": true,
+      "output": "0.16.1.dev0+g89a77b108.d20260318.rocm721",
+      "error": null,
+      "source": "measured"
+    }
+  },
+  "env_vllm": {
+    "VLLM_BASE_URL": "http://127.0.0.1:8000/v1",
+    "VLLM_DTYPE": "bfloat16",
+    "VLLM_ENABLE_PREFIX_CACHING": "true",
+    "VLLM_GPU_MEMORY_UTILIZATION": "0.70",
+    "VLLM_HARDWARE_TARGET": "amd-hackathon-gpu",
+    "VLLM_KV_CACHE_DTYPE": "auto",
+    "VLLM_MAX_CONTEXT_TOKENS": "8192",
+    "VLLM_MODEL": "gemma-3-1b-it",
+    "VLLM_MODEL_FAMILY": "gemma",
+    "VLLM_ROCM_VERSION": "7.2",
+    "VLLM_STRUCTURED_OUTPUTS": "true",
+    "VLLM_TENSOR_PARALLEL_SIZE": "1",
+    "VLLM_VERSION": "0.16.1.dev0+g89a77b108.d20260318.rocm721"
+  },
+  "env_fireworks": {},
+  "env_source": "configured",
+  "endpoint": {
+    "probed_at": "2026-07-10T07:58:43.255854Z",
+    "base_url": "http://127.0.0.1:8000/v1",
+    "reachable": true,
+    "latency_ms": 3.231641952879727,
+    "served_models": [
+      "gemma-3-1b-it"
+    ],
+    "configured_model": "gemma-3-1b-it",
+    "configured_model_served": true,
+    "model_family": "gemma",
+    "family_consistent": true,
+    "hardware_target": "amd-hackathon-gpu",
+    "vllm_version": "0.16.1.dev0+g89a77b108.d20260318",
+    "error": null,
+    "source": "measured"
+  },
+  "policy": "Gemma-first local tier via vLLM on the AMD hackathon GPU; fallback local model recorded truthfully if Gemma does not fit."
+}

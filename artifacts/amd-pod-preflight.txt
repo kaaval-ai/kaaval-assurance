@@ -1,0 +1,28 @@
+Fri Jul 10 07:20:27 UTC 2026
+aa8b5b22b79fae47ea1c41327e72ddb311304e9b
+0.16.1.dev0+g89a77b108.d20260318.rocm721
+Python 3.10.12
+
+
+============================ ROCm System Management Interface ============================
+====================================== Product Info ======================================
+GPU[0]		: get_name, Error when calling libdrm
+GPU[0]		: Card Series: 		N/A
+GPU[0]		: Card Model: 		0x744b
+GPU[0]		: Card Vendor: 		Advanced Micro Devices, Inc. [AMD/ATI]
+GPU[0]		: Card SKU: 		D7070910
+GPU[0]		: Subsystem ID: 	0x0e0c
+GPU[0]		: Device Rev: 		0x00
+GPU[0]		: Node ID: 		4
+GPU[0]		: GUID: 		60148
+GPU[0]		: GFX Version: 		gfx1100
+==========================================================================================
+================================== End of ROCm SMI Log ===================================
+
+
+============================ ROCm System Management Interface ============================
+================================== Memory Usage (Bytes) ==================================
+GPU[0]		: VRAM Total Memory (B): 51522830336
+GPU[0]		: VRAM Total Used Memory (B): 28028928
+==========================================================================================
+================================== End of ROCm SMI Log ===================================

@@ -72,7 +72,7 @@ Click the flow for the interactive walkthrough: [HTML](docs/kaaval-assurance-arc
 | Provider-neutral runtime + factory | Built | Local/remote tiers swap by config, never by code edits; switching is explicit and telemetry-visible |
 | Mock provider | Built | Entire loop runs deterministically with zero cloud access — tests, demos, CI |
 | Ollama local provider | Built | Open-weight local inference on a dev machine; validates the local-tier path before GPU time is spent |
-| vLLM provider for AMD GPU VM | Built — pending measured GPU run | The deployment path for Gemma on ROCm + vLLM; records serving knobs in a runtime profile |
+| vLLM provider for AMD GPU VM | Built — measured on AMD ROCm | Gemma served through the real provider path; runtime, endpoint, verifier, token, latency, and hardware evidence captured |
 | Fireworks AI escalation tier | Built, smoke-tested live | Verified remote escalation with cost/token capture; spend requires explicit confirmation |
 | Layer 1 contract verifier | Built | Deterministic accept/reject with stable check IDs — the source of truth |
 | Layer 2 EWMA drift + closed-loop routing | Built | Detects per-category degradation and tightens routing automatically, with recorded reasons |
@@ -103,15 +103,45 @@ Execution tiers, honestly labeled:
   probe and eval telemetry. The probe records measured facts — GPU/runtime
   availability, served model id, model family, provider, latency, tokens,
   verifier results, escalations, and cost fields.
-- **Status:** the AMD GPU measured run is **pending**. Until its artifacts
-  exist, every runtime claim in this repo stays tagged `configured` or
-  `planned` — nothing pretends otherwise, and the "every token on AMD
-  silicon" story is only claimable after that artifact lands.
+- **Measured proof:** Gemma 3 1B completed the 16-case evaluation through
+  vLLM's ROCm build on an AMD/ATI `gfx1100` host with 47.98 GiB VRAM. The
+  coherent evidence bundle is classified `MEASURED AMD RUN`: 16/16 answers
+  passed locally, no remote escalation was required, and p50/p95 request
+  latency was 324.6/479.6 ms. The exact GPU marketing name was unavailable
+  from `libdrm`, so this repository does not infer one.
 
-If Gemma cannot be served reliably on the target GPU, the documented fallback
+If Gemma cannot be served reliably on a future target GPU, the documented fallback
 (Qwen via the same vLLM path) is recorded truthfully in telemetry
 (`VLLM_MODEL_FAMILY=qwen`) — model id and family are telemetry fields, not
 marketing claims.
+
+### Measured AMD proof run
+
+The July 10 capture is tied to source commit `aa8b5b2` and bundle ID
+`live-5be3acfa-amd-gemma-proof`. The runtime probe confirms the configured
+Gemma model was present in vLLM's served-model list and the final trajectory
+records a verified `vllm-gemma` local attempt. The Flight Deck therefore
+labels this coherent bundle **MEASURED AMD RUN**, rather than deriving the
+label from a filename or environment variable.
+
+| Evidence-backed result | Value |
+|---|---:|
+| Evaluation cases verified locally | 16 / 16 |
+| Local and final verified rate | 100% |
+| Remote escalation rate | 0% |
+| Request latency p50 / p95 | 324.6 ms / 479.6 ms |
+| Final proof request | 272.9 ms; 181 prompt + 37 completion tokens |
+| vLLM logged generation-throughput peak | 76.0 tokens/s |
+| vLLM logged prefix-cache hit-rate peak | 74.4% |
+| ROCm sampler observed GPU-use peak | 100% |
+| ROCm sampler observed package-power peak | 175 W |
+
+Start with the [measured-run report](docs/amd-measured-run.md), then inspect
+the [coherent manifest](artifacts/demo-live-manifest.json),
+[runtime probe](artifacts/runtime-probe.json),
+[run telemetry](artifacts/demo-live-telemetry.json), and
+[replayable trajectory](artifacts/demo-live-trajectory.json). Every imported
+artifact is covered by the [curated checksum manifest](artifacts/SHA256SUMS-amd-aa8b5b2.txt).
 
 ## Telemetry truth layer
 
@@ -124,8 +154,8 @@ Every claim maps to a stored field, and every field carries a source tag:
   measurements
 - `not_available` — the provider or run did not produce the value; never
   fabricated
-- `planned` — intended deployment not yet executed (the AMD GPU run, until
-  its artifacts exist)
+- `planned` — an intended execution or capability that has not yet produced
+  evidence
 
 Shipped sample data for the demo console is additionally labeled as
 synthetic sample data in the UI and enforced by tests to never claim a
@@ -213,8 +243,7 @@ kaaval-eval --dataset data/eval/telecom_gold.jsonl \
 ```
 *Note: `--failure-mode bad_enum --failure-rate 0.25` injects local failures (mock local tier only) so escalations are observable in the run output.*
 
-### 4. Gemma on AMD GPU VM via ROCm + vLLM
-*(Once the endpoint exists on your AMD hardware)*
+### 4. Reproduce Gemma on an AMD GPU VM via ROCm + vLLM
 ```bash
 python -m kaaval_assurance.runtime_probe --output artifacts/runtime-probe.json
 kaaval-eval --dataset data/eval/telecom_gold.jsonl \
@@ -230,8 +259,8 @@ Configuration is environment-only — copy [.env.example](.env.example) to `.env
 | Core assurance engine (contracts, Layer 1–3, routing, trajectories) | Complete |
 | Fireworks API escalation path | Complete, smoke-tested locally; public proof artifact pending final submission run |
 | Local Ollama development path | Complete |
-| vLLM/ROCm provider for AMD GPU VM | Implemented |
-| AMD GPU measured run | **Pending** — awaiting credits/pod; final artifact outstanding |
+| vLLM/ROCm provider for AMD GPU VM | Complete, exercised with Gemma 3 1B |
+| AMD GPU measured run | **Complete** — coherent runtime, telemetry, trajectory, ROCm, vLLM, and checksum evidence committed |
 | Telemetry truth layer + runtime probe | Complete |
 | Demo console (live + replay) | Complete |
 | Inference Flight Deck UI (React) | Complete |
@@ -248,8 +277,9 @@ Configuration is environment-only — copy [.env.example](.env.example) to `.env
 - Layer 3 detection is model-generated and sampled. It is calibrated against
   gold answers before its signal is trusted, and it never gates a live
   response.
-- No AMD performance or usage claim is made without a measured runtime
-  artifact; until the GPU run lands, those claims are explicitly `pending`.
+- AMD performance and usage claims are limited to the committed measured-run
+  artifacts. The exact GPU marketing name is intentionally not inferred when
+  the runtime reports only AMD vendor, card identifiers, and `gfx1100`.
 - Cost figures are computed from configured per-token prices; accuracy
   follows the configuration.
 - This is hackathon-stage software: no auth, no multi-tenant hardening, no
@@ -258,6 +288,7 @@ Configuration is environment-only — copy [.env.example](.env.example) to `.env
 ## Docs
 
 - [docs/hackathon-ops.md](docs/hackathon-ops.md) — ops runbook: pod setup, Gemma-first serving with truthful fallback, smoke sequence, Fireworks budget guardrails
+- [docs/amd-measured-run.md](docs/amd-measured-run.md) — measured AMD/Gemma run results, provenance, claim boundaries, and evidence map
 - [docs/submission-checklist.md](docs/submission-checklist.md) — Track 3 assets and AMD proof artifacts
 - [docs/demo-script.md](docs/demo-script.md) — 2-minute video plan
 - [docs/deck-outline.md](docs/deck-outline.md) — 5-slide deck script

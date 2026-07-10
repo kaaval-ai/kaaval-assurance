@@ -1,0 +1,165 @@
+{
+  "run_id": "live-5be3acfa-amd-gemma-proof",
+  "requests": 1,
+  "attempts": 1,
+  "latency_ms_p50": 272.9379130760208,
+  "latency_ms_p95": 272.9379130760208,
+  "provider_mix": {
+    "attempts_by_provider": {
+      "vllm-gemma": 1
+    },
+    "requests_by_first_tier": {
+      "local": 1
+    },
+    "local_attempts": 1,
+    "remote_attempts": 0,
+    "audit_calls": 0
+  },
+  "runtime": {
+    "status": "configured",
+    "profile": {
+      "provider": "vllm-gemma",
+      "model_id": "gemma-3-1b-it",
+      "served_model_name": "gemma-3-1b-it",
+      "model_family": "gemma",
+      "tier": "local",
+      "endpoint_type": "openai_compatible",
+      "base_url_host": "127.0.0.1:8000",
+      "hardware_target": "amd-hackathon-gpu",
+      "rocm_version": "7.2",
+      "vllm_version": "0.16.1.dev0+g89a77b108.d20260318.rocm721",
+      "dtype": "bfloat16",
+      "kv_cache_dtype": "auto",
+      "tensor_parallel_size": 1,
+      "gpu_memory_utilization": 0.7,
+      "prefix_caching_enabled": true,
+      "max_context_tokens": 8192,
+      "structured_output_mode": "json_object",
+      "prompt_cache_key_enabled": false,
+      "logprobs_requested": false,
+      "top_logprobs": null,
+      "temperature": 0.0,
+      "max_tokens": 1024
+    },
+    "cached_tokens_total": null,
+    "note": "serving settings recorded from configuration; ROCm/vLLM versions recorded when deployed"
+  },
+  "verification": {
+    "local_verified_rate": 1.0,
+    "final_verified_rate": 1.0,
+    "failures_by_check": {}
+  },
+  "routing": {
+    "escalation_rate": 0.0,
+    "preroute_remote_rate": 0.0,
+    "ewma_drift_by_category": {
+      "severity_classification": 0.0
+    },
+    "high_drift_categories": [],
+    "watch_categories": []
+  },
+  "audit": {
+    "enabled": false,
+    "sampled": 0,
+    "accepted_answers": 0,
+    "trusted": null,
+    "calibration_status": null,
+    "calibration_fp_rate": null,
+    "calibration_threshold": null,
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "violations_by_severity": {},
+    "audit_tokens": 0
+  },
+  "cost": {
+    "total_cost_usd": 0.0,
+    "local_cost_usd": 0.0,
+    "remote_cost_usd": 0.0,
+    "audit_cost_usd": 0.0,
+    "cost_per_verified_answer_usd": 0.0,
+    "audit_cost_per_verified_accepted_usd": null,
+    "remote_calls_avoided": null,
+    "remote_calls_avoided_rate": null,
+    "remote_tokens_avoided": null,
+    "estimated_cost_saved_vs_always_remote_usd": null
+  },
+  "attempts_detail": [
+    {
+      "request_id": "live-5be3acfa-amd-gemma-proof",
+      "contract_id": "telecom.severity_classification",
+      "category": "severity_classification",
+      "provider": "vllm-gemma",
+      "model_id": "gemma-3-1b-it",
+      "tier": "local",
+      "prompt_tokens": 181,
+      "completion_tokens": 37,
+      "total_tokens": 218,
+      "cached_tokens": null,
+      "latency_ms": 272.9379130760208,
+      "cost_usd": 0.0,
+      "verifier_passed": true,
+      "verifier_failure_count": 0,
+      "verifier_failure_types": [],
+      "verifier_failures": [],
+      "escalated": false,
+      "escalation_reason": null
+    }
+  ],
+  "claims": [
+    {
+      "claim": "Local verified rate",
+      "value": "100.0%",
+      "source": "measured",
+      "field": "verification.local_verified_rate"
+    },
+    {
+      "claim": "Final verified rate",
+      "value": "100.0%",
+      "source": "measured",
+      "field": "verification.final_verified_rate"
+    },
+    {
+      "claim": "Escalation rate",
+      "value": "0.0%",
+      "source": "measured",
+      "field": "routing.escalation_rate"
+    },
+    {
+      "claim": "Preroute remote rate",
+      "value": "0.0%",
+      "source": "measured",
+      "field": "routing.preroute_remote_rate"
+    },
+    {
+      "claim": "High-drift categories",
+      "value": "none",
+      "source": "measured",
+      "field": "routing.high_drift_categories"
+    },
+    {
+      "claim": "Layer 3 audit trusted",
+      "value": "no audit in this run",
+      "source": "not_available",
+      "field": "audit.enabled"
+    },
+    {
+      "claim": "Cost per verified answer",
+      "value": "$0.0000",
+      "source": "measured",
+      "field": "cost.cost_per_verified_answer_usd"
+    },
+    {
+      "claim": "Remote calls avoided vs always-remote",
+      "value": "n/a (no always-remote baseline)",
+      "source": "not_available",
+      "field": "cost.remote_calls_avoided_rate"
+    },
+    {
+      "claim": "Runtime",
+      "value": "gemma 'gemma-3-1b-it' via vLLM, target amd-hackathon-gpu; dtype bfloat16, kv-cache auto, tp 1; ROCm 7.2, vLLM 0.16.1.dev0+g89a77b108.d20260318.rocm721",
+      "source": "configured",
+      "field": "runtime.profile"
+    }
+  ]
+}

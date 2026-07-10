@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "run_id": "live-5be3acfa-amd-gemma-proof",
+  "generated_at": "2026-07-10T08:07:16.646912+00:00",
+  "artifacts": {
+    "telemetry": "demo-live-telemetry.json",
+    "trajectory": "demo-live-trajectory.json",
+    "runtime_probe": "runtime-probe.json"
+  },
+  "metadata": {
+    "mode": "live",
+    "category": "severity_classification",
+    "model": "gemma-3-1b-it",
+    "runtime": "vllm-rocm-amd"
+  }
+}

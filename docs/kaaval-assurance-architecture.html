@@ -178,7 +178,7 @@ const NODES = {
   l2:        {x:260, y:448, w:220, h:64, t:"EWMA Drift",              s:"Layer 2"},
   l3:        {x:925, y:448, w:220, h:64, t:"Sampled Audit",           s:"Layer 3"},
   telemetry: {x:610, y:210, w:210, h:88, t:"Telemetry Truth",         s:"source tags"},
-  probe:     {x:260, y:70,  w:220, h:70, t:"Runtime Probe",           s:"AMD proof pending"},
+  probe:     {x:260, y:70,  w:220, h:70, t:"Runtime Probe",           s:"AMD proof captured"},
   console:   {x:925, y:70,  w:220, h:70, t:"Demo Replay",             s:"submission artifacts"},
 };
 const EDGES = {
@@ -359,7 +359,7 @@ const FLOWS = [
  ]},
  {name:"5 · AMD Proof Run", steps:[
   {node:"probe", pulse:"cyan", title:"Runtime probe runs on the AMD GPU VM", tag:"planned",
-   why:"First act on the pod, before serving anything: record what the hardware actually is. rocm-smi product name, VRAM, vLLM version — measured facts, secrets redacted. Until this artifact exists, AMD claims stay pending.",
+   why:"First act on the pod, before serving anything: record what the hardware actually is. rocm-smi identifiers, VRAM, and vLLM version are measured with secrets redacted. The committed probe now anchors the AMD run claim.",
    payload:'$ python -m kaaval_assurance.runtime_probe\n{ "commands": { "rocm_smi_product": "...",\n  "rocm_smi_vram": "..." }, "source": "measured" }'},
   {edge:"probe-telemetry", color:"cyan", title:"Probe artifact turns configured into measured", tag:"planned",
    why:"The telemetry truth layer upgrades runtime claims only when a probe or run artifact says so. Nothing self-promotes.",

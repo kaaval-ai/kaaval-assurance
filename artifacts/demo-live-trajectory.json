@@ -1,0 +1,25 @@
+[
+  {
+    "db_id": 1,
+    "request_id": "live-5be3acfa-amd-gemma-proof",
+    "ts": "2026-07-10T08:07:16.645945Z",
+    "category": "severity_classification",
+    "contract_id": "telecom.severity_classification",
+    "contract_version": "1.0",
+    "tier": "local",
+    "provider": "vllm-gemma",
+    "model_id": "gemma-3-1b-it",
+    "verifier_passed": true,
+    "verifier_failures": [],
+    "escalated": false,
+    "latency_ms": 272.9379130760208,
+    "cost_usd": 0.0,
+    "prompt_tokens": 181,
+    "completion_tokens": 37,
+    "task_input": "Core router CR-04 dropped all BGP sessions at 02:13; downstream OLT sites in region south lost upstream connectivity. Customer impact confirmed across 40k subscribers.",
+    "raw_text": "{\"severity\": \"P1\", \"confidence\": 0.8, \"rationale\": \"Critical outage affecting core router functionality and downstream connectivity, causing significant customer impact.\"}",
+    "audit_sampled": false,
+    "audit_result": null,
+    "audit_violations": null
+  }
+]
