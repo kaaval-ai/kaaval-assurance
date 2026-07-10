@@ -80,7 +80,7 @@ Click the flow for the interactive walkthrough: [HTML](docs/kaaval-assurance-arc
 | Telemetry truth layer | Built | Every judge-facing claim maps to a stored field with a source tag |
 | Runtime probe | Built | Turns runtime claims from configured into measured; redacts secrets |
 | Streamlit demo console | Built | Live interactive runs plus replay of captured artifacts; hostable without secrets |
-| Inference Flight Deck UI (React) | Built | A premium observability UI with a toggle between high-level summary and live telemetry dashboards, surfacing real-time cost, latency, error rates, and trajectory replays to prove the financial and qualitative value of the local vs. remote routing. |
+| Inference Flight Deck UI (React) | Built | A captured-run observability surface with two modes: Captured Evidence (replays telemetry/trajectory/probe artifacts with source tags and periodic artifact refresh) and a gated Live Assurance Run that drives the real pipeline server-side. Every value is measured, configured, sample, planned, or honestly not available. |
 
 The full test suite (220+ tests) runs network-free; live calls are explicit, opt-in CLI/script paths.
 
@@ -182,12 +182,12 @@ kaaval-eval --dataset data/eval/telecom_gold.jsonl \
 ```
 
 ### 2. Flight Deck UI (React Dashboard)
-To view the live telemetry dashboard, you need to start the API and the React UI:
+A captured-run observability surface: it renders recorded artifacts (real `artifacts/` first, labeled sample data as fallback) and refreshes them every few seconds — it is not streaming telemetry. An optional Live Run mode executes the real pipeline server-side and is disabled unless `KAAVAL_LIVE_RUNS_ENABLED=1`. See [apps/flight-deck/README.md](apps/flight-deck/README.md).
 ```bash
-# Terminal 1: Start the backend API server
-uv run uvicorn apps.api.server:app --reload
+# Terminal 1: backend API, from the repo root
+uv run uvicorn apps.api.server:app --port 8000
 
-# Terminal 2: Start the React frontend
+# Terminal 2: React frontend, from apps/flight-deck
 cd apps/flight-deck
 npm install
 npm run dev
@@ -211,7 +211,7 @@ kaaval-eval --dataset data/eval/telecom_gold.jsonl \
   --confirm-spend \
   --telemetry-summary
 ```
-*Note: You can use `--failure-mode bad_enum --failure-rate 0.25` to simulate local failures and observe the escalations happen in real-time.*
+*Note: `--failure-mode bad_enum --failure-rate 0.25` injects local failures (mock local tier only) so escalations are observable in the run output.*
 
 ### 4. Gemma on AMD GPU VM via ROCm + vLLM
 *(Once the endpoint exists on your AMD hardware)*

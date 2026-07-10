@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { defaultState as mockFlightDeckState } from './mock/data';
-import type { FlightDeckState } from './types';
-import Header from './components/Header';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { ConnectionStatus, DashboardPayload } from './types';
+import { fetchDashboard } from './api';
+import Header, { type AppMode, type DashboardView } from './components/Header';
 import StatusBar from './components/StatusBar';
 import SummaryDashboard from './components/SummaryDashboard';
 import PipelinePanel from './components/PipelinePanel';
@@ -11,156 +11,114 @@ import ModelComparison from './components/ModelComparison';
 import TelemetryTruth from './components/TelemetryTruth';
 import TrajectoryReplay from './components/TrajectoryReplay';
 import AMDProof from './components/AMDProof';
+import LiveRunPanel from './components/LiveRunPanel';
 
-type DashboardView = 'summary' | 'telemetry';
+const REFRESH_INTERVAL_MS = 5000;
 
 export default function App() {
-  const [state, setState] = useState<FlightDeckState>(mockFlightDeckState);
+  const [payload, setPayload] = useState<DashboardPayload | null>(null);
+  const [status, setStatus] = useState<ConnectionStatus>('loading');
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [view, setView] = useState<DashboardView>('summary');
+  const [mode, setMode] = useState<AppMode>('captured');
+  const hasPayload = useRef(false);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const data = await fetchDashboard();
+      setPayload(data);
+      hasPayload.current = true;
+      setStatus('connected');
+      setLastRefresh(new Date());
+    } catch {
+      // Keep the last valid payload; mark it stale rather than inventing data.
+      setStatus(hasPayload.current ? 'stale' : 'unavailable');
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetch('/api/telemetry')
-      .then(res => {
-        if (!res.ok) throw new Error("Telemetry not found");
-        return res.json();
-      })
-      .then(data => {
-        setState(prev => {
-          // 1. Providers Mapping
-          const updatedProviders = prev.providers.map(p => {
-            const providerId = p.name.toLowerCase().includes('gemini') || p.name.toLowerCase().includes('mock') ? 'mock' : 'fireworks'; // Simplified map based on known tiers
-            const attemptCount = data.provider_mix?.attempts_by_provider?.[providerId] || 0;
-            return {
-              ...p,
-              status: attemptCount > 0 ? 'online' : (p.id === 'prv-1' ? 'online' : 'idle'),
-              quotaUsed: attemptCount,
-            };
-          });
+    refresh();
+    const id = setInterval(refresh, REFRESH_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [refresh]);
 
-          // 2. Telemetry Mapping
-          const updatedTelemetry = [
-            {
-              id: 'tel-1',
-              label: 'Latency',
-              unit: 'ms',
-              icon: 'latency',
-              current: data.latency_ms_p50 || prev.telemetry[0].current,
-              min: data.latency_ms_p50 ? data.latency_ms_p50 * 0.8 : prev.telemetry[0].min,
-              max: data.latency_ms_p95 || prev.telemetry[0].max,
-              avg: data.latency_ms_p50 || prev.telemetry[0].avg,
-              alarm: false,
-              sparkline: prev.telemetry[0].sparkline,
-              value: data.latency_ms_p50 || prev.telemetry[0].value,
-            },
-            {
-              id: 'tel-2',
-              label: 'Throughput',
-              unit: 'req/run',
-              icon: 'throughput',
-              current: data.requests || prev.telemetry[1].current,
-              min: data.requests ? data.requests * 0.8 : prev.telemetry[1].min,
-              max: data.requests ? data.requests * 1.2 : prev.telemetry[1].max,
-              avg: data.requests || prev.telemetry[1].avg,
-              alarm: false,
-              sparkline: prev.telemetry[1].sparkline,
-              value: data.requests || prev.telemetry[1].value,
-            },
-            {
-              id: 'tel-3',
-              label: 'Error Rate',
-              unit: '%',
-              icon: 'error',
-              current: data.routing?.escalation_rate !== undefined ? data.routing.escalation_rate * 100 : prev.telemetry[2].current,
-              min: 0,
-              max: 100,
-              avg: data.routing?.escalation_rate !== undefined ? data.routing.escalation_rate * 100 : prev.telemetry[2].avg,
-              alarm: (data.routing?.escalation_rate || 0) > 0.2, // 20% threshold
-              sparkline: prev.telemetry[2].sparkline,
-              value: data.routing?.escalation_rate !== undefined ? data.routing.escalation_rate * 100 : prev.telemetry[2].value,
-            },
-            {
-              id: 'tel-4',
-              label: 'Cost',
-              unit: '$',
-              icon: 'cost',
-              current: data.cost?.total_cost_usd || prev.telemetry[3].current,
-              min: 0,
-              max: data.cost?.total_cost_usd ? data.cost.total_cost_usd * 1.5 : prev.telemetry[3].max,
-              avg: data.cost?.total_cost_usd || prev.telemetry[3].avg,
-              alarm: false,
-              sparkline: prev.telemetry[3].sparkline,
-              value: data.cost?.total_cost_usd || prev.telemetry[3].value,
-            }
-          ];
-
-          return {
-            ...prev,
-            totalRequests: data.requests || prev.totalRequests,
-            providerCount: data.provider_mix ? Object.keys(data.provider_mix.attempts_by_provider || {}).length : prev.providerCount,
-            trajectory: data.attempts_detail ? data.attempts_detail.map((a: any, i: number) => ({
-              id: a.request_id + '-' + i,
-              timestamp: new Date().toISOString(),
-              action: `${a.tier} attempt (${a.provider})`,
-              status: a.verifier_passed ? 'success' : (a.escalated ? 'warning' : 'error'),
-              durationMs: a.latency_ms,
-              detail: a.verifier_failures?.join(', ') || 'No failures'
-            })) : prev.trajectory,
-            providers: updatedProviders,
-            telemetry: updatedTelemetry,
-          };
-        });
-      })
-      .catch(err => console.error("API error:", err));
-  }, []);
+  const telemetry = payload?.telemetry ?? null;
+  const trajectory = payload?.trajectory ?? null;
+  const replayLabel = payload?.provenance.trajectory.origin === 'sample' ? 'SAMPLE' : 'REPLAY';
 
   return (
     <div className="h-full flex flex-col bg-canvas text-foreground bg-noc-grid">
-      {/* CRT overlay */}
       <div className="bg-crt" />
 
-      {/* Header with view toggle */}
-      <Header currentView={view} onViewChange={setView} />
+      <Header
+        mode={mode}
+        onModeChange={setMode}
+        view={view}
+        onViewChange={setView}
+        label={mode === 'live' ? 'LIVE RUN' : payload?.label ?? null}
+        status={status}
+        onRefresh={refresh}
+        refreshing={refreshing}
+      />
 
-      {/* Main dashboard content */}
       <main className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
-        {view === 'summary' ? (
-          <SummaryDashboard state={state} />
+        {mode === 'live' ? (
+          <LiveRunPanel />
+        ) : status === 'unavailable' ? (
+          <div className="panel px-4 py-10 text-center space-y-2">
+            <p className="text-sm font-mono text-destructive">API unavailable — no artifacts to display.</p>
+            <p className="text-[11px] font-mono text-muted">
+              Start the backend from the repo root: <code>uv run uvicorn apps.api.server:app --port 8000</code>
+            </p>
+          </div>
+        ) : status === 'loading' && !payload ? (
+          <div className="panel px-4 py-10 text-center text-sm font-mono text-muted">
+            Loading captured artifacts…
+          </div>
+        ) : view === 'summary' ? (
+          <SummaryDashboard payload={payload} />
         ) : (
           <>
-            {/* Row 1: Pipeline + Switchboard */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <PipelinePanel stages={state.pipeline} />
-              <ProviderSwitchboard providers={state.providers} />
+              <PipelinePanel trajectory={trajectory} telemetry={telemetry} />
+              <ProviderSwitchboard telemetry={telemetry} />
             </div>
 
-            {/* Row 2: Contract Gate (half width on large) + Telemetry Truth */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <div className="lg:col-span-1">
-                <ContractGate policies={state.policies} />
+                <ContractGate telemetry={telemetry} />
               </div>
               <div className="lg:col-span-2">
-                <TelemetryTruth metrics={state.telemetry} />
+                <TelemetryTruth telemetry={telemetry} />
               </div>
             </div>
 
-            {/* Row 3: Model Comparison — full width */}
-            <ModelComparison models={state.models} />
+            <ModelComparison telemetry={telemetry} />
 
-            {/* Row 4: Trajectory + AMD Proof */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <div className="lg:col-span-2">
-                <TrajectoryReplay steps={state.trajectory} />
+                <TrajectoryReplay rows={trajectory ?? []} label={replayLabel} />
               </div>
               <div className="lg:col-span-1">
-                <AMDProof measurements={state.amdMeasurements} />
+                {payload && (
+                  <AMDProof
+                    probe={payload.runtime_probe}
+                    provenance={payload.provenance.runtime_probe}
+                    amd={payload.amd}
+                    telemetry={telemetry}
+                  />
+                )}
               </div>
             </div>
           </>
         )}
       </main>
 
-      {/* Status bar */}
-      <StatusBar state={state} />
+      <StatusBar payload={payload} status={status} lastRefresh={lastRefresh} />
     </div>
   );
 }

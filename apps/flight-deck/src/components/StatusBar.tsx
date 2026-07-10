@@ -1,46 +1,63 @@
-import { Terminal, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
-import type { FlightDeckState } from '../types';
+import { Terminal, Database, Clock } from 'lucide-react';
+import type { ConnectionStatus, DashboardPayload } from '../types';
 
-export default function StatusBar({ state }: { state: FlightDeckState }) {
-  const onlineCount = state.providers.filter(p => p.status === 'online').length;
-  const degradedCount = state.providers.filter(p => p.status === 'degraded').length;
-  const downCount = state.providers.filter(p => p.status === 'down').length;
+interface StatusBarProps {
+  payload: DashboardPayload | null;
+  status: ConnectionStatus;
+  lastRefresh: Date | null;
+}
 
+function originChip(name: string, origin: string | undefined) {
+  const color =
+    origin === 'artifacts' ? 'text-accent' : origin === 'sample' ? 'text-warning' : 'text-muted';
   return (
-    <footer className="flex items-center justify-between px-4 py-1.5 bg-surface border-t border-border text-[10px] font-mono text-muted">
-      <div className="flex items-center gap-3">
+    <span className="flex items-center gap-1">
+      <span className="text-muted">{name}:</span>
+      <span className={color}>{origin ?? 'not_available'}</span>
+    </span>
+  );
+}
+
+export default function StatusBar({ payload, status, lastRefresh }: StatusBarProps) {
+  const prov = payload?.provenance;
+  const highDrift = payload?.telemetry?.routing.high_drift_categories.length ?? 0;
+  return (
+    <footer className="flex items-center justify-between px-4 py-1.5 bg-surface border-t border-border text-[10px] font-mono text-muted flex-wrap gap-2">
+      <div className="flex items-center gap-3 flex-wrap">
         <span className="flex items-center gap-1">
           <Terminal className="w-3 h-3 text-accent" />
-          <span>kaaval-flight-deck@2.4.1</span>
+          <span>kaaval-flight-deck</span>
         </span>
         <span className="text-border">|</span>
         <span className="flex items-center gap-1">
-          <Wifi className="w-3 h-3 text-success" />
-          <span className="text-success">{onlineCount} online</span>
+          <Database className="w-3 h-3" />
+          {prov ? (
+            <span className="flex items-center gap-2">
+              {originChip('telemetry', prov.telemetry.origin)}
+              {originChip('trajectory', prov.trajectory.origin)}
+              {originChip('probe', prov.runtime_probe.origin)}
+            </span>
+          ) : (
+            <span>no artifacts loaded</span>
+          )}
         </span>
-        {degradedCount > 0 && (
+        {highDrift > 0 && (
           <>
             <span className="text-border">|</span>
-            <span className="flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3 text-warning" />
-              <span className="text-warning">{degradedCount} degraded</span>
-            </span>
-          </>
-        )}
-        {downCount > 0 && (
-          <>
-            <span className="text-border">|</span>
-            <span className="flex items-center gap-1">
-              <WifiOff className="w-3 h-3 text-destructive" />
-              <span className="text-destructive">{downCount} down</span>
-            </span>
+            <span className="text-warning">{highDrift} high-drift categor{highDrift === 1 ? 'y' : 'ies'}</span>
           </>
         )}
       </div>
       <div className="flex items-center gap-3">
-        <span>Last sync: {new Date().toLocaleTimeString('en-GB', { hour12: false })}</span>
+        <span className="flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          last refresh:{' '}
+          {lastRefresh ? lastRefresh.toLocaleTimeString('en-GB', { hour12: false }) : '—'}
+        </span>
         <span className="text-border">|</span>
-        <span>Alerts: <span className={state.activeAlerts > 0 ? 'text-warning' : 'text-success'}>{state.activeAlerts}</span></span>
+        <span className={status === 'connected' ? 'text-success' : status === 'stale' ? 'text-warning' : status === 'loading' ? 'text-muted' : 'text-destructive'}>
+          {status}
+        </span>
       </div>
     </footer>
   );

@@ -95,7 +95,8 @@ def run_live_demo(
     )
 
 
-def _telemetry_for(demo: LiveDemoResult) -> TelemetrySummary:
+def telemetry_for(demo: LiveDemoResult) -> TelemetrySummary:
+    """Telemetry truth summary for one live demo run (public API surface)."""
     report = EvalRunReport(
         run_id=f"live-{demo.case_id}",
         n_cases=1,
@@ -175,7 +176,7 @@ def export_live_demo_artifacts(
     """Write telemetry JSON, trajectory JSON, and a markdown summary."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    telemetry = _telemetry_for(demo)
+    telemetry = telemetry_for(demo)
 
     telemetry_path = out_dir / "demo-live-telemetry.json"
     telemetry_path.write_text(telemetry.model_dump_json(indent=2) + "\n", "utf-8")

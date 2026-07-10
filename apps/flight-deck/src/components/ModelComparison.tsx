@@ -1,151 +1,94 @@
-import { useState, Fragment } from 'react';
-import { BarChart3, TrendingUp, TrendingDown, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import type { ModelEntry } from '../types';
+import { BarChart3 } from 'lucide-react';
+import type { TelemetrySummary } from '../types';
+import { NotAvailable, SourceChip, ms, pct } from './Tags';
 
-function formatCost(c: number): string {
-  if (c < 0.001) return `$${(c * 1000).toFixed(1)}/K`;
-  return `$${c.toFixed(3)}`;
+/* Local tier vs remote escalation tier, from captured measurements only.
+   A side with no captured attempts renders as not available — never as a
+   plausible default. No accuracy or hallucination columns: those are not
+   measured by this system. */
+
+interface TierStats {
+  provider: string;
+  modelId: string;
+  attempts: number;
+  verifiedRate: number;
+  meanLatencyMs: number;
+  totalTokens: number;
+  costUsd: number;
 }
 
-function formatSeconds(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
+function tierStats(telemetry: TelemetrySummary, tier: 'local' | 'remote'): TierStats | null {
+  const attempts = telemetry.attempts_detail.filter((a) => a.tier === tier);
+  if (attempts.length === 0) return null;
+  const first = attempts[0];
+  return {
+    provider: first.provider,
+    modelId: first.model_id,
+    attempts: attempts.length,
+    verifiedRate: attempts.filter((a) => a.verifier_passed).length / attempts.length,
+    meanLatencyMs: attempts.reduce((s, a) => s + a.latency_ms, 0) / attempts.length,
+    totalTokens: attempts.reduce((s, a) => s + a.total_tokens, 0),
+    costUsd: attempts.reduce((s, a) => s + a.cost_usd, 0),
+  };
 }
 
-export default function ModelComparison({ models }: { models: ModelEntry[] }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
+function TierColumn({ title, stats }: { title: string; stats: TierStats | null }) {
+  return (
+    <div className="flex-1 min-w-[220px] px-3 py-2 rounded border border-border/60 bg-surface/40">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted">{title}</span>
+        {stats ? <SourceChip tag="measured" /> : <SourceChip tag="not_available" />}
+      </div>
+      {stats ? (
+        <div className="space-y-1 text-[10px] font-mono">
+          <div className="flex justify-between"><span className="text-muted">provider / model</span><span className="text-foreground truncate ml-2">{stats.provider} · {stats.modelId}</span></div>
+          <div className="flex justify-between"><span className="text-muted">attempts</span><span className="text-foreground tabular-nums">{stats.attempts}</span></div>
+          <div className="flex justify-between"><span className="text-muted">Layer-1 verified rate</span><span className="text-foreground tabular-nums">{pct(stats.verifiedRate)}</span></div>
+          <div className="flex justify-between"><span className="text-muted">mean latency</span><span className="text-foreground tabular-nums">{ms(stats.meanLatencyMs)}</span></div>
+          <div className="flex justify-between"><span className="text-muted">total tokens</span><span className="text-foreground tabular-nums">{stats.totalTokens}</span></div>
+          <div className="flex justify-between">
+            <span className="text-muted">cost (configured pricing)</span>
+            <span className="text-foreground tabular-nums">${stats.costUsd.toFixed(4)}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="py-4 text-center">
+          <NotAvailable note="no captured attempts for this tier in the loaded artifact" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ModelComparison({ telemetry }: { telemetry: TelemetrySummary | null }) {
+  const local = telemetry ? tierStats(telemetry, 'local') : null;
+  const remote = telemetry ? tierStats(telemetry, 'remote') : null;
 
   return (
     <div className="panel panel-sweep">
       <div className="panel-header">
-        <span className="panel-title">Model Comparison</span>
-        <span className="text-[10px] font-mono text-muted">{models.filter(m => m.status === 'active').length} active</span>
+        <span className="panel-title flex items-center gap-1.5">
+          <BarChart3 className="w-3 h-3 text-accent" />
+          Tier Comparison
+        </span>
+        <span className="text-[10px] font-mono text-muted">
+          local tier vs escalation tier · captured measurements only
+        </span>
       </div>
-      <div className="panel-body overflow-x-auto">
-        {models.length === 0 ? (
-          <div className="py-6 text-center text-muted text-xs">
-            No models loaded. Connect a provider to start benchmarking.
-          </div>
+      <div className="panel-body">
+        {!telemetry ? (
+          <div className="py-6 text-center text-muted text-xs">No telemetry artifact loaded.</div>
         ) : (
-          <table className="w-full text-[10px] font-mono">
-            <thead>
-              <tr className="text-muted border-b border-border">
-                <th className="text-left py-1.5 pr-2 font-semibold">Model</th>
-                <th className="text-right px-1.5 py-1.5 font-semibold">P50</th>
-                <th className="text-right px-1.5 py-1.5 font-semibold">P95</th>
-                <th className="text-right px-1.5 py-1.5 font-semibold">Throughput</th>
-                <th className="text-right px-1.5 py-1.5 font-semibold">Cost</th>
-                <th className="text-right px-1.5 py-1.5 font-semibold">Accuracy</th>
-                <th className="text-right px-1.5 py-1.5 font-semibold">Hallucination</th>
-                <th className="text-right pl-1.5 py-1.5 font-semibold">Status</th>
-                <th className="w-5" />
-              </tr>
-            </thead>
-            <tbody>
-              {models.map((m) => {
-                const isExpanded = expanded === m.id;
-                return (
-                  <Fragment key={m.id}>
-                    <tr
-                      onClick={() => setExpanded(isExpanded ? null : m.id)}
-                      className="border-b border-border/50 hover:bg-elevated/50 transition-colors duration-150 cursor-pointer select-none"
-                    >
-                      <td className="py-1.5 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <BarChart3 className="w-3 h-3 text-accent flex-shrink-0" />
-                          <span className="text-foreground font-medium">{m.name}</span>
-                          <span className="text-muted ml-0.5">({m.provider})</span>
-                        </div>
-                      </td>
-                      <td className="text-right px-1.5 py-1.5 tabular-nums text-foreground">{m.metrics.latencyP50}ms</td>
-                      <td className="text-right px-1.5 py-1.5 tabular-nums text-muted">{m.metrics.latencyP95}ms</td>
-                      <td className="text-right px-1.5 py-1.5 tabular-nums text-foreground">{m.metrics.throughput}/s</td>
-                      <td className="text-right px-1.5 py-1.5 tabular-nums text-foreground">{formatCost(m.metrics.costPerToken)}</td>
-                      <td className="text-right px-1.5 py-1.5 tabular-nums">
-                        <span className={m.metrics.accuracy >= 0.95 ? 'text-success' : m.metrics.accuracy >= 0.90 ? 'text-warning' : 'text-destructive'}>
-                          {(m.metrics.accuracy * 100).toFixed(0)}%
-                        </span>
-                      </td>
-                      <td className="text-right px-1.5 py-1.5 tabular-nums">
-                        <span className="flex items-center justify-end gap-0.5">
-                          {m.metrics.hallucinationRate < 0.02 ? (
-                            <TrendingDown className="w-2.5 h-2.5 text-success" />
-                          ) : (
-                            <TrendingUp className="w-2.5 h-2.5 text-warning" />
-                          )}
-                          {(m.metrics.hallucinationRate * 100).toFixed(1)}%
-                        </span>
-                      </td>
-                      <td className="text-right pl-1.5 py-1.5">
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase ${
-                          m.status === 'active' ? 'bg-success/10 text-success' :
-                          m.status === 'staging' ? 'bg-warning/10 text-warning' :
-                          'bg-muted/10 text-muted'
-                        }`}>
-                          {m.status}
-                        </span>
-                      </td>
-                      <td className="text-right pl-1 py-1.5">
-                        <span className="text-muted">
-                          {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                        </span>
-                      </td>
-                    </tr>
-
-                    {/* Expanded detail — sibling row */}
-                    {isExpanded && (
-                      <tr>
-                        <td colSpan={9} className="p-0 border-b border-border/50">
-                          <div className="mx-2 mb-1.5 px-2 py-1.5 rounded bg-elevated border border-border/50 text-[10px] font-mono animate-[metric-up_0.2s_ease-out]">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                              <div className="space-y-0.5">
-                                <span className="text-muted text-[9px] uppercase tracking-wider">Latency</span>
-                                <div className="text-foreground tabular-nums">
-                                  <span className="text-muted">P50: </span>{m.metrics.latencyP50}ms
-                                  <span className="text-muted ml-1.5">P95: </span>{formatSeconds(m.metrics.latencyP95)}
-                                </div>
-                              </div>
-                              <div className="space-y-0.5">
-                                <span className="text-muted text-[9px] uppercase tracking-wider">Throughput</span>
-                                <div className="text-foreground tabular-nums">{m.metrics.throughput} req/s</div>
-                              </div>
-                              <div className="space-y-0.5">
-                                <span className="text-muted text-[9px] uppercase tracking-wider">Cost</span>
-                                <div className="text-foreground tabular-nums">{formatCost(m.metrics.costPerToken)} per token</div>
-                              </div>
-                              <div className="space-y-0.5">
-                                <span className="text-muted text-[9px] uppercase tracking-wider">Quality</span>
-                                <div className="text-foreground tabular-nums flex items-center gap-1.5">
-                                  <span>Accuracy: {(m.metrics.accuracy * 100).toFixed(0)}%</span>
-                                  <span className="text-muted">|</span>
-                                  <span className={m.metrics.hallucinationRate < 0.02 ? 'text-success' : 'text-warning'}>
-                                    Hall: {(m.metrics.hallucinationRate * 100).toFixed(1)}%
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            {m.status === 'staging' && (
-                              <div className="mt-1.5 pt-1.5 border-t border-border/30 flex items-center gap-1 text-warning">
-                                <AlertTriangle className="w-2.5 h-2.5 flex-shrink-0" />
-                                <span>Staging — not yet promoted to production. Monitor accuracy before release.</span>
-                              </div>
-                            )}
-                            {m.status === 'active' && m.metrics.hallucinationRate >= 0.025 && (
-                              <div className="mt-1.5 pt-1.5 border-t border-border/30 flex items-center gap-1 text-warning">
-                                <AlertTriangle className="w-2.5 h-2.5 flex-shrink-0" />
-                                <span>Hallucination rate above 2.5% — consider evaluation or fallback.</span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <TierColumn title="Local tier (Gemma-first)" stats={local} />
+            <TierColumn title="Remote tier (Fireworks escalation)" stats={remote} />
+          </div>
         )}
+        <p className="pt-2 text-[9px] font-mono text-muted leading-relaxed">
+          Quality here means Layer-1 contract verification outcomes. This system does not
+          measure accuracy or hallucination rates; semantic risk is estimated separately by
+          the calibrated, sampled Layer 3 audit.
+        </p>
       </div>
     </div>
   );

@@ -1,132 +1,150 @@
 import { useState } from 'react';
-import { Wifi, AlertTriangle, WifiOff, Ban, Activity, ChevronDown, ChevronRight } from 'lucide-react';
-import type { Provider, ProviderStatus } from '../types';
+import { Server, ChevronDown, ChevronRight, Activity } from 'lucide-react';
+import type { TelemetrySummary } from '../types';
+import { NotAvailable, SourceChip, ms, pct } from './Tags';
 
-const statusIcon = (status: ProviderStatus) => {
-  switch (status) {
-    case 'online': return <Wifi className="w-3 h-3 text-success" />;
-    case 'degraded': return <AlertTriangle className="w-3 h-3 text-warning" />;
-    case 'down': return <WifiOff className="w-3 h-3 text-destructive" />;
-    case 'disabled': return <Ban className="w-3 h-3 text-muted" />;
+/* Providers derive from telemetry attempts — only tiers that actually served
+   requests appear, plus the configured runtime profile when present.
+   No invented health, RPM, quota, or error-rate numbers. */
+
+interface ProviderRow {
+  key: string;
+  provider: string;
+  modelId: string;
+  tier: string;
+  attempts: number;
+  verifiedRate: number;
+  meanLatencyMs: number;
+  totalCostUsd: number;
+}
+
+function deriveProviders(telemetry: TelemetrySummary): ProviderRow[] {
+  const groups = new Map<string, ProviderRow & { passed: number; latencySum: number }>();
+  for (const a of telemetry.attempts_detail) {
+    const key = `${a.provider}·${a.model_id}·${a.tier}`;
+    const g = groups.get(key) ?? {
+      key,
+      provider: a.provider,
+      modelId: a.model_id,
+      tier: a.tier,
+      attempts: 0,
+      passed: 0,
+      latencySum: 0,
+      verifiedRate: 0,
+      meanLatencyMs: 0,
+      totalCostUsd: 0,
+    };
+    g.attempts += 1;
+    g.passed += a.verifier_passed ? 1 : 0;
+    g.latencySum += a.latency_ms;
+    g.totalCostUsd += a.cost_usd;
+    groups.set(key, g);
   }
-};
+  return [...groups.values()].map((g) => ({
+    ...g,
+    verifiedRate: g.attempts ? g.passed / g.attempts : 0,
+    meanLatencyMs: g.attempts ? g.latencySum / g.attempts : 0,
+  }));
+}
 
-const statusDotClass = (status: ProviderStatus) => {
-  switch (status) {
-    case 'online': return 'status-dot--online';
-    case 'degraded': return 'status-dot--degraded';
-    case 'down': return 'status-dot--down';
-    case 'disabled': return 'status-dot--disabled';
-  }
-};
-
-export default function ProviderSwitchboard({ providers }: { providers: Provider[] }) {
+export default function ProviderSwitchboard({ telemetry }: { telemetry: TelemetrySummary | null }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const providers = telemetry ? deriveProviders(telemetry) : [];
+  const profile = telemetry?.runtime.profile ?? null;
 
   return (
     <div className="panel panel-sweep">
       <div className="panel-header">
         <span className="panel-title">Provider Switchboard</span>
         <span className="text-[10px] font-mono text-muted">
-          {providers.filter(p => p.status === 'online').length}/{providers.filter(p => p.status !== 'disabled').length} active
+          {providers.length} provider{providers.length === 1 ? '' : 's'} in this run
         </span>
       </div>
       <div className="panel-body space-y-1.5">
         {providers.length === 0 ? (
           <div className="py-6 text-center text-muted text-xs">
-            No providers configured. Add API keys in Settings to get started.
+            No provider attempts in the loaded artifact.
           </div>
         ) : (
           providers.map((p) => {
-            const isExpanded = expanded === p.id;
+            const isExpanded = expanded === p.key;
             return (
-              <div key={p.id}>
+              <div key={p.key}>
                 <div
-                  onClick={() => setExpanded(isExpanded ? null : p.id)}
-                  className={`flex items-center gap-2 px-2 py-1.5 rounded border transition-colors duration-200 cursor-pointer select-none active:scale-[0.99] ${
-                    p.status === 'disabled'
-                      ? 'border-border/50 opacity-50'
-                      : p.status === 'degraded'
-                      ? 'border-warning/20 bg-warning/5'
-                      : 'border-border hover:border-accent/20'
-                  }`}
+                  onClick={() => setExpanded(isExpanded ? null : p.key)}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded border border-border hover:border-accent/20 transition-colors duration-200 cursor-pointer select-none active:scale-[0.99]"
                 >
-                  {/* Status */}
-                  <span className="flex-shrink-0">{statusIcon(p.status)}</span>
-
-                  {/* Name */}
-                  <span className={`font-mono text-[11px] flex-1 truncate ${p.status === 'disabled' ? 'text-muted' : 'text-foreground'}`}>
-                    {p.name}
+                  <Server className="w-3 h-3 text-accent flex-shrink-0" />
+                  <span className="font-mono text-[11px] text-foreground truncate">
+                    {p.provider}
                   </span>
-
-                  {/* Metrics */}
-                  <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono tabular-nums">
-                    <span className="flex items-center gap-0.5 text-muted">
+                  <span className="font-mono text-[10px] text-muted truncate">{p.modelId}</span>
+                  <span className={`px-1 py-0.5 rounded text-[9px] font-mono uppercase ${p.tier === 'local' ? 'bg-accent/10 text-accent' : 'bg-warning/10 text-warning'}`}>
+                    {p.tier}
+                  </span>
+                  <div className="ml-auto hidden sm:flex items-center gap-2 text-[10px] font-mono tabular-nums text-muted">
+                    <span>{p.attempts} attempt{p.attempts === 1 ? '' : 's'}</span>
+                    <span className="text-border">|</span>
+                    <span className="flex items-center gap-0.5">
                       <Activity className="w-2.5 h-2.5" />
-                      {p.latencyMs}ms
-                    </span>
-                    <span className="text-muted">|</span>
-                    <span className="text-muted">{p.requestsPerMin}/min</span>
-                    <span className="text-muted">|</span>
-                    <span className={
-                      p.errorRate > 1 ? 'text-destructive' : p.errorRate > 0.5 ? 'text-warning' : 'text-muted'
-                    }>
-                      {p.errorRate}% err
+                      {ms(p.meanLatencyMs)} mean
                     </span>
                   </div>
-
-                  {/* Quota bar */}
-                  <div className="w-16 bg-elevated rounded-full h-1.5 overflow-hidden flex-shrink-0">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        p.quotaUsed > 90 ? 'bg-destructive' : p.quotaUsed > 70 ? 'bg-warning' : 'bg-accent'
-                      }`}
-                      style={{ width: `${p.quotaUsed}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] font-mono text-muted tabular-nums w-8 text-right">{p.quotaUsed}%</span>
-
-                  {/* Expand icon */}
+                  <SourceChip tag="measured" />
                   <span className="text-muted flex-shrink-0">
                     {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                   </span>
                 </div>
-
-                {/* Expanded detail */}
                 {isExpanded && (
                   <div className="mx-2 mt-1 mb-1.5 px-2 py-1.5 rounded bg-elevated border border-border/50 text-[10px] font-mono space-y-1 animate-[metric-up_0.2s_ease-out]">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted">Status</span>
-                      <span className={`text-foreground capitalize ${p.status === 'disabled' ? 'text-muted' : ''}`}>
-                        {p.status}
-                      </span>
+                      <span className="text-muted">Layer-1 verified rate</span>
+                      <span className="text-foreground tabular-nums">{pct(p.verifiedRate)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted">Quota</span>
-                      <span className="text-foreground tabular-nums">{p.quotaUsed} / {p.quotaLimit} req/min</span>
+                      <span className="text-muted">Mean latency (measured)</span>
+                      <span className="text-foreground tabular-nums">{ms(p.meanLatencyMs)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted">Last checked</span>
-                      <span className="text-foreground tabular-nums">
-                        {new Date(p.lastChecked).toLocaleTimeString('en-GB', { hour12: false })}
-                      </span>
+                      <span className="text-muted">Cost (configured pricing)</span>
+                      <span className="text-foreground tabular-nums">${p.totalCostUsd.toFixed(4)}</span>
                     </div>
-                    {p.status === 'degraded' && (
-                      <div className="pt-1 border-t border-border/30 text-warning flex items-center gap-1">
-                        <AlertTriangle className="w-2.5 h-2.5 flex-shrink-0" />
-                        <span>Latency exceeds threshold — failover may trigger</span>
-                      </div>
-                    )}
-                    {p.status === 'disabled' && (
-                      <div className="pt-1 border-t border-border/30 text-muted italic">
-                        Provider disabled in settings. Enable to route traffic.
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
             );
           })
+        )}
+
+        {/* Configured local endpoint from the runtime profile */}
+        <div className="px-2 py-1.5 rounded border border-dashed border-border/60 text-[10px] font-mono">
+          <div className="flex items-center gap-2">
+            <span className="text-muted">Local endpoint:</span>
+            {profile ? (
+              <>
+                <span className="text-foreground">
+                  {profile.endpoint_type || 'unknown'}
+                  {profile.base_url_host ? ` @ ${profile.base_url_host}` : ''}
+                </span>
+                <span className="text-muted">· {profile.model_family ?? 'model'} · target {profile.hardware_target}</span>
+                <SourceChip tag="configured" />
+              </>
+            ) : (
+              <>
+                <span className="text-foreground">mock (deterministic stand-in)</span>
+                <SourceChip tag={telemetry ? 'planned' : 'not_available'} />
+                {telemetry && (
+                  <span className="text-muted">Gemma via ROCm + vLLM is the AMD deployment target</span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        {telemetry && !providers.some((p) => p.provider === 'fireworks') && (
+          <div className="px-2 text-[9px] font-mono text-muted">
+            Fireworks escalation tier: no attempts in this run.{' '}
+            <NotAvailable note="shown only when escalations exist or the tier is configured" />
+          </div>
         )}
       </div>
     </div>

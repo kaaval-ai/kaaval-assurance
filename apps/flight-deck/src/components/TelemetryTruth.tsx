@@ -1,265 +1,186 @@
-import { useState, useEffect, useRef } from 'react';
-import { Activity, Wifi, Timer, Zap, ArrowUp, ArrowDown, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import type { TelemetryMetric } from '../types';
+import { useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import type { TelemetrySummary } from '../types';
+import { NotAvailable, SourceChip, ms, pct, usd } from './Tags';
 
-interface Point {
-  value: number;
-  timestamp: number;
-}
+/* Every value here is a stored artifact field with a source tag. One captured
+   run yields point statistics — rendered as stats, never as a pretend time
+   series, never with randomized sparklines or invented ± bands. */
 
-function Sparkline({ data, color, height = 28 }: { data: Point[]; color: string; height?: number }) {
-  const width = 120;
-  if (data.length < 2) {
-    return (
-      <div className="flex items-center justify-center text-muted text-[9px] font-mono" style={{ width, height }}>
-        awaiting data...
-      </div>
-    );
-  }
-  const values = data.map(p => p.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const points = data.map((p, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - ((p.value - min) / range) * (height - 4) - 2;
-    return `${x},${y}`;
-  });
-  const d = `M${points.join(' L')}`;
-  return (
-    <svg width={width} height={height} className="flex-shrink-0">
-      <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-const metricDescriptions: Record<string, { what: string; why: string }> = {
-  'Latency': {
-    what: 'Average response time for inference requests across all providers and models.',
-    why: 'High latency degrades user experience and may indicate provider congestion or oversized prompts. SLA threshold: 500ms P95.',
+const STAT_NOTES: Record<string, { what: string; why: string }> = {
+  'Latency P50 / P95': {
+    what: 'Request-level latency percentiles across the captured run (sum of attempt latencies per request).',
+    why: 'Single-run point statistics — a time series appears only when multiple runs are captured.',
   },
-  'Throughput': {
-    what: 'Total requests processed in the current assurance run.',
-    why: 'Throughput determines system capacity. Drops may indicate provider throttling, quota exhaustion, or network bottlenecks.',
+  'Requests / attempts': {
+    what: 'Requests in the run and total model attempts (escalations add attempts).',
+    why: 'The gap between the two is the escalation workload the local tier could not absorb.',
   },
-  'Error Rate': {
-    what: 'Percentage of requests that failed Layer-1 verification and escalated to the remote tier.',
-    why: 'Sustained escalation above 20% indicates the local open-weight model is drifting or incapable of the task.',
+  'Local verified rate': {
+    what: 'Requests resolved by the local tier and verified by Layer 1, with no escalation.',
+    why: 'This is the fraction of traffic the cheap open-weight tier fully earned.',
   },
-  'Cost': {
-    what: 'Total USD spent on inference for the current run, including remote escalation and audits.',
-    why: 'Cost efficiency is critical. The local Gemma tier minimizes spend, while the remote tier ensures quality.',
+  'Final verified rate': {
+    what: 'Requests whose final attempt passed Layer 1 contract verification.',
+    why: 'The quality floor after escalation — what actually reached users verified.',
+  },
+  'Escalation rate': {
+    what: 'Requests escalated to the remote tier after a Layer-1 failure. Not an error rate: escalation is the designed recovery path.',
+    why: 'Sustained escalation is a cost signal and feeds Layer-2 drift tracking.',
+  },
+  'Pre-route remote rate': {
+    what: 'Requests routed straight to the remote tier by drift policy, skipping the local attempt.',
+    why: 'Visible proof of the closed loop: high-drift categories stop burning local attempts.',
+  },
+  'Cost per verified answer': {
+    what: 'Generation cost divided by verified requests, using configured per-token pricing.',
+    why: 'The economic headline: what one provably-contract-satisfying answer costs.',
+  },
+  'Calibration FP rate': {
+    what: 'Fraction of known-good gold answers the audit challenger wrongly flagged.',
+    why: 'The gate that keeps an over-eager critic from poisoning routing signals.',
   },
 };
 
-function MetricCard({ metric, isExpanded, onToggle, chartMode }: { metric: TelemetryMetric; isExpanded: boolean; onToggle: () => void; chartMode: 'line' | 'stats' }) {
-  const [history, setHistory] = useState<Point[]>([]);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    const now = Date.now();
-    setHistory([{ value: metric.value, timestamp: now }]);
-
-    intervalRef.current = setInterval(() => {
-      setHistory(prev => {
-        const next = [...prev, { value: metric.value + (Math.random() - 0.5) * metric.value * 0.1, timestamp: Date.now() }];
-        return next.slice(-20);
-      });
-    }, 1500);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [metric.value, metric.label]);
-
-  const last = history.length > 0 ? history[history.length - 1] : null;
-  const prev = history.length > 1 ? history[history.length - 2] : null;
-  const trend = last && prev ? (last.value >= prev.value ? 'up' : 'down') : 'neutral';
-  const desc = metricDescriptions[metric.label];
-
+function Stat({
+  label,
+  value,
+  source,
+  expanded,
+  onToggle,
+}: {
+  label: string;
+  value: string;
+  source: 'measured' | 'configured' | 'not_available' | 'planned';
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const note = STAT_NOTES[label];
   return (
     <div>
       <div
         onClick={onToggle}
         className="flex items-center gap-2 px-2 py-1.5 rounded border border-border/50 hover:bg-elevated/50 transition-colors duration-200 cursor-pointer select-none active:scale-[0.99]"
       >
-        <div className="flex-shrink-0 space-y-0.5 min-w-0 flex-1">
-          <div className="flex items-center gap-1">
-            <span className="text-muted text-[9px] uppercase tracking-wider font-mono">{metric.label}</span>
-            {trend === 'up' ? (
-              <ArrowUp className="w-2.5 h-2.5 text-success" />
-            ) : trend === 'down' ? (
-              <ArrowDown className="w-2.5 h-2.5 text-destructive" />
-            ) : null}
-            {metric.alarm && (
-              <AlertTriangle className="w-2.5 h-2.5 text-destructive animate-pulse" />
-            )}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-foreground text-[10px] font-mono font-semibold tabular-nums">
-              {metric.unit === 'ms' ? `${metric.value.toFixed(0)}${metric.unit}` :
-               metric.unit === '%' ? `${metric.value.toFixed(1)}${metric.unit}` :
-               metric.unit === 'req/s' || metric.unit === 'req/run' ? `${metric.value.toFixed(0)} ${metric.unit}` :
-               metric.unit === '$' ? `${metric.unit}${metric.value.toFixed(4)}` :
-               `${metric.value.toFixed(2)}${metric.unit}`}
-            </span>
-            <span className="text-muted text-[9px] font-mono tabular-nums">
-              ±{(metric.value * 0.05).toFixed(metric.unit === '$' ? 4 : 1)}{metric.unit === '$' ? '' : metric.unit}
-            </span>
-          </div>
-        </div>
-        <div className="flex-shrink-0">
-          {chartMode === 'line' ? (
-            <Sparkline data={history} color="var(--color-accent)" />
-          ) : (
-            <div className="flex items-center gap-1.5 text-[9px] font-mono tabular-nums text-muted ml-auto">
-              <span className="px-1 py-0.5 rounded bg-elevated border border-border/30 leading-none">
-                min {metric.unit === 'ms' ? `${metric.min.toFixed(0)}` : metric.unit === '$' ? `$${metric.min.toFixed(4)}` : `${metric.min.toFixed(2)}`}
-              </span>
-              <span className="px-1 py-0.5 rounded bg-elevated border border-border/30 leading-none">
-                avg {metric.unit === 'ms' ? `${metric.avg.toFixed(0)}` : metric.unit === '$' ? `$${metric.avg.toFixed(4)}` : `${metric.avg.toFixed(2)}`}
-              </span>
-              <span className="px-1 py-0.5 rounded bg-elevated border border-border/30 leading-none">
-                max {metric.unit === 'ms' ? `${metric.max.toFixed(0)}` : metric.unit === '$' ? `$${metric.max.toFixed(4)}` : `${metric.max.toFixed(2)}`}
-              </span>
-            </div>
-          )}
-        </div>
-        <span className="text-muted flex-shrink-0 ml-1">
-          {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-        </span>
+        <span className="text-muted text-[9px] uppercase tracking-wider font-mono flex-1">{label}</span>
+        <span className="text-foreground text-[11px] font-mono font-semibold tabular-nums">{value}</span>
+        <SourceChip tag={source} />
+        <span className="text-muted">{expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</span>
       </div>
-
-      {/* Expanded detail */}
-      {isExpanded && (
-        <div className="mx-2 mt-1 mb-1.5 px-2 py-1.5 rounded bg-elevated border border-border/50 text-[10px] font-mono space-y-1.5 animate-[metric-up_0.2s_ease-out]">
-          {desc && (
-            <>
-              <div>
-                <span className="text-muted text-[9px] uppercase tracking-wider">What is this?</span>
-                <p className="text-foreground/80 mt-0.5 leading-relaxed">{desc.what}</p>
-              </div>
-              <div className="pt-1 border-t border-border/30">
-                <span className="text-muted text-[9px] uppercase tracking-wider">Why it matters</span>
-                <p className="text-foreground/80 mt-0.5 leading-relaxed">{desc.why}</p>
-              </div>
-            </>
-          )}
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-1 border-t border-border/30">
-            <div>
-              <span className="text-muted">Current</span>
-              <div className="text-foreground tabular-nums">
-                {metric.unit === 'ms' ? `${metric.value.toFixed(0)} ${metric.unit}` :
-                 metric.unit === '$' ? `$${metric.value.toFixed(4)}` :
-                 `${metric.value.toFixed(2)} ${metric.unit}`}
-              </div>
-            </div>
-            <div>
-              <span className="text-muted">Average</span>
-              <div className="text-foreground tabular-nums">
-                {metric.unit === 'ms' ? `${metric.avg.toFixed(0)} ${metric.unit}` :
-                 metric.unit === '$' ? `$${metric.avg.toFixed(4)}` :
-                 `${metric.avg.toFixed(2)} ${metric.unit}`}
-              </div>
-            </div>
-            <div>
-              <span className="text-muted">Min</span>
-              <div className="text-foreground tabular-nums">
-                {metric.unit === 'ms' ? `${metric.min.toFixed(0)} ${metric.unit}` :
-                 metric.unit === '$' ? `$${metric.min.toFixed(4)}` :
-                 `${metric.min.toFixed(2)} ${metric.unit}`}
-              </div>
-            </div>
-            <div>
-              <span className="text-muted">Max</span>
-              <div className="text-foreground tabular-nums">
-                {metric.unit === 'ms' ? `${metric.max.toFixed(0)} ${metric.unit}` :
-                 metric.unit === '$' ? `$${metric.max.toFixed(4)}` :
-                 `${metric.max.toFixed(2)} ${metric.unit}`}
-              </div>
-            </div>
-          </div>
-          {metric.alarm && (
-            <div className="pt-1 border-t border-border/30 flex items-start gap-1 text-destructive">
-              <AlertTriangle className="w-2.5 h-2.5 flex-shrink-0 mt-0.5" />
-              <span>{metric.label} has breached the alert threshold. Recommended action: investigate and apply mitigation.</span>
-            </div>
-          )}
+      {expanded && note && (
+        <div className="mx-2 mt-1 mb-1.5 px-2 py-1.5 rounded bg-elevated border border-border/50 text-[10px] font-mono space-y-1 animate-[metric-up_0.2s_ease-out]">
+          <p className="text-foreground/80 leading-relaxed">{note.what}</p>
+          <p className="text-muted leading-relaxed pt-1 border-t border-border/30">{note.why}</p>
         </div>
       )}
     </div>
   );
 }
 
-const iconMap: Record<string, React.ReactNode> = {
-  'latency': <Timer className="w-3 h-3" />,
-  'throughput': <Zap className="w-3 h-3" />,
-  'error': <Activity className="w-3 h-3" />,
-  'uptime': <Wifi className="w-3 h-3" />,
-  'cost': <span className="font-bold text-[10px] w-3 h-3 flex items-center justify-center">$</span>,
-};
+export default function TelemetryTruth({ telemetry }: { telemetry: TelemetrySummary | null }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [tab, setTab] = useState<'stats' | 'claims'>('stats');
 
-export default function TelemetryTruth({ metrics }: { metrics: TelemetryMetric[] }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [chartMode, setChartMode] = useState<'line' | 'stats'>('line');
+  if (!telemetry) {
+    return (
+      <div className="panel panel-sweep">
+        <div className="panel-header"><span className="panel-title">Telemetry Truth</span></div>
+        <div className="panel-body py-6 text-center text-muted text-xs">
+          No telemetry artifact loaded. <NotAvailable />
+        </div>
+      </div>
+    );
+  }
+
+  const m = telemetry;
+  const baseline = m.cost.remote_calls_avoided_rate;
+  const stats: { label: string; value: string; source: 'measured' | 'not_available' }[] = [
+    { label: 'Latency P50 / P95', value: `${ms(m.latency_ms_p50)} / ${ms(m.latency_ms_p95)}`, source: 'measured' },
+    { label: 'Requests / attempts', value: `${m.requests} / ${m.attempts}`, source: 'measured' },
+    { label: 'Local verified rate', value: pct(m.verification.local_verified_rate), source: 'measured' },
+    { label: 'Final verified rate', value: pct(m.verification.final_verified_rate), source: 'measured' },
+    { label: 'Escalation rate', value: pct(m.routing.escalation_rate), source: 'measured' },
+    { label: 'Pre-route remote rate', value: pct(m.routing.preroute_remote_rate), source: 'measured' },
+    { label: 'Cost per verified answer', value: usd(m.cost.cost_per_verified_answer_usd), source: 'measured' },
+    {
+      label: 'Remote calls avoided',
+      value: baseline === null ? 'n/a (no always-remote baseline)' : pct(baseline),
+      source: baseline === null ? 'not_available' : 'measured',
+    },
+    {
+      label: 'Calibration FP rate',
+      value:
+        m.audit.enabled && m.audit.calibration_fp_rate !== null
+          ? `${pct(m.audit.calibration_fp_rate)} (threshold ${pct(m.audit.calibration_threshold)})`
+          : 'no audit in this run',
+      source: m.audit.enabled && m.audit.calibration_fp_rate !== null ? 'measured' : 'not_available',
+    },
+    {
+      label: 'Audit sampled',
+      value: m.audit.enabled ? `${m.audit.sampled}/${m.audit.accepted_answers} accepted` : 'no audit in this run',
+      source: m.audit.enabled ? 'measured' : 'not_available',
+    },
+    {
+      label: 'High-drift categories',
+      value: m.routing.high_drift_categories.join(', ') || 'none',
+      source: 'measured',
+    },
+  ];
 
   return (
     <div className="panel panel-sweep">
       <div className="panel-header">
         <span className="panel-title">Telemetry Truth</span>
         <div className="flex items-center gap-2">
-          {/* Line ↔ Stats toggle */}
           <div className="flex items-center bg-elevated rounded border border-border p-0.5">
-            <button
-              onClick={() => setChartMode('line')}
-              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-medium transition-all duration-150 active:scale-95 ${
-                chartMode === 'line'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-muted hover:text-foreground'
-              }`}
-            >
-              Line
-            </button>
-            <button
-              onClick={() => setChartMode('stats')}
-              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-medium transition-all duration-150 active:scale-95 ${
-                chartMode === 'stats'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-muted hover:text-foreground'
-              }`}
-            >
-              Stats
-            </button>
+            {(['stats', 'claims'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-medium transition-all duration-150 active:scale-95 capitalize ${
+                  tab === t ? 'bg-accent text-white shadow-sm' : 'text-muted hover:text-foreground'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
           </div>
-          <span className="text-[10px] font-mono text-muted">
-            {metrics.filter(m => m.alarm).length > 0 ? (
-              <span className="text-destructive">{metrics.filter(m => m.alarm).length} alarms</span>
-            ) : (
-              <span className="text-success">all nominal</span>
-            )}
-            {' | '}{metrics.length} metrics
-          </span>
+          <span className="text-[10px] font-mono text-muted">single captured run · point statistics</span>
         </div>
       </div>
       <div className="panel-body space-y-1">
-        {metrics.length === 0 ? (
-          <div className="py-6 text-center text-muted text-xs">
-            No telemetry data yet. Run an inference to begin collecting metrics.
-          </div>
-        ) : (
-          metrics.map((m) => (
-            <div key={m.id} className="flex items-center gap-2">
-              <span className="flex-shrink-0 text-accent">{iconMap[m.icon] || <Activity className="w-3 h-3" />}</span>
-              <div className="flex-1 min-w-0">
-                <MetricCard
-                  metric={m}
-                  isExpanded={expandedId === m.id}
-                  onToggle={() => setExpandedId(expandedId === m.id ? null : m.id)}
-                  chartMode={chartMode}
-                />
-              </div>
-            </div>
+        {tab === 'stats' ? (
+          stats.map((s) => (
+            <Stat
+              key={s.label}
+              label={s.label}
+              value={s.value}
+              source={s.source}
+              expanded={expanded === s.label}
+              onToggle={() => setExpanded(expanded === s.label ? null : s.label)}
+            />
           ))
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[10px] font-mono">
+              <thead>
+                <tr className="text-muted border-b border-border">
+                  <th className="text-left py-1.5 pr-2 font-semibold">Claim</th>
+                  <th className="text-left px-1.5 py-1.5 font-semibold">Value</th>
+                  <th className="text-right pl-1.5 py-1.5 font-semibold">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {m.claims.map((c) => (
+                  <tr key={c.claim} className="border-b border-border/40">
+                    <td className="py-1.5 pr-2 text-foreground">{c.claim}</td>
+                    <td className="px-1.5 py-1.5 text-foreground/80">{c.value}</td>
+                    <td className="pl-1.5 py-1.5 text-right"><SourceChip tag={c.source} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

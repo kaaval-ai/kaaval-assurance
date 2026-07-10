@@ -1,0 +1,207 @@
+import { useState } from 'react';
+import { Radio, Loader2, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import type { LiveRunResponse } from '../types';
+import { startRun, ApiError } from '../api';
+import { CONTRACTS, SAMPLE_INPUTS } from '../mock/data';
+import TrajectoryReplay from './TrajectoryReplay';
+import TelemetryTruth from './TelemetryTruth';
+import { SourceChip } from './Tags';
+
+/* Live Assurance Run: drives the real pipeline through POST /api/runs.
+   Everything rendered after submission derives from the returned run —
+   never merged with sample or captured data. The request is synchronous;
+   the pending state says so honestly. */
+
+const FAILURE_MODES = ['none', 'missing_field', 'bad_enum', 'unparseable'] as const;
+
+export default function LiveRunPanel() {
+  const [contractId, setContractId] = useState(CONTRACTS[0].id);
+  const [taskInput, setTaskInput] = useState(SAMPLE_INPUTS[CONTRACTS[0].id] ?? '');
+  const [localProvider, setLocalProvider] = useState<'mock' | 'ollama' | 'vllm'>('mock');
+  const [remoteProvider, setRemoteProvider] = useState<'mock' | 'fireworks'>('mock');
+  const [failureMode, setFailureMode] = useState<string>('none');
+  const [confirmSpend, setConfirmSpend] = useState(false);
+  const [exportArtifacts, setExportArtifacts] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [run, setRun] = useState<LiveRunResponse | null>(null);
+
+  const selectContract = (id: string) => {
+    setContractId(id);
+    setTaskInput(SAMPLE_INPUTS[id] ?? '');
+  };
+
+  const submit = async () => {
+    setPending(true);
+    setError(null);
+    try {
+      const result = await startRun({
+        task_input: taskInput,
+        contract_id: contractId,
+        local_provider: localProvider,
+        remote_provider: remoteProvider,
+        confirm_spend: confirmSpend,
+        failure_mode: failureMode === 'none' ? null : failureMode,
+        export_artifacts: exportArtifacts,
+      });
+      setRun(result);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'request failed');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const selectCls =
+    'bg-elevated border border-border rounded px-2 py-1 text-[11px] font-mono text-foreground w-full';
+
+  return (
+    <div className="space-y-3">
+      <div className="panel panel-sweep">
+        <div className="panel-header">
+          <span className="panel-title flex items-center gap-1.5">
+            <Radio className="w-3 h-3 text-accent" />
+            Live Assurance Run
+          </span>
+          <span className="text-[10px] font-mono text-muted">
+            executes the real pipeline server-side · credentials never reach the browser
+          </span>
+        </div>
+        <div className="panel-body space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <label className="block text-[10px] font-mono text-muted space-y-1">
+              <span className="uppercase tracking-wider">Task contract</span>
+              <select className={selectCls} value={contractId} onChange={(e) => selectContract(e.target.value)}>
+                {CONTRACTS.map((c) => (
+                  <option key={c.id} value={c.id}>{c.label} — {c.id}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[10px] font-mono text-muted space-y-1">
+              <span className="uppercase tracking-wider">Failure injection (mock local only)</span>
+              <select
+                className={selectCls}
+                value={failureMode}
+                onChange={(e) => setFailureMode(e.target.value)}
+                disabled={localProvider !== 'mock'}
+              >
+                {FAILURE_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <label className="block text-[10px] font-mono text-muted space-y-1">
+            <span className="uppercase tracking-wider">Task input (synthetic sample; edit freely)</span>
+            <textarea
+              className={`${selectCls} min-h-[64px] resize-y`}
+              value={taskInput}
+              onChange={(e) => setTaskInput(e.target.value)}
+              maxLength={4000}
+            />
+          </label>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <label className="block text-[10px] font-mono text-muted space-y-1">
+              <span className="uppercase tracking-wider">Local provider</span>
+              <select className={selectCls} value={localProvider} onChange={(e) => { setLocalProvider(e.target.value as typeof localProvider); if (e.target.value !== 'mock') setFailureMode('none'); }}>
+                <option value="mock">mock — deterministic stand-in</option>
+                <option value="ollama">ollama — local OpenAI-compatible endpoint</option>
+                <option value="vllm">vllm — ROCm + vLLM endpoint (AMD target)</option>
+              </select>
+            </label>
+            <label className="block text-[10px] font-mono text-muted space-y-1">
+              <span className="uppercase tracking-wider">Remote provider</span>
+              <select className={selectCls} value={remoteProvider} onChange={(e) => setRemoteProvider(e.target.value as typeof remoteProvider)}>
+                <option value="mock">mock — no network</option>
+                <option value="fireworks">fireworks — spends API credits</option>
+              </select>
+            </label>
+          </div>
+
+          {remoteProvider === 'fireworks' && (
+            <label className="flex items-center gap-2 px-2 py-1.5 rounded border border-warning/40 bg-warning/5 text-[10px] font-mono text-warning cursor-pointer">
+              <input type="checkbox" checked={confirmSpend} onChange={(e) => setConfirmSpend(e.target.checked)} />
+              I confirm this run may spend Fireworks credits (server rejects the run otherwise)
+            </label>
+          )}
+
+          <label className="flex items-center gap-2 text-[10px] font-mono text-muted cursor-pointer">
+            <input type="checkbox" checked={exportArtifacts} onChange={(e) => setExportArtifacts(e.target.checked)} />
+            Export this run as captured-evidence artifacts (server-side artifacts/)
+          </label>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={submit}
+              disabled={pending || !taskInput.trim()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-accent text-white text-[11px] font-mono font-semibold hover:bg-accent/90 transition-colors disabled:opacity-50 active:scale-95"
+            >
+              {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Radio className="w-3.5 h-3.5" />}
+              {pending ? 'Executing pipeline (synchronous)…' : 'Run assurance pipeline'}
+            </button>
+            {error && (
+              <span className="flex items-center gap-1 text-[10px] font-mono text-destructive">
+                <AlertTriangle className="w-3 h-3" />
+                {error}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {run && (
+        <>
+          <div className="panel panel-sweep">
+            <div className="panel-header">
+              <span className="panel-title">Result — run {run.run_id}</span>
+              <span className="text-[10px] font-mono text-muted">{run.generated_at}</span>
+            </div>
+            <div className="panel-body space-y-2 text-[11px] font-mono">
+              <div className="flex items-center gap-2 flex-wrap">
+                {run.result.verified ? (
+                  <span className="flex items-center gap-1 text-success"><CheckCircle className="w-3.5 h-3.5" />Layer 1 verified</span>
+                ) : (
+                  <span className="flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" />NOT verified: {run.result.failures.join(', ')}</span>
+                )}
+                <span className="text-muted">·</span>
+                <span className="text-foreground">{run.result.attempts} attempt{run.result.attempts === 1 ? '' : 's'}</span>
+                <span className="text-muted">·</span>
+                <span className={run.result.escalated ? 'text-warning' : 'text-success'}>
+                  {run.result.escalated ? 'escalated to remote tier' : 'resolved locally'}
+                </span>
+                <span className="text-muted">·</span>
+                <span className="text-muted">{run.result.checks_run} deterministic checks</span>
+                <SourceChip tag="measured" />
+              </div>
+              <div className="text-[10px] text-muted">routing: {run.result.routing_reason}</div>
+              {run.result.answer ? (
+                <pre className="px-2 py-1.5 rounded bg-elevated border border-border/50 text-[10px] overflow-x-auto">
+                  {JSON.stringify(run.result.answer, null, 2)}
+                </pre>
+              ) : (
+                <pre className="px-2 py-1.5 rounded bg-elevated border border-destructive/30 text-[10px] overflow-x-auto text-destructive">
+                  {run.result.raw_text || 'no output'}
+                </pre>
+              )}
+              {run.artifacts_written.length > 0 && (
+                <div className="text-[10px] text-success">
+                  exported as captured evidence: {run.artifacts_written.join(', ')}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <TrajectoryReplay
+              rows={run.trajectory}
+              label="LIVE RUN"
+              escalationReason={run.result.escalated ? run.result.routing_reason : null}
+              autoPlay
+            />
+            <TelemetryTruth telemetry={run.telemetry} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

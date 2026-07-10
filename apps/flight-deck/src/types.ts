@@ -1,120 +1,251 @@
-/* ── Kaaval Assurance — Inference Flight Deck Types ── */
+/* ── Kaaval Assurance — Flight Deck domain types ──
+   These mirror the backend artifact schemas (TelemetrySummary, TrajectoryRow,
+   RuntimeProbeReport) and the /api/dashboard envelope. Nothing here models
+   invented concepts: every field corresponds to a stored artifact value. */
 
-/* ── Provider ── */
-export type ProviderStatus = 'online' | 'degraded' | 'down' | 'disabled';
+export type SourceTag = 'measured' | 'configured' | 'not_available' | 'planned';
 
-export interface Provider {
-  id: string;
-  name: string;
-  status: ProviderStatus;
-  latencyMs: number;
-  requestsPerMin: number;
-  errorRate: number;
-  quotaUsed: number;
-  quotaLimit: number;
-  lastChecked: string;
+export interface Claim {
+  claim: string;
+  value: string;
+  source: SourceTag;
+  field: string;
 }
 
-/* ── Pipeline Stage ── */
-export type StageStatus = 'running' | 'passed' | 'failed' | 'idle';
-
-export interface PipelineStage {
-  id: string;
-  label: string;
-  status: StageStatus;
-  durationMs: number;
-  logs: string[];
-}
-
-/* ── Contract Gate / Policy ── */
-export type PolicyStatus = 'pass' | 'warn' | 'fail' | 'pending';
-
-export interface Policy {
-  id: string;
-  name: string;
-  icon: string;
-  verifiers: string[];
-  status: PolicyStatus;
-  lastVerified: string;
-}
-
-/* ── Model Comparison ── */
-export interface ModelMetrics {
-  latencyP50: number;
-  latencyP95: number;
-  throughput: number;
-  costPerToken: number;
-  accuracy: number;
-  hallucinationRate: number;
-}
-
-export interface ModelEntry {
-  id: string;
-  name: string;
+export interface AttemptDetail {
+  request_id: string;
+  contract_id: string;
+  category: string;
   provider: string;
-  metrics: ModelMetrics;
-  status: 'active' | 'deprecated' | 'staging';
+  model_id: string;
+  tier: 'local' | 'remote';
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  cached_tokens: number | null;
+  latency_ms: number;
+  cost_usd: number;
+  verifier_passed: boolean;
+  verifier_failure_count: number;
+  verifier_failure_types: string[];
+  verifier_failures: string[];
+  escalated: boolean;
+  escalation_reason: string | null;
 }
 
-/* ── Telemetry ── */
-export interface TelemetryPoint {
-  timestamp: string;
-  value: number;
-  label?: string;
+export interface RuntimeProfile {
+  provider: string;
+  model_id: string;
+  served_model_name?: string;
+  model_family?: string | null;
+  tier?: string;
+  endpoint_type?: string;
+  base_url_host?: string | null;
+  hardware_target: string;
+  rocm_version?: string | null;
+  vllm_version?: string | null;
+  dtype?: string;
+  kv_cache_dtype?: string;
+  tensor_parallel_size?: number;
+  gpu_memory_utilization?: number;
+  prefix_caching_enabled?: boolean;
+  max_context_tokens?: number | null;
+  structured_output_mode?: string;
 }
 
-export interface TelemetryMetric {
-  id: string;
-  label: string;
-  unit: string;
-  icon?: string;
-  current: number;
-  min: number;
-  max: number;
-  avg: number;
-  alarm: boolean;
-  sparkline: TelemetryPoint[];
-  value: number;
+export interface TelemetrySummary {
+  run_id: string;
+  requests: number;
+  attempts: number;
+  latency_ms_p50: number;
+  latency_ms_p95: number;
+  provider_mix: {
+    attempts_by_provider: Record<string, number>;
+    requests_by_first_tier: Record<string, number>;
+    local_attempts: number;
+    remote_attempts: number;
+    audit_calls: number;
+  };
+  runtime: {
+    status: 'configured' | 'planned';
+    profile: RuntimeProfile | null;
+    cached_tokens_total: number | null;
+    note: string;
+  };
+  verification: {
+    local_verified_rate: number;
+    final_verified_rate: number;
+    failures_by_check: Record<string, number>;
+  };
+  routing: {
+    escalation_rate: number;
+    preroute_remote_rate: number;
+    ewma_drift_by_category: Record<string, number>;
+    high_drift_categories: string[];
+    watch_categories: string[];
+  };
+  audit: {
+    enabled: boolean;
+    sampled: number;
+    accepted_answers: number;
+    trusted: boolean | null;
+    calibration_status: string | null;
+    calibration_fp_rate: number | null;
+    calibration_threshold: number | null;
+    passed: number;
+    failed: number;
+    errors: number;
+    violations_by_severity: Record<string, number>;
+    audit_tokens: number;
+  };
+  cost: {
+    total_cost_usd: number;
+    local_cost_usd: number;
+    remote_cost_usd: number;
+    audit_cost_usd: number;
+    cost_per_verified_answer_usd: number | null;
+    audit_cost_per_verified_accepted_usd: number | null;
+    remote_calls_avoided: number | null;
+    remote_calls_avoided_rate: number | null;
+    remote_tokens_avoided: number | null;
+    estimated_cost_saved_vs_always_remote_usd: number | null;
+  };
+  attempts_detail: AttemptDetail[];
+  claims: Claim[];
 }
 
-/* ── Trajectory Replay ── */
-export type StepStatus = 'success' | 'warning' | 'error' | 'running';
-
-export interface TrajectoryStep {
-  id: string;
-  timestamp: string;
-  action: string;
-  status: StepStatus;
-  durationMs?: number;
-  detail?: string;
+export interface TrajectoryRow {
+  db_id: number | null;
+  request_id: string;
+  ts: string;
+  category: string;
+  contract_id: string;
+  contract_version: string;
+  tier: 'local' | 'remote';
+  provider: string;
+  model_id: string;
+  verifier_passed: boolean;
+  verifier_failures: string[];
+  escalated: boolean;
+  latency_ms: number;
+  cost_usd: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  task_input: string;
+  raw_text: string;
+  audit_sampled: boolean;
+  audit_result: string | null;
+  audit_violations: Record<string, unknown>[] | null;
 }
 
-/* ── AMD Proof ── */
-export type AttestationStatus = 'verified' | 'pending' | 'failed';
-
-export interface AMDMeasurement {
-  id: string;
-  measurementId: string;
-  status: AttestationStatus;
-  firmwareVersion: number;
-  tcbVersion: string;
-  launchDigest: string;
-  reportId: string;
-  signature: string;
+export interface ProbeCommand {
+  command: string[];
+  available: boolean;
+  output: string | null;
+  error: string | null;
+  source: string;
 }
 
-/* ── App State ── */
-export interface FlightDeckState {
-  pipeline: PipelineStage[];
-  providers: Provider[];
-  policies: Policy[];
-  models: ModelEntry[];
-  telemetry: TelemetryMetric[];
-  trajectory: TrajectoryStep[];
-  amdMeasurements: AMDMeasurement[];
-  systemUptime: number;
-  totalRequests: number;
-  activeAlerts: number;
-  providerCount: number;
-  contractCount: number;
+export interface RuntimeProbeReport {
+  probed_at: string;
+  system: {
+    cwd: string;
+    under_workspace: boolean;
+    python_version: string;
+    source: string;
+  };
+  packages: { name: string; importable: boolean; version: string | null; source: string }[];
+  commands: Record<string, ProbeCommand>;
+  env_vllm: Record<string, string>;
+  env_fireworks: Record<string, string>;
+  endpoint: {
+    base_url: string;
+    reachable: boolean;
+    latency_ms: number | null;
+    served_models: string[];
+    configured_model: string | null;
+    configured_model_served: boolean | null;
+    model_family: string;
+    vllm_version: string | null;
+    error: string | null;
+  } | null;
+  policy: string;
 }
+
+export interface Provenance {
+  available: boolean;
+  artifact: string | null;
+  origin: 'artifacts' | 'sample' | 'not_available';
+  modified_at: string | null;
+}
+
+export interface AmdEvidence {
+  status: 'measured' | 'configured' | 'pending' | 'unavailable';
+  reason: string;
+}
+
+export type DataLabel =
+  | 'SAMPLE'
+  | 'CAPTURED LOCAL RUN'
+  | 'CAPTURED FIREWORKS RUN'
+  | 'MEASURED AMD RUN'
+  | 'UNAVAILABLE';
+
+export interface DashboardPayload {
+  generated_at: string;
+  mode: 'captured';
+  label: DataLabel;
+  used_sample: boolean;
+  amd: AmdEvidence;
+  provenance: {
+    telemetry: Provenance;
+    trajectory: Provenance;
+    runtime_probe: Provenance;
+  };
+  telemetry: TelemetrySummary | null;
+  trajectory: TrajectoryRow[] | null;
+  runtime_probe: RuntimeProbeReport | null;
+}
+
+/* ── Live runs ── */
+
+export interface LiveRunRequest {
+  task_input: string;
+  contract_id: string;
+  local_provider: 'mock' | 'ollama' | 'vllm';
+  remote_provider: 'mock' | 'fireworks';
+  confirm_spend: boolean;
+  failure_mode: string | null;
+  export_artifacts: boolean;
+}
+
+export interface LiveRunResponse {
+  run_id: string;
+  mode: 'live';
+  label: 'LIVE RUN';
+  generated_at: string;
+  request: {
+    contract_id: string;
+    category: string;
+    local_provider: string;
+    remote_provider: string;
+    failure_mode: string | null;
+  };
+  result: {
+    verified: boolean;
+    checks_run: number;
+    failures: string[];
+    escalated: boolean;
+    attempts: number;
+    tier: string;
+    routing_reason: string;
+    answer: Record<string, unknown> | null;
+    raw_text: string;
+  };
+  trajectory: TrajectoryRow[];
+  telemetry: TelemetrySummary;
+  runtime_profile: RuntimeProfile | null;
+  artifacts_written: string[];
+}
+
+export type ConnectionStatus = 'loading' | 'connected' | 'stale' | 'unavailable';

@@ -1,105 +1,87 @@
 # Kaaval Assurance — Inference Flight Deck
 
-A real-time inference monitoring dashboard for AI governance and compliance.  
-Inspired by mission-control NOC interfaces — designed for teams running AI inference at scale.
+A captured-run observability surface for the Kaaval Assurance inference plane.
+It renders recorded artifacts — telemetry, trajectory rows, and runtime-probe
+facts — with a source tag on every value, plus an optional, gated Live Run
+mode that executes the real assurance pipeline server-side.
 
-## Features
+This is **not** streaming telemetry: Captured Evidence mode re-reads artifacts
+on a ~5 second cycle and on manual Refresh. Nothing on screen is invented —
+missing values render as *not available*, sample data is labeled **SAMPLE**,
+and AMD claims stay **pending** until a real runtime-probe artifact exists.
 
-- **Pipeline Visualization** — Real-time inference request flow through model gates
-- **Provider Switchboard** — AI provider health, routing, and failover status
-- **Contract Gate** — Policy enforcement (compliance, security, cost rules)
-- **Model Comparison** — Side-by-side model latency, quality, and cost
-- **Telemetry Truth** — Ground-truth metrics with sparkline toggle
-- **Trajectory Replay** — Full audit trail of every request
-- **AMD Proof** — Cryptographic attestation measurements
-- **Summary Dashboard** — At-a-glance KPIs with collapsible mission briefing
+## Two modes
 
-## Prerequisites
+### Captured Evidence (default; works everywhere)
 
-- **Node.js** v18 or later (recommended: v20+)
-- **npm** v9 or later
+- Loads telemetry, trajectory, and runtime-probe artifacts via the API.
+- Needs no model endpoints and no secrets — safe to host publicly.
+- Labels the data source: **SAMPLE**, **CAPTURED LOCAL RUN**,
+  **CAPTURED FIREWORKS RUN**, or **MEASURED AMD RUN**, with artifact
+  provenance (name, origin, timestamp) in the status bar.
 
-## Local Setup
+### Live Assurance Run (opt-in)
+
+- `POST /api/runs` drives the real `AssurancePipeline` through the existing
+  provider factory — the API never reimplements routing or verification.
+- Disabled unless the server sets `KAAVAL_LIVE_RUNS_ENABLED=1`; hosted
+  deployments can stay pure captured-evidence surfaces.
+- Fireworks execution is rejected without an explicit spend confirmation.
+- Failure injection works on the mock local provider only.
+- All provider credentials stay server-side; the response contains the run's
+  trajectory rows, telemetry summary, and runtime profile — nothing else.
+- Requests are synchronous; the UI shows an honest pending state and then
+  replays the returned trajectory. Results can be exported as
+  captured-evidence artifacts.
+
+## Running locally
+
+Backend (from the **repo root**):
 
 ```bash
-# 1. Clone the repository
-git clone <your-repo-url>
-cd kaaval-assurance
+uv run uvicorn apps.api.server:app --port 8000
+# optional: enable live runs
+KAAVAL_LIVE_RUNS_ENABLED=1 uv run uvicorn apps.api.server:app --port 8000
+```
 
-# 2. Install dependencies
+Frontend (from **apps/flight-deck**):
+
+```bash
 npm install
-
-# 3. Start the development server
-npm run dev
+npm run dev        # http://localhost:5173 (proxies /api to :8000)
+npm run build      # production build in dist/
 ```
 
-The dev server starts on **http://localhost:5173** by default (Vite's default port).
+## API
 
-## Build for Production
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/health` | liveness + whether live runs are enabled |
+| `GET /api/dashboard` | one typed payload: telemetry + trajectory + probe + provenance + labels |
+| `GET /api/telemetry` · `/api/trajectory` · `/api/runtime-probe` | raw artifacts wrapped with provenance |
+| `POST /api/runs` | gated live pipeline execution |
 
-```bash
-npm run build
-```
+Artifact resolution order: real files under `artifacts/` → shipped sample
+data under `demo_artifacts/sample/` → an explicit unavailable state.
+Aliases are supported (`telemetry-truth.json` / `demo-live-telemetry.json`,
+`trajectory-sample.json` / `demo-live-trajectory.json`). Malformed JSON is
+skipped, never partially served. Provenance exposes artifact names and
+origins only — no filesystem paths, no environment values.
 
-Output goes to the `dist/` folder. You can serve it with any static file server:
+## Source states
 
-```bash
-# Using Vite's built-in preview server
-npm run preview
+- `measured` — derived from stored trajectory rows, run results, or a
+  runtime probe executed on the actual host
+- `configured` — recorded settings (serving parameters, pricing), not
+  measurements
+- `sample` — shipped synthetic data so the UI runs anywhere; always labeled
+- `planned` — intended deployment not yet executed
+- `not_available` — the provider or run did not produce the value
 
-# Or using any static server (e.g. serve, nginx, python, caddy)
-npx serve dist
-```
+## AMD evidence
 
-## Running Locally Without Node.js (Static HTML)
-
-After building (`npm run build`), the entire app is a set of static files in `dist/`.  
-You can serve them with Python, an HTTP server, or even open the `index.html` directly (though some features may require an HTTP server):
-
-```bash
-# Python 3
-python -m http.server 8080 --directory dist
-
-# Or with npx serve
-npx serve dist
-```
-
-Then open **http://localhost:8080** in your browser.
-
-## Tech Stack
-
-- **React 18** + **TypeScript**
-- **Vite 7** (build tool)
-- **Tailwind CSS v4** (styling)
-- **Lucide React** (icons)
-- **Fira Code / Fira Sans** (typography)
-
-## Project Structure
-
-```
-├── public/
-│   └── nativelyai.svg
-├── src/
-│   ├── components/
-│   │   ├── AMDProof.tsx
-│   │   ├── ContractGate.tsx
-│   │   ├── Header.tsx
-│   │   ├── ModelComparison.tsx
-│   │   ├── PipelinePanel.tsx
-│   │   ├── ProviderSwitchboard.tsx
-│   │   ├── StatusBar.tsx
-│   │   ├── SummaryDashboard.tsx
-│   │   ├── TelemetryTruth.tsx
-│   │   └── TrajectoryReplay.tsx
-│   ├── mock/
-│   │   └── data.ts
-│   ├── App.tsx
-│   ├── index.css
-│   ├── main.tsx
-│   └── types.ts
-├── index.html
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── README.md
-```
+AMD usage evidence comes from `python -m kaaval_assurance.runtime_probe`
+run on the AMD machine — rocm-smi product name and VRAM, vLLM version, and
+the served model — written to `artifacts/runtime-probe.json`. The AMD panel
+shows **"AMD GPU measured run pending."** until that artifact exists. This
+system does not implement hardware attestation and the UI claims none.
