@@ -30,7 +30,7 @@ kaaval-eval = "kaaval_assurance.eval.cli:main"
 [dependency-groups]
 dev = [
     "pytest>=7.0",
-    "httpx>=0.27",
+    "httpx2>=2.5",
     "fastapi>=0.110",
     "uvicorn>=0.30",
 ]
