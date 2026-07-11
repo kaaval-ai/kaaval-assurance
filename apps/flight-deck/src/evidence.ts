@@ -3,7 +3,6 @@ import type {
   FireworksComparisonArtifact,
   RuntimeProbeReport,
   SourceTag,
-  TelemetrySummary,
 } from './types';
 
 export interface EvidenceMetric {
