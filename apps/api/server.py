@@ -154,6 +154,28 @@ def live_runs_enabled() -> bool:
     return os.environ.get("KAAVAL_LIVE_RUNS_ENABLED", "") == "1"
 
 
+def paid_remote_allowed() -> bool:
+    """Server-side gate for spending the server's Fireworks credential.
+
+    The client's confirm_spend flag is a UX acknowledgment, never
+    authorization: any unauthenticated caller can send confirm_spend=true.
+    Paid remote execution additionally requires the operator to have set
+    KAAVAL_ALLOW_PAID_REMOTE=1 on the server. Default closed.
+    """
+    return os.environ.get("KAAVAL_ALLOW_PAID_REMOTE", "") == "1"
+
+
+def artifact_export_allowed() -> bool:
+    """Server-side gate for writing live-run artifacts to disk.
+
+    Any writable artifact can poison what the evidence dashboard loads, so
+    exports are disabled unless the operator sets
+    KAAVAL_ALLOW_ARTIFACT_EXPORT=1. The submission evidence bundle is
+    curated offline, never through this API. Default closed.
+    """
+    return os.environ.get("KAAVAL_ALLOW_ARTIFACT_EXPORT", "") == "1"
+
+
 def _static_dir_from_env() -> Path:
     configured = os.environ.get("KAAVAL_STATIC_DIR")
     if configured:
@@ -244,6 +266,20 @@ def create_app(
                 status_code=422,
                 detail="remote failure injection requires the mock remote provider "
                 f"and one of {list(LIVE_FAILURE_MODES)}",
+            )
+        if req.remote_provider == "fireworks" and not paid_remote_allowed():
+            raise HTTPException(
+                status_code=403,
+                detail="paid remote execution is disabled on this server; the "
+                "operator must set KAAVAL_ALLOW_PAID_REMOTE=1 (client "
+                "confirm_spend is an acknowledgment, not authorization)",
+            )
+        if req.export_artifacts and not artifact_export_allowed():
+            raise HTTPException(
+                status_code=403,
+                detail="artifact export is disabled on this server; the operator "
+                "must set KAAVAL_ALLOW_ARTIFACT_EXPORT=1. The captured-evidence "
+                "bundle is curated offline, never through this API",
             )
         try:
             local = (
