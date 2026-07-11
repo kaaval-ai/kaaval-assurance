@@ -49,3 +49,13 @@ def test_no_simulated_variation_in_metrics():
         p.name for p in _source_files() if "Math.random(" in p.read_text("utf-8")
     ]
     assert not offenders, f"Math.random in judge-facing UI: {offenders}"
+
+
+def test_connected_live_run_does_not_send_mock_compatibility_fields():
+    panel = (SRC / "components" / "LiveRunPanel.tsx").read_text(encoding="utf-8")
+
+    assert "local_provider: 'mock'" not in panel
+    assert "remote_provider: 'mock'" not in panel
+    assert "failure_mode:" not in panel
+    assert "remote_failure_mode:" not in panel
+    assert "primary_connection_id: primary.connection_id" in panel

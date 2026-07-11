@@ -137,11 +137,7 @@ export default function LiveRunPanel({ run, onRunComplete }: Props) {
       const result = await startRun({
         task_input: taskInput,
         contract_id: contractId,
-        local_provider: 'mock',
-        remote_provider: 'mock',
         confirm_spend: confirmSpend,
-        failure_mode: null,
-        remote_failure_mode: null,
         export_artifacts: false,
         session_id: sessionId,
         include_unverified_raw: false,

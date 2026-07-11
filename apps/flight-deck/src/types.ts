@@ -257,15 +257,11 @@ export interface DashboardPayload {
 export interface LiveRunRequest {
   task_input: string;
   contract_id: string;
-  local_provider: 'mock' | 'ollama' | 'vllm';
-  remote_provider: 'mock' | 'fireworks';
   confirm_spend: boolean;
-  failure_mode: string | null;
-  remote_failure_mode: string | null;
   export_artifacts: boolean;
   session_id?: string;
   include_unverified_raw?: boolean;
-  primary_connection_id?: string;
+  primary_connection_id: string;
   escalation_connection_id?: string;
 }
 
