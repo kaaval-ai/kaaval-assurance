@@ -3,15 +3,17 @@ import pytest
 from kaaval_assurance.contracts import get_contract, list_contracts
 
 
-def test_four_contracts_registered():
+def test_all_contracts_registered():
     contracts = list_contracts()
-    assert len(contracts) == 4
+    assert len(contracts) == 6
     ids = {c.contract_id for c in contracts}
     assert ids == {
         "telecom.severity_classification",
         "telecom.component_extraction",
         "telecom.incident_summary",
         "telecom.next_action_recommendation",
+        "support.ticket_triage",
+        "support.refund_decision",
     }
 
 

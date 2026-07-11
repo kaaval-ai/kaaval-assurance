@@ -1,7 +1,10 @@
 """Contract registry: lookup by contract_id, optionally pinned to a version."""
 
 from .base import FieldSpec, GroundingRule, TaskContract
-from .telecom import ALL_CONTRACTS
+from .support import ALL_CONTRACTS as SUPPORT_CONTRACTS
+from .telecom import ALL_CONTRACTS as TELECOM_CONTRACTS
+
+ALL_CONTRACTS = [*TELECOM_CONTRACTS, *SUPPORT_CONTRACTS]
 
 _REGISTRY: dict[tuple[str, str], TaskContract] = {c.key: c for c in ALL_CONTRACTS}
 
