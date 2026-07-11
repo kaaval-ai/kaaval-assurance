@@ -23,7 +23,7 @@ import {
   resetSession,
   startRun,
 } from '../api';
-import { CONTRACTS, SAMPLE_INPUTS } from '../mock/data';
+import { CONTRACTS } from '../mock/data';
 import ContractGate from './ContractGate';
 import ModelComparison from './ModelComparison';
 import PipelinePanel from './PipelinePanel';
@@ -86,7 +86,7 @@ export default function LiveRunPanel({ run, onRunComplete }: Props) {
   const [escalation, setEscalation] = useState<RuntimeConnection | null>(null);
   const [modalRole, setModalRole] = useState<RuntimeRole | null>(null);
   const [contractId, setContractId] = useState(CONTRACTS[0].id);
-  const [taskInput, setTaskInput] = useState(SAMPLE_INPUTS[CONTRACTS[0].id] ?? '');
+  const [taskInput, setTaskInput] = useState('');
   const [confirmSpend, setConfirmSpend] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +104,6 @@ export default function LiveRunPanel({ run, onRunComplete }: Props) {
 
   const selectContract = (id: string) => {
     setContractId(id);
-    setTaskInput(SAMPLE_INPUTS[id] ?? '');
   };
 
   const acceptConnection = (connection: RuntimeConnection) => {
@@ -223,7 +222,13 @@ export default function LiveRunPanel({ run, onRunComplete }: Props) {
 
           <label className="block space-y-1 text-[10px] font-mono text-muted">
             <span className="uppercase tracking-wider">Task input</span>
-            <textarea className={`${selectCls} min-h-[88px] resize-y`} value={taskInput} onChange={(event) => setTaskInput(event.target.value)} maxLength={4000} />
+            <textarea
+              className={`${selectCls} min-h-[88px] resize-y`}
+              value={taskInput}
+              onChange={(event) => setTaskInput(event.target.value)}
+              placeholder="Enter a new decision request for the selected contract…"
+              maxLength={4000}
+            />
           </label>
 
           {spendsCredits && (
