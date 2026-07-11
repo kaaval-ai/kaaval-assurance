@@ -9,7 +9,7 @@ import { NotAvailable, SourceChip, ms, pct, usd } from './Tags';
 
 const STAT_NOTES: Record<string, { what: string; why: string }> = {
   'Latency P50 / P95': {
-    what: 'Request-level latency percentiles across the captured run (sum of attempt latencies per request).',
+    what: 'Request-level latency percentiles across the run (sum of attempt latencies per request).',
     why: 'Single-run point statistics — a time series appears only when multiple runs are captured.',
   },
   'Requests / attempts': {
@@ -94,14 +94,14 @@ export default function TelemetryTruth({ telemetry, usedSample }: { telemetry: T
 
   const m = telemetry;
   const baseline = m.cost.remote_calls_avoided_rate;
-  const stats: { label: string; value: string; source: 'measured' | 'not_available' }[] = [
+  const stats: { label: string; value: string; source: 'measured' | 'configured' | 'not_available' }[] = [
     { label: 'Latency P50 / P95', value: `${ms(m.latency_ms_p50)} / ${ms(m.latency_ms_p95)}`, source: 'measured' },
     { label: 'Requests / attempts', value: `${m.requests} / ${m.attempts}`, source: 'measured' },
     { label: 'Local contract-conformance', value: pct(m.verification.local_verified_rate), source: 'measured' },
     { label: 'Final contract-conformance', value: pct(m.verification.final_verified_rate), source: 'measured' },
     { label: 'Escalation rate', value: pct(m.routing.escalation_rate), source: 'measured' },
     { label: 'Pre-route remote rate', value: pct(m.routing.preroute_remote_rate), source: 'measured' },
-    { label: 'Cost per conformant answer', value: usd(m.cost.cost_per_verified_answer_usd), source: 'measured' },
+    { label: 'Cost per conformant answer', value: usd(m.cost.cost_per_verified_answer_usd), source: 'configured' },
     {
       label: 'Remote calls avoided',
       value: baseline === null ? 'n/a (no always-remote baseline)' : pct(baseline),
@@ -145,7 +145,7 @@ export default function TelemetryTruth({ telemetry, usedSample }: { telemetry: T
               </button>
             ))}
           </div>
-          <span className="text-[10px] font-mono text-muted">single captured run · point statistics</span>
+          <span className="text-[10px] font-mono text-muted">single run · point statistics</span>
         </div>
       </div>
       <div className="panel-body space-y-1">
@@ -171,13 +171,21 @@ export default function TelemetryTruth({ telemetry, usedSample }: { telemetry: T
                 </tr>
               </thead>
               <tbody>
-                {m.claims.map((c) => (
+                {m.claims.map((c) => {
+                  const claimLabel = {
+                    'Local verified rate': 'Local Layer-1 contract-conformance rate',
+                    'Final verified rate': 'Final Layer-1 contract-conformance rate',
+                    'Cost per verified answer': 'Cost per contract-conformant answer',
+                  }[c.claim] ?? c.claim;
+                  const claimSource = c.field.startsWith('cost.') ? 'configured' : c.source;
+                  return (
                   <tr key={c.claim} className="border-b border-border/40">
-                    <td className="py-1.5 pr-2 text-foreground">{c.claim}</td>
+                    <td className="py-1.5 pr-2 text-foreground">{claimLabel}</td>
                     <td className="px-1.5 py-1.5 text-foreground/80">{c.value}</td>
-                    <td className="pl-1.5 py-1.5 text-right"><SourceChip tag={c.source === 'measured' && usedSample ? 'sample' : c.source} /></td>
+                    <td className="pl-1.5 py-1.5 text-right"><SourceChip tag={claimSource === 'measured' && usedSample ? 'sample' : claimSource} /></td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

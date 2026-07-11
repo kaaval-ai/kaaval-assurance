@@ -1,20 +1,22 @@
 # Hosted Demo Guide — Flight Deck Container
 
-The submission host should run the React **Inference Flight Deck** and the
-FastAPI artifact API from one container. It renders recorded artifacts and
-ships with sample fallback data, so the public hosted copy needs **no secrets,
-no API keys, no AMD access, and no live model endpoint**.
+The submission host runs the real React **Inference Flight Deck** and FastAPI
+assurance API from one container. The immutable evidence baseline needs no
+credentials; Live Session supports Fireworks BYOK and operator-enabled public
+HTTPS OpenAI-compatible endpoints.
 
-By default, hosted deployments run in **Captured Evidence** mode:
+Hosted configuration:
 
-- `KAAVAL_LIVE_RUNS_ENABLED=0`
+- `KAAVAL_DEPLOYMENT_MODE=hosted`
+- `KAAVAL_LIVE_RUNS_ENABLED=1`
+- `KAAVAL_ALLOW_BYOK=1`
+- `KAAVAL_ALLOW_CUSTOM_ENDPOINTS=0`
 - `KAAVAL_ALLOW_PAID_REMOTE=0`
 - `KAAVAL_ALLOW_ARTIFACT_EXPORT=0`
-- no Fireworks key is required
-- no vLLM/Gemma endpoint is exposed publicly
-- SQLite live sessions stay in-memory and are unused unless live runs are
-  explicitly enabled
-- telemetry traversal reads committed artifacts first, then sample fallback
+- no server Fireworks key is required
+- a visitor supplies Fireworks credentials for one ephemeral session
+- keys never enter browser storage, SQLite, artifacts, telemetry, or logs
+- telemetry traversal reads committed evidence independently from live runs
 
 ## Local run
 
@@ -45,28 +47,31 @@ The smoke test builds the image, starts the container, and checks:
 Recommended public image name:
 
 ```text
-ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii
+ghcr.io/kaaval-ai/kaaval-assurance:act-ii
 ```
 
 Build and push after local smoke passes:
 
 ```bash
-finch build -t ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii .
-finch push ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii
+finch build -t ghcr.io/kaaval-ai/kaaval-assurance:act-ii .
+finch push ghcr.io/kaaval-ai/kaaval-assurance:act-ii
 ```
 
 If using Docker instead of Finch, replace `finch` with `docker`.
 
 ## Hosting options
 
-Use a low-cost stateless container host. Configure one public port mapped to
-container port `8000`; set no secrets for the captured-evidence deployment.
+Use a low-cost stateless container host. Configure one public port; Hugging
+Face Spaces sets `PORT=7860`, while the image otherwise defaults to `8000`.
 
 Environment:
 
 ```text
-PORT=8000
-KAAVAL_LIVE_RUNS_ENABLED=0
+PORT=7860
+KAAVAL_DEPLOYMENT_MODE=hosted
+KAAVAL_LIVE_RUNS_ENABLED=1
+KAAVAL_ALLOW_BYOK=1
+KAAVAL_ALLOW_CUSTOM_ENDPOINTS=0
 KAAVAL_ALLOW_PAID_REMOTE=0
 KAAVAL_ALLOW_ARTIFACT_EXPORT=0
 ```
@@ -78,10 +83,11 @@ export is enabled for a private/local demo, each run writes to
 `artifacts/live-exports/<run-id>/`; the curated top-level evidence files are
 never overwritten.
 
-Do **not** ship Gemma weights or expose a vLLM port in the public app
-container. If a future live GPU demo is needed, keep vLLM/Gemma on a private
-AMD host or private service network and point the API server to it with
-`VLLM_BASE_URL`.
+Do **not** ship Gemma weights in the application image. Direct laptop-local
+Ollama/vLLM works with a locally run container. A hosted Space needs an
+authenticated public HTTPS reverse tunnel and
+`KAAVAL_ALLOW_CUSTOM_ENDPOINTS=1`; ordinary port forwarding cannot make the
+hosted container reach a visitor's laptop.
 
 ## Fallback — Streamlit replay console
 

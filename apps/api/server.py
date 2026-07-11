@@ -5,13 +5,15 @@ GET  /api/dashboard      one typed payload assembled from all artifacts
 GET  /api/telemetry      raw telemetry artifact with provenance
 GET  /api/trajectory     raw trajectory artifact with provenance
 GET  /api/runtime-probe  raw runtime-probe artifact with provenance
+GET  /api/capabilities   deployment/runtime onboarding capabilities
+POST /api/runtime-connections  test and hold one ephemeral runtime credential
 POST /api/runs           execute one real assurance pipeline run (gated)
 
 Live runs reuse the existing provider factory and AssurancePipeline — this
 API never reimplements routing or verification, never returns credentials,
 and refuses Fireworks execution without explicit spend confirmation. Live
-execution as a whole is disabled unless KAAVAL_LIVE_RUNS_ENABLED=1, so a
-hosted deployment stays a pure captured-evidence surface.
+execution as a whole is disabled unless KAAVAL_LIVE_RUNS_ENABLED=1. Runtime
+credentials supplied interactively stay in process memory and expire.
 
 Run from the repo root:
     uv run uvicorn apps.api.server:app --port 8000
@@ -31,12 +33,23 @@ from typing import Literal, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from apps.api.artifacts import ArtifactStore  # noqa: E402
+from apps.api.runtime_connections import (  # noqa: E402
+    DEFAULT_LOCAL_URLS,
+    RuntimeConnectionError,
+    RuntimeProvider,
+    RuntimeRole,
+    UnconfiguredProvider,
+    byok_allowed,
+    custom_endpoints_allowed,
+    deployment_mode,
+    runtime_connection_manager,
+)
 from kaaval_assurance.agent import (  # noqa: E402
     NOC_INCIDENT_WORKFLOW,
     rows_for_agent_run,
@@ -83,6 +96,21 @@ class RunRequest(BaseModel):
     # explicitly opts in. The Flight Deck opts in — it is an inspection
     # surface whose receipts show every attempt verbatim by design.
     include_unverified_raw: bool = False
+    primary_connection_id: Optional[str] = None
+    escalation_connection_id: Optional[str] = None
+
+
+class RuntimeConnectionRequest(BaseModel):
+    provider: RuntimeProvider
+    role: RuntimeRole = "primary"
+    model_id: str = Field(min_length=1, max_length=300)
+    api_key: SecretStr = SecretStr("")
+    base_url: Optional[str] = Field(default=None, max_length=500)
+    model_family: str = Field(default="", max_length=80)
+    structured_outputs: Optional[bool] = None
+    hardware_target: str = Field(default="", max_length=120)
+    timeout_seconds: float = Field(default=30.0, ge=1, le=120)
+    max_tokens: int = Field(default=1024, ge=32, le=4096)
 
 
 class AgentRunRequest(BaseModel):
@@ -230,7 +258,7 @@ def create_app(
         CORSMiddleware,
         allow_origins=DEV_ORIGINS,
         allow_credentials=False,
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "DELETE"],
         allow_headers=["Content-Type"],
     )
 
@@ -250,8 +278,56 @@ def create_app(
             "paid_remote_allowed": paid_remote_allowed(),
             "artifact_export_allowed": artifact_export_allowed(),
             "diagnostic_raw_allowed": diagnostic_raw_allowed(),
+            "deployment_mode": deployment_mode(),
+            "byok_allowed": byok_allowed(),
+            "custom_endpoints_allowed": custom_endpoints_allowed(),
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
+
+    @app.get("/api/capabilities")
+    def capabilities():
+        providers = ["fireworks"]
+        if deployment_mode() == "local":
+            providers.extend(["ollama", "vllm"])
+        if custom_endpoints_allowed():
+            providers.append("openai_compatible")
+        return {
+            "deployment_mode": deployment_mode(),
+            "live_runs_enabled": live_runs_enabled(),
+            "byok_allowed": byok_allowed(),
+            "custom_endpoints_allowed": custom_endpoints_allowed(),
+            "providers": providers,
+            "default_endpoints": DEFAULT_LOCAL_URLS,
+            "connection_ttl_seconds": runtime_connection_manager.ttl_seconds,
+        }
+
+    @app.post("/api/runtime-connections")
+    def create_runtime_connection(req: RuntimeConnectionRequest):
+        if not live_runs_enabled():
+            raise HTTPException(status_code=403, detail="live runs are disabled")
+        try:
+            connection = runtime_connection_manager.create(
+                provider=req.provider,
+                role=req.role,
+                model_id=req.model_id,
+                api_key=req.api_key.get_secret_value(),
+                base_url=req.base_url,
+                model_family=req.model_family,
+                structured_outputs=req.structured_outputs,
+                hardware_target=req.hardware_target,
+                timeout_seconds=req.timeout_seconds,
+                max_tokens=req.max_tokens,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except RuntimeConnectionError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        return connection.public_metadata(runtime_connection_manager.ttl_seconds)
+
+    @app.delete("/api/runtime-connections/{connection_id}")
+    def delete_runtime_connection(connection_id: str):
+        removed = runtime_connection_manager.delete(connection_id)
+        return {"status": "disconnected" if removed else "already_expired"}
 
     @app.get("/api/dashboard")
     def dashboard():
@@ -288,6 +364,19 @@ def create_app(
                 "on the server to enable (hosted deployments stay in "
                 "captured-evidence mode)",
             )
+        uses_runtime_connection = req.primary_connection_id is not None
+        if req.escalation_connection_id and not uses_runtime_connection:
+            raise HTTPException(
+                status_code=422,
+                detail="escalation_connection_id requires primary_connection_id",
+            )
+        if uses_runtime_connection and (
+            req.failure_mode is not None or req.remote_failure_mode is not None
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="failure injection is unavailable for connected runtimes",
+            )
         if req.failure_mode is not None and req.failure_mode not in LIVE_FAILURE_MODES:
             raise HTTPException(
                 status_code=422,
@@ -307,7 +396,11 @@ def create_app(
                 detail="remote failure injection requires the mock remote provider "
                 f"and one of {list(LIVE_FAILURE_MODES)}",
             )
-        if req.remote_provider == "fireworks" and not paid_remote_allowed():
+        if (
+            not uses_runtime_connection
+            and req.remote_provider == "fireworks"
+            and not paid_remote_allowed()
+        ):
             raise HTTPException(
                 status_code=403,
                 detail="paid remote execution is disabled on this server; the "
@@ -328,25 +421,70 @@ def create_app(
                 "operator must set KAAVAL_ALLOW_DIAGNOSTIC_RAW=1",
             )
         try:
-            local = (
-                None
-                if req.local_provider == "mock"
-                else create_local_provider(req.local_provider)
-            )
-            remote = (
-                None
-                if req.remote_provider == "mock"
-                else create_remote_provider(
-                    req.remote_provider, confirm_spend=req.confirm_spend
+            if uses_runtime_connection:
+                primary_connection = runtime_connection_manager.get(
+                    req.primary_connection_id or "", role="primary"
                 )
-            )
+                escalation_connection = (
+                    runtime_connection_manager.get(
+                        req.escalation_connection_id, role="escalation"
+                    )
+                    if req.escalation_connection_id
+                    else None
+                )
+                uses_fireworks = primary_connection.spends_credits or bool(
+                    escalation_connection and escalation_connection.spends_credits
+                )
+                if uses_fireworks and not req.confirm_spend:
+                    raise SpendConfirmationRequired(
+                        "this live session uses Fireworks credits; confirm spend for the run"
+                    )
+                local = primary_connection.build_provider()
+                remote = (
+                    escalation_connection.build_provider()
+                    if escalation_connection
+                    else UnconfiguredProvider("remote")
+                )
+                local_identity = f"runtime:{primary_connection.connection_id}"
+                remote_identity = (
+                    f"runtime:{escalation_connection.connection_id}"
+                    if escalation_connection
+                    else "runtime:not-configured"
+                )
+                request_local_provider = primary_connection.provider
+                request_remote_provider = (
+                    escalation_connection.provider
+                    if escalation_connection
+                    else "not-configured"
+                )
+            else:
+                local = (
+                    None
+                    if req.local_provider == "mock"
+                    else create_local_provider(req.local_provider)
+                )
+                remote = (
+                    None
+                    if req.remote_provider == "mock"
+                    else create_remote_provider(
+                        req.remote_provider, confirm_spend=req.confirm_spend
+                    )
+                )
+                local_identity = req.local_provider
+                remote_identity = req.remote_provider
+                request_local_provider = req.local_provider
+                request_remote_provider = req.remote_provider
         except SpendConfirmationRequired as e:
             raise HTTPException(status_code=403, detail=str(e)) from e
+        except KeyError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e)) from e
 
         try:
-            with session_manager.checkout(req.session_id, req.local_provider, req.remote_provider) as sess:
+            with session_manager.checkout(
+                req.session_id, local_identity, remote_identity
+            ) as sess:
                 try:
                     demo = run_live_demo(
                         task_input=req.task_input,
@@ -367,9 +505,9 @@ def create_app(
                     # provider error strings never contain credentials
                     raise HTTPException(status_code=502, detail=str(e)) from e
 
-                telemetry_summary = telemetry_for(demo)
                 local_for_profile = local or create_local_provider("mock")
                 profile = local_for_profile.runtime_profile()
+                telemetry_summary = telemetry_for(demo, runtime_profile=profile)
 
                 artifacts_written: list[str] = []
                 if req.export_artifacts:
@@ -403,8 +541,10 @@ def create_app(
             "request": {
                 "contract_id": req.contract_id,
                 "category": demo.category,
-                "local_provider": req.local_provider,
-                "remote_provider": req.remote_provider,
+                "local_provider": request_local_provider,
+                "remote_provider": request_remote_provider,
+                "primary_connection_id": req.primary_connection_id,
+                "escalation_connection_id": req.escalation_connection_id,
                 "failure_mode": req.failure_mode,
                 "remote_failure_mode": req.remote_failure_mode,
             },

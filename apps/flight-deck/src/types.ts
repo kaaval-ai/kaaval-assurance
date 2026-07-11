@@ -265,6 +265,47 @@ export interface LiveRunRequest {
   export_artifacts: boolean;
   session_id?: string;
   include_unverified_raw?: boolean;
+  primary_connection_id?: string;
+  escalation_connection_id?: string;
+}
+
+export type RuntimeProvider = 'fireworks' | 'ollama' | 'vllm' | 'openai_compatible';
+export type RuntimeRole = 'primary' | 'escalation';
+
+export interface RuntimeCapabilities {
+  deployment_mode: 'local' | 'hosted';
+  live_runs_enabled: boolean;
+  byok_allowed: boolean;
+  custom_endpoints_allowed: boolean;
+  providers: RuntimeProvider[];
+  default_endpoints: Record<string, string>;
+  connection_ttl_seconds: number;
+}
+
+export interface RuntimeConnectionRequest {
+  provider: RuntimeProvider;
+  role: RuntimeRole;
+  model_id: string;
+  api_key: string;
+  base_url?: string | null;
+  model_family?: string;
+  structured_outputs?: boolean;
+  hardware_target?: string;
+  timeout_seconds?: number;
+  max_tokens?: number;
+}
+
+export interface RuntimeConnection {
+  connection_id: string;
+  provider: RuntimeProvider;
+  role: RuntimeRole;
+  model_id: string;
+  model_family: string;
+  endpoint_host: string | null;
+  structured_outputs: boolean;
+  hardware_target: string;
+  requires_spend_confirmation: boolean;
+  expires_in_seconds: number;
 }
 
 export interface LiveRunResponse {

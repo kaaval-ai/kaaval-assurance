@@ -98,7 +98,7 @@ Click the flow for the interactive walkthrough: [HTML](docs/kaaval-assurance-arc
 | Telemetry truth layer | Built | Every judge-facing claim maps to a stored field with a source tag |
 | Runtime probe | Built | Turns runtime claims from configured into measured; redacts secrets |
 | Streamlit demo console | Built | Live interactive runs plus replay of captured artifacts; hostable without secrets |
-| Inference Flight Deck UI (React) | Built | A captured-run observability surface with two modes: Captured Evidence (replays telemetry/trajectory/probe artifacts with source tags and periodic artifact refresh) and a gated Live Assurance Run that drives the real pipeline server-side. Every value is measured, configured, sample, planned, or honestly not available. |
+| Inference Flight Deck UI (React) | Built | Evidence Baseline replays immutable telemetry/trajectory/probe artifacts; Live Session connects Fireworks BYOK or local Ollama/vLLM and feeds real responses into the same pipeline, EWMA, telemetry, and receipt readers. |
 
 The full test suite (330+ tests) runs network-free; live calls are explicit,
 opt-in CLI/script paths.
@@ -250,9 +250,9 @@ has two tabs:
   profile with source tags, the telemetry truth table, and a replayable
   trajectory example.
 
-A hosted copy needs no secrets and no live model endpoint: it ships with
-labeled sample artifacts and switches automatically once real AMD run
-artifacts are copied in ([docs/hosted-demo.md](docs/hosted-demo.md)).
+A hosted copy opens the immutable evidence baseline without credentials and
+can start a real live session through Fireworks BYOK or an operator-enabled
+public HTTPS OpenAI-compatible endpoint ([docs/hosted-demo.md](docs/hosted-demo.md)).
 
 Note for judges: Track 3 pre-screening inspects the repo, the slide deck
 PDF, and the hosted URL — it does not process the demo video. The evidence
@@ -261,9 +261,9 @@ lives in this repo's telemetry artifacts and the deck built from them.
 ## Quickstart
 
 ### 1. Run the submitted container
-The judge path is container-first. It does **not** require cloning the repo,
-installing Python/Node dependencies, providing secrets, or running a live GPU
-model endpoint.
+The judge path is container-first. It does **not** require cloning the repo or
+installing Python/Node dependencies. Captured evidence opens immediately;
+live execution starts after the user connects Fireworks, Ollama, or vLLM.
 
 ```bash
 docker pull ghcr.io/kaaval-ai/kaaval-assurance:act-ii
@@ -276,37 +276,37 @@ Open:
 http://localhost:8080
 ```
 
-The container serves the compiled React Flight Deck and FastAPI artifact API
-from one process. It defaults to captured-evidence mode:
+The container serves the compiled React Flight Deck and FastAPI API from one
+process. It provides two product modes:
 
-- no Fireworks API key
-- no live Gemma/vLLM endpoint
-- no AMD GPU required for replay
-- committed measured-run artifacts are rendered with source tags
+- **Evidence Baseline** renders the committed AMD/Gemma run and cost-comparison
+  artifacts with source tags and requires no key or GPU.
+- **Live Session** opens a runtime connection dialog and executes the real
+  assurance pipeline against Fireworks BYOK or a host-local Ollama/vLLM server.
 
-The hosted/submission deployment should keep:
+The image defaults to safe interactive onboarding:
 
 ```text
-KAAVAL_LIVE_RUNS_ENABLED=0
+KAAVAL_DEPLOYMENT_MODE=local
+KAAVAL_LIVE_RUNS_ENABLED=1
+KAAVAL_ALLOW_BYOK=1
+KAAVAL_ALLOW_CUSTOM_ENDPOINTS=0
 KAAVAL_ALLOW_PAID_REMOTE=0
 KAAVAL_ALLOW_ARTIFACT_EXPORT=0
 KAAVAL_ALLOW_DIAGNOSTIC_RAW=0
 PORT=8000
 ```
 
-The `KAAVAL_ALLOW_*` values are global operator feature gates, not caller
-authentication. Keep all of them off on public deployments. A private/local
-operator may enable paid remote execution while still requiring the caller's
-per-run spend acknowledgment. Enabled API exports are isolated under
-`artifacts/live-exports/<run-id>/`; they never replace the curated top-level
-evidence bundle.
+BYOK credentials exist only in backend memory for 15 idle minutes and are
+never written to telemetry, SQLite, artifacts, logs, or browser storage.
+Fireworks still requires per-run spend confirmation. The separate
+`KAAVAL_ALLOW_PAID_REMOTE` gate applies only when an operator supplies the
+server's own Fireworks credential through environment configuration.
 
-### 2. Optional: private live Gemma/vLLM attachment
-The public app should replay captured evidence, not expose a live GPU model.
-For a private demo, you can attach the same container to an OpenAI-compatible
-Gemma endpoint served by vLLM on an AMD GPU VM. Model weights and the vLLM
-server stay outside the Kaaval submission image; Kaaval connects to them as a
-provider endpoint.
+### 2. Connect local Gemma through Ollama or vLLM
+The image does not bundle model weights. Start Gemma in Ollama or vLLM on the
+host, open **Live Session**, and select the matching runtime. The dialog tests
+`/v1/models` before storing an ephemeral connection.
 
 Start or forward the private vLLM server so it is reachable from the machine
 running Docker:
@@ -316,18 +316,18 @@ running Docker:
 ssh -L 8000:127.0.0.1:8000 <user>@<amd-gpu-vm>
 ```
 
-Then run Kaaval with live runs enabled and point it at the forwarded endpoint:
+Then run Kaaval with host networking available:
 
 ```bash
 docker run --rm -p 8080:8000 \
   --add-host=host.docker.internal:host-gateway \
-  -e KAAVAL_LIVE_RUNS_ENABLED=1 \
-  -e VLLM_BASE_URL=http://host.docker.internal:8000/v1 \
-  -e VLLM_MODEL=gemma-3-1b-it \
-  -e VLLM_MODEL_FAMILY=gemma \
-  -e VLLM_HARDWARE_TARGET=amd-hackathon-gpu \
   ghcr.io/kaaval-ai/kaaval-assurance:act-ii
 ```
+
+In the UI, use `http://host.docker.internal:8000/v1` for vLLM or
+`http://host.docker.internal:11434/v1` for Ollama. Runtime metadata is recorded
+truthfully; a local vLLM connection does not claim AMD hardware unless a
+matching runtime probe exists.
 
 If your Docker runtime already supports `host.docker.internal`, the
 `--add-host` line can be omitted. If you use Finch on macOS, the same image

@@ -9,7 +9,7 @@ so local-Mac runs can never masquerade as AMD runs.
 """
 
 import os
-from typing import Mapping, Optional
+from typing import Literal, Mapping, Optional
 
 import requests
 
@@ -55,6 +55,11 @@ class OllamaProvider(VllmProvider):
         self,
         config: Optional[VllmConfig] = None,
         session: Optional[requests.Session] = None,
+        tier: Literal["local", "remote"] = "local",
     ):
-        super().__init__(config or ollama_config_from_env(), session=session)
-        self.provider_name = "ollama"
+        super().__init__(
+            config or ollama_config_from_env(),
+            session=session,
+            tier=tier,
+            provider_name="ollama",
+        )

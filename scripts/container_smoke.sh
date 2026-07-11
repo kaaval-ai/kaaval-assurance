@@ -28,6 +28,7 @@ echo "platform=$PLATFORM"
 cid="$("$ENGINE" run -d \
   -p "${PORT}:8000" \
   -e KAAVAL_LIVE_RUNS_ENABLED=1 \
+  -e KAAVAL_ALLOW_BYOK=1 \
   -e KAAVAL_ALLOW_PAID_REMOTE=0 \
   -e KAAVAL_ALLOW_ARTIFACT_EXPORT=0 \
   -e KAAVAL_ALLOW_DIAGNOSTIC_RAW=0 \
@@ -57,11 +58,15 @@ if ! curl --max-time 3 -fsS "http://127.0.0.1:${PORT}/api/health" > "$tmp_dir/he
 fi
 cat "$tmp_dir/health.json"
 echo
-python3 -c "import json; d=json.load(open('$tmp_dir/health.json')); assert d['live_runs_enabled']; assert not d['paid_remote_allowed']; assert not d['artifact_export_allowed']; assert not d['diagnostic_raw_allowed']"
+python3 -c "import json; d=json.load(open('$tmp_dir/health.json')); assert d['live_runs_enabled']; assert d['byok_allowed']; assert d['deployment_mode']=='local'; assert not d['paid_remote_allowed']; assert not d['artifact_export_allowed']; assert not d['diagnostic_raw_allowed']"
+
+echo "runtime capabilities:"
+curl -fsS "http://127.0.0.1:${PORT}/api/capabilities" > "$tmp_dir/capabilities.json"
+python3 -c "import json; d=json.load(open('$tmp_dir/capabilities.json')); assert d['byok_allowed']; assert {'fireworks','ollama','vllm'} <= set(d['providers']); print(','.join(d['providers']))"
 
 echo "dashboard label:"
 curl -fsS "http://127.0.0.1:${PORT}/api/dashboard" \
-  | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('label'), 'bundle=', d.get('bundle_id'))"
+  | python3 -c "import json,sys; d=json.load(sys.stdin); assert d.get('comparison'); assert d['comparison']['comparison']['remote_calls_avoided']==14; print(d.get('label'), 'bundle=', d.get('bundle_id'), 'remote_calls_avoided=14')"
 
 echo "static app:"
 curl -fsS "http://127.0.0.1:${PORT}/" \

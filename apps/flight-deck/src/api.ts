@@ -1,7 +1,14 @@
 /* ── Typed API layer for the Flight Deck ──
    All backend access goes through here. No component parses raw `any`. */
 
-import type { DashboardPayload, LiveRunRequest, LiveRunResponse } from './types';
+import type {
+  DashboardPayload,
+  LiveRunRequest,
+  LiveRunResponse,
+  RuntimeCapabilities,
+  RuntimeConnection,
+  RuntimeConnectionRequest,
+} from './types';
 
 export class ApiError extends Error {
   status: number;
@@ -38,6 +45,26 @@ export function fetchHealth(): Promise<{
   diagnostic_raw_allowed: boolean;
 }> {
   return request('/api/health');
+}
+
+export function fetchCapabilities(): Promise<RuntimeCapabilities> {
+  return request<RuntimeCapabilities>('/api/capabilities');
+}
+
+export function createRuntimeConnection(
+  body: RuntimeConnectionRequest,
+): Promise<RuntimeConnection> {
+  return request<RuntimeConnection>('/api/runtime-connections', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteRuntimeConnection(connectionId: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`/api/runtime-connections/${connectionId}`, {
+    method: 'DELETE',
+  });
 }
 
 export function startRun(body: LiveRunRequest): Promise<LiveRunResponse> {

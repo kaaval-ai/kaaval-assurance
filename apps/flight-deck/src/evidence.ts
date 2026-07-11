@@ -114,7 +114,7 @@ export function headlineMetrics(payload: DashboardPayload | null): EvidenceMetri
       sub: comparison
         ? `${formatPctFromPercent(comparison.comparison.cost_reduction_percentage)} configured-cost reduction`
         : 'comparison artifact missing',
-      source: comparisonSource,
+      source: comparison ? (usedSample ? 'sample' : 'configured') : 'not_available',
       tone: comparison ? 'success' : 'muted',
     },
     {

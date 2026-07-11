@@ -21,14 +21,14 @@ export default function EvidenceModeBanner({ mode, label }: EvidenceModeBannerPr
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-mono text-[11px] font-bold uppercase tracking-wider text-foreground">
-                  {isLive ? 'Live execution guard' : 'Hosted replay evidence'}
+                  {isLive ? 'Connected runtime execution' : 'Evidence baseline'}
                 </p>
                 {!isLive && label && <DataLabelBadge label={label} />}
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-muted md:text-xs">
                 {isLive
-                  ? 'Live model calls require provider configuration; Fireworks additionally requires operator authorization and per-run spend confirmation.'
-                  : 'The public demo can run without secrets or paid calls; every number is replayed from captured evidence artifacts.'}
+                  ? 'Connect Fireworks, local Ollama, vLLM, or an allowed OpenAI-compatible endpoint. Every live response enters the same assurance and telemetry pipeline.'
+                  : 'Immutable captured evidence remains available without credentials; every number is sourced from the bundled run artifacts.'}
               </p>
             </div>
           </div>
@@ -40,11 +40,11 @@ export default function EvidenceModeBanner({ mode, label }: EvidenceModeBannerPr
             </span>
             <span className="inline-flex items-center gap-1 rounded border border-border bg-elevated/50 px-2 py-1">
               <KeyRound className="h-3 w-3 text-accent" />
-              {isLive ? 'Operator gate + run confirmation' : 'No hosted spend path'}
+              {isLive ? 'Ephemeral credentials + spend confirmation' : 'No credentials required'}
             </span>
             <span className="inline-flex items-center gap-1 rounded border border-border bg-elevated/50 px-2 py-1">
               <Archive className="h-3 w-3 text-warning" />
-              {isLive ? 'Exports isolated per run' : 'Artifacts are the source of truth'}
+              {isLive ? 'Live receipts stay session-scoped' : 'Artifacts are the source of truth'}
             </span>
           </div>
         </div>

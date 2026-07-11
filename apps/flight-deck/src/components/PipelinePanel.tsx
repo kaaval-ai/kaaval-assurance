@@ -35,13 +35,15 @@ function buildStages(rows: TrajectoryRow[], telemetry: TelemetrySummary | null):
     {
       ...meta.router,
       status: 'passed',
-      detail: local ? 'local tier first' : 'pre-routed remote',
+      detail: local ? 'primary tier first' : 'pre-routed escalation tier',
       durationMs: null,
     },
   ];
   if (local) {
     stages.push({
       ...meta.local,
+      label: `${local.provider} primary tier`,
+      desc: 'The configured primary runtime generates the first candidate answer.',
       status: 'passed',
       detail: `${local.provider}/${local.model_id}`,
       durationMs: local.latency_ms,
@@ -58,6 +60,8 @@ function buildStages(rows: TrajectoryRow[], telemetry: TelemetrySummary | null):
   if (escalated && remote) {
     stages.push({
       ...meta.escalate,
+      label: `${remote.provider} escalation tier`,
+      desc: 'A failed primary answer routes to the configured escalation runtime and returns through the same contract gate.',
       status: remote.verifier_passed ? 'passed' : 'failed',
       detail: `${remote.provider}/${remote.model_id} — checked by the same Layer 1 gate${remote.verifier_passed ? ': passed' : `: failed (${remote.verifier_failures.join(', ')})`}`,
       durationMs: remote.latency_ms,
@@ -66,7 +70,7 @@ function buildStages(rows: TrajectoryRow[], telemetry: TelemetrySummary | null):
     // pre-routed remote request (no local attempt)
     stages.push({
       ...meta.escalate,
-      label: 'Remote Tier (pre-routed)',
+      label: `${remote.provider} escalation tier (pre-routed)`,
       status: remote.verifier_passed ? 'passed' : 'failed',
       detail: `${remote.provider}/${remote.model_id}`,
       durationMs: remote.latency_ms,

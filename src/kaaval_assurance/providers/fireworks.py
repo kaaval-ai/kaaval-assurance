@@ -14,7 +14,7 @@ import json
 import os
 import time
 from dataclasses import dataclass
-from typing import Mapping, Optional
+from typing import Literal, Mapping, Optional
 
 import requests
 
@@ -77,10 +77,11 @@ class FireworksProvider(Provider):
         self,
         config: Optional[FireworksConfig] = None,
         session: Optional[requests.Session] = None,
+        tier: Literal["local", "remote"] = "remote",
     ):
         self.config = config or FireworksConfig.from_env()
         self.provider_name = "fireworks"
-        self.tier = "remote"
+        self.tier = tier
         self.model_id = self.config.model
         self._session = session or requests.Session()
 
@@ -148,7 +149,7 @@ class FireworksProvider(Provider):
             request_id=request_id,
             provider=self.provider_name,
             model_id=self.model_id,
-            tier="remote",
+            tier=self.tier,
             raw_text=raw_text,
             parsed=parsed,
             prompt_tokens=prompt_tokens,

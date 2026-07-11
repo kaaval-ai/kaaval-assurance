@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from .contracts import get_contract
 from .eval.runner import CaseResult, EvalRunReport
 from .metrics import aggregate
-from .models import PipelineResult, TrajectoryRow
+from .models import PipelineResult, RuntimeProfile, TrajectoryRow
 from .pipeline import AssurancePipeline
 from .providers import MockProvider, Provider
 from .router import Router
@@ -129,7 +129,9 @@ def run_live_demo(
     )
 
 
-def telemetry_for(demo: LiveDemoResult) -> TelemetrySummary:
+def telemetry_for(
+    demo: LiveDemoResult, runtime_profile: Optional[RuntimeProfile] = None
+) -> TelemetrySummary:
     """Telemetry truth summary for one live demo run (public API surface)."""
     report = EvalRunReport(
         run_id=demo.result.request_id,
@@ -150,7 +152,9 @@ def telemetry_for(demo: LiveDemoResult) -> TelemetrySummary:
         ],
         metrics=aggregate(demo.rows),
     )
-    return build_telemetry_summary(report, demo.rows)
+    return build_telemetry_summary(
+        report, demo.rows, runtime_profile=runtime_profile
+    )
 
 
 def _summary_markdown(demo: LiveDemoResult, telemetry: TelemetrySummary) -> str:

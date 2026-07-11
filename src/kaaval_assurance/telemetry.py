@@ -487,7 +487,7 @@ def _build_claims(
         ClaimSupport(
             claim="Cost per contract-conformant answer",
             value=_fmt_cost(cost.cost_per_verified_answer_usd),
-            source="measured",
+            source="configured",
             field="cost.cost_per_verified_answer_usd",
         )
     )

@@ -38,7 +38,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:$PATH" \
     KAAVAL_STATIC_DIR=/app/apps/flight-deck/dist \
-    KAAVAL_LIVE_RUNS_ENABLED=0 \
+    KAAVAL_DEPLOYMENT_MODE=local \
+    KAAVAL_LIVE_RUNS_ENABLED=1 \
+    KAAVAL_ALLOW_BYOK=1 \
+    KAAVAL_ALLOW_CUSTOM_ENDPOINTS=0 \
     KAAVAL_ALLOW_PAID_REMOTE=0 \
     KAAVAL_ALLOW_ARTIFACT_EXPORT=0 \
     KAAVAL_ALLOW_DIAGNOSTIC_RAW=0 \
@@ -60,7 +63,7 @@ RUN adduser --system --uid 10001 --group --no-create-home kaaval \
 COPY --from=flightdeck --chown=root:root /build/apps/flight-deck/dist ./apps/flight-deck/dist
 
 USER kaaval
-EXPOSE 8000
+EXPOSE 8000 7860
 STOPSIGNAL SIGTERM
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

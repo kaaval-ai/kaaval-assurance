@@ -2,7 +2,7 @@ import { BarChart3 } from 'lucide-react';
 import type { TelemetrySummary } from '../types';
 import { NotAvailable, SourceChip, ms, pct } from './Tags';
 
-/* Local tier vs remote escalation tier, from captured measurements only.
+/* Primary tier vs escalation tier, from the current run measurements only.
    A side with no captured attempts renders as not available — never as a
    plausible default. No accuracy or hallucination columns: those are not
    measured by this system. */
@@ -72,7 +72,7 @@ export default function ModelComparison({ telemetry, usedSample }: { telemetry: 
           Tier Comparison
         </span>
         <span className="text-[10px] font-mono text-muted">
-          local tier vs escalation tier · captured measurements only
+          primary tier vs escalation tier · run measurements only
         </span>
       </div>
       <div className="panel-body">
@@ -80,8 +80,8 @@ export default function ModelComparison({ telemetry, usedSample }: { telemetry: 
           <div className="py-6 text-center text-muted text-xs">No telemetry artifact loaded.</div>
         ) : (
           <div className="flex flex-col sm:flex-row gap-2">
-            <TierColumn title="Local tier (Gemma-first)" stats={local} usedSample={usedSample} />
-            <TierColumn title="Remote tier (Fireworks escalation)" stats={remote} usedSample={usedSample} />
+            <TierColumn title="Primary tier" stats={local} usedSample={usedSample} />
+            <TierColumn title="Escalation tier" stats={remote} usedSample={usedSample} />
           </div>
         )}
         <p className="pt-2 text-[9px] font-mono text-muted leading-relaxed">

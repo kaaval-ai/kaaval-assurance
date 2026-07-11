@@ -16,7 +16,7 @@ import json
 import os
 import time
 from dataclasses import dataclass
-from typing import Mapping, Optional
+from typing import Literal, Mapping, Optional
 from urllib.parse import urlparse
 
 import requests
@@ -118,10 +118,12 @@ class VllmProvider(Provider):
         self,
         config: Optional[VllmConfig] = None,
         session: Optional[requests.Session] = None,
+        tier: Literal["local", "remote"] = "local",
+        provider_name: str = "vllm-gemma",
     ):
         self.config = config or VllmConfig.from_env()
-        self.provider_name = "vllm-gemma"
-        self.tier = "local"
+        self.provider_name = provider_name
+        self.tier = tier
         self.model_id = self.config.model
         self._session = session or requests.Session()
 
@@ -218,7 +220,7 @@ class VllmProvider(Provider):
             request_id=request_id,
             provider=self.provider_name,
             model_id=self.model_id,
-            tier="local",
+            tier=self.tier,
             raw_text=raw_text,
             parsed=parsed,
             prompt_tokens=prompt_tokens,

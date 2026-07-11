@@ -1,9 +1,8 @@
 # Kaaval Assurance — Inference Flight Deck
 
-A captured-run observability surface for the Kaaval Assurance inference plane.
-It renders recorded artifacts — telemetry, trajectory rows, and runtime-probe
-facts — with a source tag on every value, plus an optional, gated Live Run
-mode that executes the real assurance pipeline server-side.
+The product surface for the Kaaval Assurance inference plane. Evidence
+Baseline renders immutable telemetry, trajectories, and runtime-probe facts;
+Live Session connects a user runtime and executes the real assurance pipeline.
 
 This is **not** streaming telemetry: Captured Evidence mode re-reads artifacts
 on a ~5 second cycle and on manual Refresh. Nothing on screen is invented —
@@ -12,7 +11,7 @@ and AMD claims stay **pending** until a real runtime-probe artifact exists.
 
 ## Two modes
 
-### Captured Evidence (default; works everywhere)
+### Evidence Baseline (default; works everywhere)
 
 - Loads telemetry, trajectory, and runtime-probe artifacts via the API.
 - Needs no model endpoints and no secrets — safe to host publicly.
@@ -20,17 +19,17 @@ and AMD claims stay **pending** until a real runtime-probe artifact exists.
   **CAPTURED FIREWORKS RUN**, or **MEASURED AMD RUN**, with artifact
   provenance (name, origin, timestamp) in the status bar.
 
-### Live Assurance Run (opt-in)
+### Live Session
 
-- `POST /api/runs` drives the real `AssurancePipeline` through the existing
-  provider factory — the API never reimplements routing or verification.
-- Disabled unless the server sets `KAAVAL_LIVE_RUNS_ENABLED=1`; hosted
-  deployments can stay pure captured-evidence surfaces.
-- Fireworks execution requires both server-operator authorization
-  (`KAAVAL_ALLOW_PAID_REMOTE=1`) and the caller's per-run spend confirmation.
-- Failure injection works on the mock local provider only.
-- All provider credentials stay server-side; the response contains the run's
-  trajectory rows, telemetry summary, and runtime profile — nothing else.
+- `POST /api/runtime-connections` tests and stores Fireworks BYOK, Ollama,
+  vLLM, or an operator-enabled HTTPS endpoint in backend memory only.
+- `POST /api/runs` resolves the ephemeral connection and drives the existing
+  `AssurancePipeline`; the API never reimplements routing or verification.
+- Fireworks requires the caller's per-run spend confirmation.
+- Credentials expire after 15 idle minutes and never enter browser storage,
+  SQLite, artifacts, telemetry, logs, or API responses.
+- The live response feeds the pipeline graph, provider switchboard, contract
+  gate, EWMA state, telemetry table, model comparison, and Kaaval Receipt.
 - Requests are synchronous; the UI shows an honest pending state and then
   replays the returned trajectory. Export is operator-gated
   (`KAAVAL_ALLOW_ARTIFACT_EXPORT=1`) and writes each run to an isolated
@@ -41,9 +40,8 @@ and AMD claims stay **pending** until a real runtime-probe artifact exists.
 Backend (from the **repo root**):
 
 ```bash
-uv run uvicorn apps.api.server:app --port 8000
-# optional: enable live runs
-KAAVAL_LIVE_RUNS_ENABLED=1 uv run uvicorn apps.api.server:app --port 8000
+KAAVAL_LIVE_RUNS_ENABLED=1 KAAVAL_ALLOW_BYOK=1 \
+  uv run uvicorn apps.api.server:app --port 8000
 
 # private/local only: authorize paid remote calls and isolated API exports
 KAAVAL_LIVE_RUNS_ENABLED=1 KAAVAL_ALLOW_PAID_REMOTE=1 \
@@ -64,6 +62,8 @@ npm run build      # production build in dist/
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/health` | liveness + live-run, paid-remote, and export gate states |
+| `GET /api/capabilities` | deployment mode, runtime options, endpoint policy, and TTL |
+| `POST/DELETE /api/runtime-connections` | test, create, and destroy ephemeral runtime connections |
 | `GET /api/dashboard` | one typed payload: telemetry + trajectory + probe + provenance + labels |
 | `GET /api/telemetry` · `/api/trajectory` · `/api/runtime-probe` | raw artifacts wrapped with provenance |
 | `POST /api/runs` | gated live pipeline execution |

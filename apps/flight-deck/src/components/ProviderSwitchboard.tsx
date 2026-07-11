@@ -116,10 +116,10 @@ export default function ProviderSwitchboard({ telemetry, usedSample }: { telemet
           })
         )}
 
-        {/* Configured local endpoint from the runtime profile */}
+        {/* Configured primary endpoint from the runtime profile. */}
         <div className="px-2 py-1.5 rounded border border-dashed border-border/60 text-[10px] font-mono">
           <div className="flex items-center gap-2">
-            <span className="text-muted">Local endpoint:</span>
+            <span className="text-muted">Primary endpoint:</span>
             {profile ? (
               <>
                 <span className="text-foreground">
@@ -142,7 +142,7 @@ export default function ProviderSwitchboard({ telemetry, usedSample }: { telemet
         </div>
         {telemetry && !providers.some((p) => p.provider === 'fireworks') && (
           <div className="px-2 text-[9px] font-mono text-muted">
-            Fireworks escalation tier: no attempts in this run.{' '}
+            Escalation tier: no attempts in this run.{' '}
             <NotAvailable note="shown only when escalations exist or the tier is configured" />
           </div>
         )}

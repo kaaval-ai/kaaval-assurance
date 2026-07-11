@@ -79,9 +79,9 @@ export const SAMPLE_INPUTS: Record<string, string> = {
 export const PIPELINE_STAGES = [
   { id: 'request', label: 'Request', desc: 'Task input arrives bound to an explicit task contract.' },
   { id: 'router', label: 'Provider Router', desc: 'Provider-neutral routing; per-category thresholds come from Layer-2 drift.' },
-  { id: 'local', label: 'Gemma-first Local Tier', desc: 'Open-weight local inference (mock in tests, Ollama in dev, ROCm + vLLM on the AMD GPU target).' },
+  { id: 'local', label: 'Primary Runtime', desc: 'The configured primary model produces the first candidate answer.' },
   { id: 'verify', label: 'Layer 1 Contract Verification', desc: 'Deterministic checks: JSON shape, required fields, enums, ranges. Shape and constraints — not semantic truth.' },
-  { id: 'escalate', label: 'Fireworks Escalation', desc: 'Only when Layer 1 rejects the local answer; the remote response is checked by the same verifier.' },
+  { id: 'escalate', label: 'Escalation Runtime', desc: 'Only when Layer 1 rejects the primary answer; the escalation response is checked by the same verifier.' },
   { id: 'persist', label: 'Trajectory Persistence', desc: 'Every attempt stored verbatim as a replayable row.' },
   { id: 'drift', label: 'Layer 2 EWMA Drift Update', desc: 'Per-category drift over verifier outcomes; deterministic policy tightens routing.' },
   { id: 'audit', label: 'Layer 3 Sampled Audit', desc: 'Offline, sampled, calibration-gated. Detection is model-generated; aggregation is deterministic.' },
