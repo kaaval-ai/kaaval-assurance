@@ -67,7 +67,7 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
               </div>
               <p className="text-sm font-mono text-muted leading-relaxed">
                 A captured-run observability surface for the Kaaval Assurance inference plane:
-                a Gemma-first local tier is verified against explicit task contracts (Layer 1),
+                a Gemma-first local tier is checked against explicit task contracts (Layer 1),
                 escalates to Fireworks only when verification fails, and feeds per-category
                 drift tracking (Layer 2) and a calibrated sampled audit (Layer 3). Every value
                 on screen carries a source tag; sample data is labeled as sample, and AMD

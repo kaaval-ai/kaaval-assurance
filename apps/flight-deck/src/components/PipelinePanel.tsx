@@ -59,7 +59,7 @@ function buildStages(rows: TrajectoryRow[], telemetry: TelemetrySummary | null):
     stages.push({
       ...meta.escalate,
       status: remote.verifier_passed ? 'passed' : 'failed',
-      detail: `${remote.provider}/${remote.model_id} — re-verified by the same Layer 1 gate${remote.verifier_passed ? ': passed' : `: failed (${remote.verifier_failures.join(', ')})`}`,
+      detail: `${remote.provider}/${remote.model_id} — checked by the same Layer 1 gate${remote.verifier_passed ? ': passed' : `: failed (${remote.verifier_failures.join(', ')})`}`,
       durationMs: remote.latency_ms,
     });
   } else if (!local && remote) {
