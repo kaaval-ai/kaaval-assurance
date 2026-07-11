@@ -103,13 +103,16 @@ class SessionManager:
     def get_or_create(self, session_id: str | None, local: str, remote: str) -> LiveSession:
         with self.lock:
             self._cleanup()
-            if session_id and session_id in self.sessions:
-                sess = self.sessions[session_id]
-                if sess.local_provider != local or sess.remote_provider != remote:
-                    raise ValueError("Provider mismatch for existing session")
-                sess.last_accessed = time.time()
-                return sess
-            new_id = session_id if session_id else uuid.uuid4().hex
+            if session_id:
+                if session_id in self.sessions:
+                    sess = self.sessions[session_id]
+                    if sess.local_provider != local or sess.remote_provider != remote:
+                        raise ValueError("Provider mismatch for existing session")
+                    sess.last_accessed = time.time()
+                    return sess
+                else:
+                    raise ValueError(f"Unknown session_id: {session_id}")
+            new_id = uuid.uuid4().hex
             sess = LiveSession(new_id, local, remote)
             self.sessions[new_id] = sess
             return sess

@@ -12,7 +12,7 @@ import { SourceChip } from './Tags';
    never merged with sample or captured data. The request is synchronous;
    the pending state says so honestly. */
 
-const FAILURE_MODES = ['none', 'missing_field', 'bad_enum', 'unparseable'] as const;
+const FAILURE_MODES = ['none', 'missing_field', 'bad_enum', 'unparseable', 'undersevere'] as const;
 
 export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunResponse | null; onRunComplete: (r: LiveRunResponse) => void }) {
   const [contractId, setContractId] = useState(CONTRACTS[0].id);
