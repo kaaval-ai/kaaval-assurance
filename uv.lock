@@ -431,6 +431,10 @@ demo = [
 dev = [
     { name = "pytest" },
 ]
+server = [
+    { name = "fastapi" },
+    { name = "uvicorn" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -443,13 +447,15 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", marker = "extra == 'demo'" },
+    { name = "fastapi", marker = "extra == 'server'" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "requests", specifier = ">=2.28" },
     { name = "streamlit", marker = "extra == 'demo'", specifier = ">=1.28" },
     { name = "uvicorn", marker = "extra == 'demo'" },
+    { name = "uvicorn", marker = "extra == 'server'" },
 ]
-provides-extras = ["dev", "demo"]
+provides-extras = ["dev", "server", "demo"]
 
 [package.metadata.requires-dev]
 dev = [
