@@ -56,7 +56,7 @@ class TestRunLiveDemo:
     def test_invalid_failure_mode_rejected(self):
         with pytest.raises(ValueError, match="failure_mode"):
             run_live_demo(INCIDENT, SEVERITY, failure_mode="explode")
-        assert "out_of_range" not in LIVE_FAILURE_MODES  # demo exposes 3 modes
+        assert "out_of_range" in LIVE_FAILURE_MODES  # policy-cap violations are demoable
 
 
 class TestExportArtifacts:

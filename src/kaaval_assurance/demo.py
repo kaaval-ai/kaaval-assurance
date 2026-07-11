@@ -23,7 +23,13 @@ from .router import Router
 from .telemetry import TelemetrySummary, build_telemetry_summary
 from .trajectory import TrajectoryStore
 
-LIVE_FAILURE_MODES = ("missing_field", "bad_enum", "unparseable", "undersevere")
+LIVE_FAILURE_MODES = (
+    "missing_field",
+    "bad_enum",
+    "out_of_range",
+    "unparseable",
+    "undersevere",
+)
 
 
 class LiveDemoResult(BaseModel):

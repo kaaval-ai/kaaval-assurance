@@ -43,8 +43,8 @@ export default function StatusBar({ mode, payload, status, lastRefresh, liveRun 
               </span>
               <span className="text-muted">·</span>
               <span>
-                {liveRun.result.attempts} attempt{liveRun.result.attempts === 1 ? '' : 's'} 
-                ({liveRun.result.escalated ? 'escalated' : 'local'})
+                {liveRun.result.attempts} attempt{liveRun.result.attempts === 1 ? '' : 's'}
+                ({liveRun.result.escalated ? 'escalated' : liveRun.result.tier})
               </span>
               <span className="text-muted">·</span>
               <span className="tabular-nums">${liveRun.telemetry.cost.total_cost_usd.toFixed(4)}</span>

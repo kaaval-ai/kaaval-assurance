@@ -12,7 +12,7 @@ import { SourceChip } from './Tags';
    never merged with sample or captured data. The request is synchronous;
    the pending state says so honestly. */
 
-const FAILURE_MODES = ['none', 'missing_field', 'bad_enum', 'unparseable', 'undersevere'] as const;
+const FAILURE_MODES = ['none', 'missing_field', 'bad_enum', 'out_of_range', 'unparseable', 'undersevere'] as const;
 
 export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunResponse | null; onRunComplete: (r: LiveRunResponse | null) => void }) {
   const [contractId, setContractId] = useState(CONTRACTS[0].id);
@@ -207,8 +207,12 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
                 <span className="text-muted">·</span>
                 <span className="text-foreground">{run.result.attempts} attempt{run.result.attempts === 1 ? '' : 's'}</span>
                 <span className="text-muted">·</span>
-                <span className={run.result.escalated ? 'text-warning' : 'text-success'}>
-                  {run.result.escalated ? 'escalated to remote tier' : 'resolved locally'}
+                <span className={run.result.tier === 'local' ? 'text-success' : 'text-warning'}>
+                  {run.result.escalated
+                    ? 'escalated to remote tier'
+                    : run.result.tier === 'local'
+                      ? 'resolved locally'
+                      : 'pre-routed to remote tier'}
                 </span>
                 <span className="text-muted">·</span>
                 <span className="text-muted">{run.result.checks_run} deterministic checks</span>
