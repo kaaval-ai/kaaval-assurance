@@ -242,6 +242,7 @@ export interface LiveRunRequest {
   remote_provider: 'mock' | 'fireworks';
   confirm_spend: boolean;
   failure_mode: string | null;
+  remote_failure_mode: string | null;
   export_artifacts: boolean;
   session_id?: string;
 }

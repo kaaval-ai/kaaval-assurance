@@ -69,6 +69,7 @@ class RunRequest(BaseModel):
     remote_provider: Literal["mock", "fireworks"] = "mock"
     confirm_spend: bool = False
     failure_mode: Optional[str] = None
+    remote_failure_mode: Optional[str] = None
     export_artifacts: bool = False
     session_id: Optional[str] = None
 
@@ -230,6 +231,15 @@ def create_app(
                 status_code=422,
                 detail="failure injection is supported by the mock local provider only",
             )
+        if req.remote_failure_mode is not None and (
+            req.remote_failure_mode not in LIVE_FAILURE_MODES
+            or req.remote_provider != "mock"
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="remote failure injection requires the mock remote provider "
+                f"and one of {list(LIVE_FAILURE_MODES)}",
+            )
         try:
             local = (
                 None
@@ -255,6 +265,7 @@ def create_app(
                         task_input=req.task_input,
                         contract_id=req.contract_id,
                         failure_mode=req.failure_mode,
+                        remote_failure_mode=req.remote_failure_mode,
                         case_id="api",
                         local_provider=local,
                         remote_provider=remote,

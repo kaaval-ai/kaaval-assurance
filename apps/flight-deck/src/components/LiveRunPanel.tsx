@@ -20,6 +20,7 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
   const [localProvider, setLocalProvider] = useState<'mock' | 'ollama' | 'vllm'>('mock');
   const [remoteProvider, setRemoteProvider] = useState<'mock' | 'fireworks'>('mock');
   const [failureMode, setFailureMode] = useState<string>('none');
+  const [remoteFailureMode, setRemoteFailureMode] = useState<string>('none');
   const [confirmSpend, setConfirmSpend] = useState(false);
   const [exportArtifacts, setExportArtifacts] = useState(false);
   const [pending, setPending] = useState(false);
@@ -43,6 +44,7 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
         remote_provider: remoteProvider,
         confirm_spend: confirmSpend,
         failure_mode: failureMode === 'none' ? null : failureMode,
+        remote_failure_mode: remoteFailureMode === 'none' ? null : remoteFailureMode,
         export_artifacts: exportArtifacts,
         session_id: sessionId,
       });
@@ -132,12 +134,24 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
             </label>
             <label className="block text-[10px] font-mono text-muted space-y-1">
               <span className="uppercase tracking-wider">Remote provider</span>
-              <select className={selectCls} value={remoteProvider} onChange={(e) => setRemoteProvider(e.target.value as typeof remoteProvider)}>
+              <select className={selectCls} value={remoteProvider} onChange={(e) => { setRemoteProvider(e.target.value as typeof remoteProvider); if (e.target.value !== 'mock') setRemoteFailureMode('none'); }}>
                 <option value="mock">mock — no network</option>
                 <option value="fireworks">fireworks — spends API credits</option>
               </select>
             </label>
           </div>
+
+          <label className="block text-[10px] font-mono text-muted space-y-1">
+            <span className="uppercase tracking-wider">Remote failure injection (mock remote only) — the double-failure path: the expensive answer is verified too</span>
+            <select
+              className={selectCls}
+              value={remoteFailureMode}
+              onChange={(e) => setRemoteFailureMode(e.target.value)}
+              disabled={remoteProvider !== 'mock'}
+            >
+              {FAILURE_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
 
           {remoteProvider === 'fireworks' && (
             <label className="flex items-center gap-2 px-2 py-1.5 rounded border border-warning/40 bg-warning/5 text-[10px] font-mono text-warning cursor-pointer">

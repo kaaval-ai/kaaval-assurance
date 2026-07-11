@@ -38,6 +38,7 @@ class LiveDemoResult(BaseModel):
     category: str
     task_input: str
     failure_mode: Optional[str] = None
+    remote_failure_mode: Optional[str] = None
     result: PipelineResult
     rows: list[TrajectoryRow] = Field(default_factory=list)
 
@@ -59,18 +60,35 @@ def run_live_demo(
     remote_provider: Optional[Provider] = None,
     router: Optional[Router] = None,
     store: Optional[TrajectoryStore] = None,
+    remote_failure_mode: Optional[str] = None,
 ) -> LiveDemoResult:
     """One request through the assurance pipeline, in-memory store.
 
     Defaults to mock tiers. Custom providers (e.g. Ollama local, Fireworks
     remote from the provider factory) may be injected; failure injection is a
-    mock-tier concept and cannot combine with a custom local provider.
+    mock-tier concept and cannot combine with a custom provider on the same
+    tier. remote_failure_mode exists to demonstrate the double-failure path:
+    the escalation tier's answer fails the same verifier, and the request is
+    returned honestly unverified — malformed output from the expensive model
+    is never accepted just because it was expensive.
+
+    A caller-owned Router (and TrajectoryStore) may be injected so routing
+    state and evidence persist across calls — the live API's session manager
+    does this. By default each call gets fresh ones and stays independent.
     """
     if failure_mode is not None and failure_mode not in LIVE_FAILURE_MODES:
         raise ValueError(f"failure_mode must be one of {LIVE_FAILURE_MODES} or None")
     if failure_mode is not None and local_provider is not None:
         raise ValueError(
             "failure injection applies to the default mock local tier only"
+        )
+    if remote_failure_mode is not None and remote_failure_mode not in LIVE_FAILURE_MODES:
+        raise ValueError(
+            f"remote_failure_mode must be one of {LIVE_FAILURE_MODES} or None"
+        )
+    if remote_failure_mode is not None and remote_provider is not None:
+        raise ValueError(
+            "remote failure injection applies to the default mock remote tier only"
         )
     contract = get_contract(contract_id)
     close_store = store is None
@@ -82,7 +100,11 @@ def run_live_demo(
             local_provider=local_provider
             or MockProvider(tier="local", failure_mode=failure_mode),
             remote_provider=remote_provider
-            or MockProvider(tier="remote", model_id="mock-remote-strong"),
+            or MockProvider(
+                tier="remote",
+                model_id="mock-remote-strong",
+                failure_mode=remote_failure_mode,
+            ),
             store=store,
         )
         request_id = f"live-{uuid.uuid4().hex[:8]}-{case_id}"
@@ -101,6 +123,7 @@ def run_live_demo(
         category=contract.category,
         task_input=task_input,
         failure_mode=failure_mode,
+        remote_failure_mode=remote_failure_mode,
         result=result,
         rows=rows,
     )
