@@ -156,3 +156,38 @@ def test_cli_persists_trajectory_db(tmp_path):
         assert store.count() == 16
     finally:
         store.close()
+
+
+def test_force_remote_eval_replays_fully_remote(capsys, tmp_path):
+    db = tmp_path / "run.db"
+    rc = cli_main([
+        "--dataset", GOLD,
+        "--db", str(db),
+        "--force-remote",
+        "--remote-provider", "mock",
+        "--json"
+    ])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["n_cases"] == 16
+    assert payload["metrics"]["attempts"] == 16
+    assert payload["metrics"]["escalation_rate"] == 0.0
+    assert payload["metrics"]["pass_rate"] == 1.0
+    
+    store = TrajectoryStore(db)
+    try:
+        rows = store.all_rows()
+        assert len(rows) == 16
+        assert all(r.tier == "remote" for r in rows)
+    finally:
+        store.close()
+        
+    for res in payload["results"]:
+        assert "explicit always-remote baseline" in res["routing_reason"]
+
+
+def test_force_remote_closed_loop_incompatible(capsys):
+    rc = cli_main(["--force-remote", "--closed-loop-demo"])
+    assert rc == 2
+    assert "incompatible" in capsys.readouterr().err
+

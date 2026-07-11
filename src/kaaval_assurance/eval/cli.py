@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from ..metrics import DEFAULT_EWMA_ALPHA, MetricsReport
+from ..contracts import get_contract
 from ..pipeline import AssurancePipeline
 from ..providers import FAILURE_MODES, FireworksError, MockProvider, VllmError
 from ..router import Router
@@ -252,6 +253,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="trajectory DB of a cached always-remote run; enables "
         "remote-calls-avoided and cost-saved telemetry",
     )
+    parser.add_argument(
+        "--force-remote",
+        action="store_true",
+        help="pre-route every category directly to the remote provider",
+    )
     return parser
 
 
@@ -277,6 +283,13 @@ def main(argv: list[str] | None = None) -> int:
         )
     except (SpendConfirmationRequired, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    if args.force_remote and args.closed_loop_demo:
+        print(
+            "error: --force-remote is incompatible with --closed-loop-demo",
+            file=sys.stderr,
+        )
         return 2
 
     if args.audit_provider != "none" and args.closed_loop_demo:
@@ -359,8 +372,16 @@ def main(argv: list[str] | None = None) -> int:
                 _print_demo(demo, args.dataset)
             return 0
 
+        router = Router()
+        if args.force_remote:
+            for case in cases:
+                contract = get_contract(case.contract_id, case.contract_version)
+                category = contract.category
+                router.category_thresholds[category] = 1.00
+                router.category_policy_notes[category] = "explicit always-remote baseline"
+
         pipeline = AssurancePipeline(
-            router=Router(),
+            router=router,
             local_provider=local_provider,
             remote_provider=remote_provider,
             store=store,
