@@ -72,6 +72,11 @@ class RunRequest(BaseModel):
     remote_failure_mode: Optional[str] = None
     export_artifacts: bool = False
     session_id: Optional[str] = None
+    # Fail-closed boundary: when the final answer did not pass Layer 1, the
+    # response omits it (answer=None, raw_text="") unless the caller
+    # explicitly opts in. The Flight Deck opts in — it is an inspection
+    # surface whose receipts show every attempt verbatim by design.
+    include_unverified_raw: bool = False
 
 
 class LiveSession:
@@ -297,6 +302,9 @@ def create_app(
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
 
+        expose_output = (
+            demo.result.verification.passed or req.include_unverified_raw
+        )
         return {
             "run_id": demo.result.request_id,
             "mode": "live",
@@ -325,8 +333,18 @@ def create_app(
                 "attempts": demo.result.attempts,
                 "tier": demo.result.response.tier,
                 "routing_reason": demo.result.routing.reason,
-                "answer": demo.result.response.parsed,
-                "raw_text": demo.result.response.raw_text,
+                # Fail closed: an answer that did not pass Layer 1 is a typed
+                # failure, not a usable value with a warning flag attached.
+                "answer": (
+                    demo.result.response.parsed if expose_output else None
+                ),
+                "raw_text": (
+                    demo.result.response.raw_text if expose_output else ""
+                ),
+                "unverified_output_withheld": (
+                    not demo.result.verification.passed
+                    and not req.include_unverified_raw
+                ),
             },
             "trajectory": [json.loads(r.model_dump_json()) for r in demo.rows],
             "telemetry": json.loads(telemetry_summary.model_dump_json()),

@@ -50,6 +50,10 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
         remote_failure_mode: remoteFailureMode === 'none' ? null : remoteFailureMode,
         export_artifacts: exportArtifacts,
         session_id: sessionId,
+        // The Flight Deck is an inspection surface: receipts show every
+        // attempt verbatim, so it explicitly opts in to seeing unverified
+        // output. Integrations default to the fail-closed behavior.
+        include_unverified_raw: true,
       });
       setSessionId(result.session.session_id);
       onRunComplete(result);

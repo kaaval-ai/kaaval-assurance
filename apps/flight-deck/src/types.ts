@@ -245,6 +245,7 @@ export interface LiveRunRequest {
   remote_failure_mode: string | null;
   export_artifacts: boolean;
   session_id?: string;
+  include_unverified_raw?: boolean;
 }
 
 export interface LiveRunResponse {
@@ -277,6 +278,7 @@ export interface LiveRunResponse {
     routing_reason: string;
     answer: Record<string, unknown> | null;
     raw_text: string;
+    unverified_output_withheld: boolean;
   };
   trajectory: TrajectoryRow[];
   telemetry: TelemetrySummary;
