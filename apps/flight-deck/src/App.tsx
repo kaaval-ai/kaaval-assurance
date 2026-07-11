@@ -12,6 +12,7 @@ import TelemetryTruth from './components/TelemetryTruth';
 import TrajectoryReplay from './components/TrajectoryReplay';
 import AMDProof from './components/AMDProof';
 import LiveRunPanel from './components/LiveRunPanel';
+import EvidenceModeBanner from './components/EvidenceModeBanner';
 
 const REFRESH_INTERVAL_MS = 5000;
 
@@ -65,6 +66,8 @@ export default function App() {
         onRefresh={refresh}
         refreshing={refreshing}
       />
+
+      <EvidenceModeBanner mode={mode} label={payload?.label ?? null} />
 
       <main className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
         {mode === 'live' ? (
