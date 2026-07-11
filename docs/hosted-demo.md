@@ -43,14 +43,14 @@ The smoke test builds the image, starts the container, and checks:
 Recommended public image name:
 
 ```text
-ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii
 ```
 
 Build and push after local smoke passes:
 
 ```bash
-finch build -t ghcr.io/kaaval-ai/kaaval-assurance:act-ii .
-finch push ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+finch build -t ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii .
+finch push ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii
 ```
 
 If using Docker instead of Finch, replace `finch` with `docker`.

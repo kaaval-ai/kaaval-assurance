@@ -198,61 +198,89 @@ lives in this repo's telemetry artifacts and the deck built from them.
 
 ## Quickstart
 
-### 1. Backend & CLI Setup
-```bash
-# Install dependencies including FastAPI and Streamlit
-pip install -e ".[dev,demo]"
-
-# Run full test suite network-free
-pytest
-
-# Run a mock evaluation (zero cloud access)
-kaaval-eval --dataset data/eval/telecom_gold.jsonl \
-  --audit-provider mock --audit-sample-rate 1.0 --telemetry-summary
-```
-
-### 2. Flight Deck UI (React Dashboard)
-A captured-run observability surface: it renders recorded artifacts (real `artifacts/` first, labeled sample data as fallback) and refreshes them every few seconds — it is not streaming telemetry. An optional Live Run mode executes the real pipeline server-side and is disabled unless `KAAVAL_LIVE_RUNS_ENABLED=1`. See [apps/flight-deck/README.md](apps/flight-deck/README.md).
-```bash
-# Terminal 1: backend API, from the repo root
-uv run uvicorn apps.api.server:app --port 8000
-
-# Terminal 2: React frontend, from apps/flight-deck
-cd apps/flight-deck
-npm install
-npm run dev
-```
-
-### 2b. Containerized Flight Deck
-The submission container serves the compiled React Flight Deck and FastAPI
-artifact API from one process. It defaults to captured-evidence mode, so it
-does not need secrets, Fireworks credits, or a live Gemma/vLLM endpoint.
+### 1. Run the submitted container
+The judge path is container-first. It does **not** require cloning the repo,
+installing Python/Node dependencies, providing secrets, or running a live GPU
+model endpoint.
 
 ```bash
-# Uses Finch when available, otherwise Docker. Checks /, /api/health, /api/dashboard.
-CONTAINER_ENGINE=finch IMAGE=kaaval-assurance:local PORT=8080 \
-  scripts/container_smoke.sh
+docker pull ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii
+docker run --rm -p 8080:8000 ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii
 ```
 
-Public registry target for submission:
+Open:
 
-```bash
-finch build -t ghcr.io/kaaval-ai/kaaval-assurance:act-ii .
-finch push ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+```text
+http://localhost:8080
 ```
 
-Hosted deployments should keep:
+The container serves the compiled React Flight Deck and FastAPI artifact API
+from one process. It defaults to captured-evidence mode:
+
+- no Fireworks API key
+- no live Gemma/vLLM endpoint
+- no AMD GPU required for replay
+- committed measured-run artifacts are rendered with source tags
+
+The hosted/submission deployment should keep:
 
 ```text
 KAAVAL_LIVE_RUNS_ENABLED=0
 PORT=8000
 ```
 
-Do not expose a live vLLM/Gemma server in the public app container. The hosted
-URL replays measured AMD evidence; a live GPU endpoint can be attached later
-as a private provider target via `VLLM_BASE_URL`.
+### 2. Optional: private live Gemma/vLLM attachment
+The public app should replay captured evidence, not expose a live GPU model.
+For a private demo, you can attach the same container to an OpenAI-compatible
+Gemma endpoint served by vLLM on an AMD GPU VM. Model weights and the vLLM
+server stay outside the Kaaval submission image; Kaaval connects to them as a
+provider endpoint.
 
-### 3. Using Local Ollama Gemma & Fireworks API Simultaneously
+Start or forward the private vLLM server so it is reachable from the machine
+running Docker:
+
+```bash
+# Example: if vLLM runs on a remote AMD VM at 127.0.0.1:8000 on that VM
+ssh -L 8000:127.0.0.1:8000 <user>@<amd-gpu-vm>
+```
+
+Then run Kaaval with live runs enabled and point it at the forwarded endpoint:
+
+```bash
+docker run --rm -p 8080:8000 \
+  --add-host=host.docker.internal:host-gateway \
+  -e KAAVAL_LIVE_RUNS_ENABLED=1 \
+  -e VLLM_BASE_URL=http://host.docker.internal:8000/v1 \
+  -e VLLM_MODEL=gemma-3-1b-it \
+  -e VLLM_MODEL_FAMILY=gemma \
+  -e VLLM_HARDWARE_TARGET=amd-hackathon-gpu \
+  ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii
+```
+
+If your Docker runtime already supports `host.docker.internal`, the
+`--add-host` line can be omitted. If you use Finch on macOS, the same image
+works; run the equivalent `finch run` command with the same environment
+variables.
+
+### 3. Optional: source development
+Source setup is for contributors, not required for judging:
+
+```bash
+pip install -e ".[dev,demo]"
+pytest
+
+kaaval-eval --dataset data/eval/telecom_gold.jsonl \
+  --audit-provider mock --audit-sample-rate 1.0 --telemetry-summary
+
+cd apps/flight-deck
+npm install
+npm run dev
+```
+
+See [apps/flight-deck/README.md](apps/flight-deck/README.md) for the
+local two-terminal development loop.
+
+### 4. Using Local Ollama Gemma & Fireworks API Simultaneously
 You can run the full assurance pipeline, routing requests first to your local open-weight Gemma model (via Ollama), and intelligently escalating failing/drifting requests to the Fireworks remote tier.
 
 1. Copy `.env.example` to `.env` and fill in the required keys:
@@ -272,7 +300,7 @@ kaaval-eval --dataset data/eval/telecom_gold.jsonl \
 ```
 *Note: `--failure-mode bad_enum --failure-rate 0.25` injects local failures (mock local tier only) so escalations are observable in the run output.*
 
-### 4. Reproduce Gemma on an AMD GPU VM via ROCm + vLLM
+### 5. Reproduce Gemma on an AMD GPU VM via ROCm + vLLM
 ```bash
 python -m kaaval_assurance.runtime_probe --output artifacts/runtime-probe.json
 kaaval-eval --dataset data/eval/telecom_gold.jsonl \
