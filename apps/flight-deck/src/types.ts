@@ -265,6 +265,7 @@ export interface LiveRunResponse {
     local_provider: string;
     remote_provider: string;
     failure_mode: string | null;
+    remote_failure_mode: string | null;
   };
   result: {
     verified: boolean;

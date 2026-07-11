@@ -72,8 +72,32 @@ class TestSupportHardDataset:
         for case in load_dataset(HARD):
             contract = get_contract(case.contract_id)
             assert case.gold_answer is not None, case.case_id
-            result = verify(response_for(case.gold_answer, case.contract_id), contract)
+            result = verify(
+                response_for(case.gold_answer, case.contract_id),
+                contract,
+                case.task_input,
+            )
             assert result.passed, f"{case.case_id}: {result.failures}"
+
+    def test_missing_purchase_evidence_cannot_be_auto_approved(self):
+        contract = get_contract("support.refund_decision")
+        task_input = (
+            "Customer: I want a refund for my purchase. It didn't meet "
+            "expectations. (No order number, no amount, no date, and the "
+            "account email doesn't match any purchase record we can find.)"
+        )
+        unsafe_approval = {
+            "decision": "approve",
+            "refund_amount_usd": 100.0,
+            "justification": "gesture of goodwill",
+        }
+        result = verify(
+            response_for(unsafe_approval, contract.contract_id),
+            contract,
+            task_input,
+        )
+        assert not result.passed
+        assert "grounding:missing_purchase_evidence_requires_human" in result.failures
 
 
 class TestSupportFailurePaths:

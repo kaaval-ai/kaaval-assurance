@@ -5,7 +5,6 @@ import { startRun, resetSession, ApiError } from '../api';
 import { CONTRACTS, SAMPLE_INPUTS } from '../mock/data';
 import TrajectoryReplay from './TrajectoryReplay';
 import TelemetryTruth from './TelemetryTruth';
-import { SourceChip } from './Tags';
 
 /* Live Assurance Run: drives the real pipeline through POST /api/runs.
    Everything rendered after submission derives from the returned run —
@@ -34,6 +33,7 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
   const selectContract = (id: string) => {
     setContractId(id);
     setTaskInput(SAMPLE_INPUTS[id] ?? '');
+    setFailureMode(id === 'support.refund_decision' ? 'out_of_range' : 'none');
   };
 
   const submit = async () => {
@@ -233,7 +233,6 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
                 </span>
                 <span className="text-muted">·</span>
                 <span className="text-muted">{run.result.checks_run} deterministic checks</span>
-                <SourceChip tag="measured" />
               </div>
               <div className="text-[10px] text-muted">routing: {run.result.routing_reason}</div>
               {run.result.answer ? (
