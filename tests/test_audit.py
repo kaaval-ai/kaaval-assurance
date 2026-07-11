@@ -179,6 +179,14 @@ class TestCalibration:
     def test_skipped_calibration_is_not_passed(self):
         assert skipped_calibration().status == "skipped"
 
+    def test_zero_gold_cases_never_pass_calibration(self):
+        # A challenger that was never shown evidence has an unknown
+        # false-positive rate; 0/0 must read as failed, not perfect.
+        report = calibrate_challenger(MockAuditChallenger(flag_rate=0.0), [])
+        assert report.total_gold == 0
+        assert report.false_positive_rate == 0.0
+        assert report.status == "failed"
+
 
 class TestSampledAudit:
     def run_audit(self, flag_rate=0.0, sample_rate=1.0, local_failure=None):
@@ -210,6 +218,14 @@ class TestSampledAudit:
         assert summary.passed == 16
         assert summary.failed == 0
         assert summary.trusted is True
+
+    def test_zero_sampled_answers_are_never_trusted(self):
+        # Review probe: 10% sampling with an unlucky seed audited 0 of 16
+        # answers yet still displayed trusted. No samples, no signal.
+        summary, results, _ = self.run_audit(sample_rate=0.0)
+        assert summary.sampled == 0
+        assert summary.calibration.status == "passed"
+        assert summary.trusted is False
 
     def test_only_layer1_passing_final_attempts_audited(self):
         # bad_enum degrades 2 categories: failed local attempts must never be

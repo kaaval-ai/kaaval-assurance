@@ -75,7 +75,9 @@ def run_sampled_audit(
     summary = AuditRunSummary(
         audit_provider=challenger.challenger_name,
         audit_model_id=challenger.model_id,
-        trusted=calibration.status == "passed",
+        # A zero-sample audit is not meaningful evidence: trusted requires a
+        # passed calibration AND at least one actually-sampled answer.
+        trusted=calibration.status == "passed" and len(results) > 0,
         calibration=calibration,
         sample_rate=sample_rate,
         seed=seed,
