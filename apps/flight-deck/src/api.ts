@@ -30,7 +30,12 @@ export function fetchDashboard(): Promise<DashboardPayload> {
   return request<DashboardPayload>('/api/dashboard');
 }
 
-export function fetchHealth(): Promise<{ status: string; live_runs_enabled: boolean }> {
+export function fetchHealth(): Promise<{
+  status: string;
+  live_runs_enabled: boolean;
+  paid_remote_allowed: boolean;
+  artifact_export_allowed: boolean;
+}> {
   return request('/api/health');
 }
 

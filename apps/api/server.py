@@ -186,8 +186,13 @@ def _static_dir_from_env() -> Path:
 def create_app(
     store: Optional[ArtifactStore] = None,
     static_dir: Optional[Path] = None,
+    export_root: Optional[Path] = None,
 ) -> FastAPI:
     store = store or ArtifactStore()
+    # Live API exports are deliberately outside the curated bundle root. Each
+    # run gets its own directory, so even an operator-authorized export can
+    # never overwrite the top-level evidence consumed by ArtifactStore.
+    live_export_root = export_root or (ROOT / "artifacts" / "live-exports")
     app = FastAPI(title="Kaaval Assurance Flight Deck API")
     app.add_middleware(
         CORSMiddleware,
@@ -210,6 +215,8 @@ def create_app(
             "status": "ok",
             "service": "kaaval-flight-deck-api",
             "live_runs_enabled": live_runs_enabled(),
+            "paid_remote_allowed": paid_remote_allowed(),
+            "artifact_export_allowed": artifact_export_allowed(),
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -327,8 +334,11 @@ def create_app(
 
                 artifacts_written: list[str] = []
                 if req.export_artifacts:
-                    paths = export_live_demo_artifacts(demo, ROOT / "artifacts")
-                    artifacts_written = [p.name for p in paths]
+                    run_export_dir = live_export_root / demo.result.request_id
+                    paths = export_live_demo_artifacts(demo, run_export_dir)
+                    artifacts_written = [
+                        f"{demo.result.request_id}/{path.name}" for path in paths
+                    ]
 
                 category = demo.category
                 online_ewma_drift = sess.router.online_drift_for(category)

@@ -234,8 +234,17 @@ The hosted/submission deployment should keep:
 
 ```text
 KAAVAL_LIVE_RUNS_ENABLED=0
+KAAVAL_ALLOW_PAID_REMOTE=0
+KAAVAL_ALLOW_ARTIFACT_EXPORT=0
 PORT=8000
 ```
+
+The two `KAAVAL_ALLOW_*` flags are server-operator authorization gates, not
+browser preferences. Keep both off on public deployments. A private/local
+operator may enable paid remote execution while still requiring the caller's
+per-run spend acknowledgment. Authorized API exports are isolated under
+`artifacts/live-exports/<run-id>/`; they never replace the curated top-level
+evidence bundle.
 
 ### 2. Optional: private live Gemma/vLLM attachment
 The public app should replay captured evidence, not expose a live GPU model.

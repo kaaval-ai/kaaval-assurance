@@ -26,13 +26,15 @@ and AMD claims stay **pending** until a real runtime-probe artifact exists.
   provider factory — the API never reimplements routing or verification.
 - Disabled unless the server sets `KAAVAL_LIVE_RUNS_ENABLED=1`; hosted
   deployments can stay pure captured-evidence surfaces.
-- Fireworks execution is rejected without an explicit spend confirmation.
+- Fireworks execution requires both server-operator authorization
+  (`KAAVAL_ALLOW_PAID_REMOTE=1`) and the caller's per-run spend confirmation.
 - Failure injection works on the mock local provider only.
 - All provider credentials stay server-side; the response contains the run's
   trajectory rows, telemetry summary, and runtime profile — nothing else.
 - Requests are synchronous; the UI shows an honest pending state and then
-  replays the returned trajectory. Results can be exported as
-  captured-evidence artifacts.
+  replays the returned trajectory. Export is operator-gated
+  (`KAAVAL_ALLOW_ARTIFACT_EXPORT=1`) and writes each run to an isolated
+  `artifacts/live-exports/<run-id>/` directory, never over the curated bundle.
 
 ## Running locally
 
@@ -42,6 +44,11 @@ Backend (from the **repo root**):
 uv run uvicorn apps.api.server:app --port 8000
 # optional: enable live runs
 KAAVAL_LIVE_RUNS_ENABLED=1 uv run uvicorn apps.api.server:app --port 8000
+
+# private/local only: authorize paid remote calls and isolated API exports
+KAAVAL_LIVE_RUNS_ENABLED=1 KAAVAL_ALLOW_PAID_REMOTE=1 \
+  KAAVAL_ALLOW_ARTIFACT_EXPORT=1 \
+  uv run uvicorn apps.api.server:app --port 8000
 ```
 
 Frontend (from **apps/flight-deck**):
@@ -56,7 +63,7 @@ npm run build      # production build in dist/
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /api/health` | liveness + whether live runs are enabled |
+| `GET /api/health` | liveness + live-run, paid-remote, and export gate states |
 | `GET /api/dashboard` | one typed payload: telemetry + trajectory + probe + provenance + labels |
 | `GET /api/telemetry` · `/api/trajectory` · `/api/runtime-probe` | raw artifacts wrapped with provenance |
 | `POST /api/runs` | gated live pipeline execution |

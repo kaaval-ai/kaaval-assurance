@@ -8,6 +8,8 @@ no API keys, no AMD access, and no live model endpoint**.
 By default, hosted deployments run in **Captured Evidence** mode:
 
 - `KAAVAL_LIVE_RUNS_ENABLED=0`
+- `KAAVAL_ALLOW_PAID_REMOTE=0`
+- `KAAVAL_ALLOW_ARTIFACT_EXPORT=0`
 - no Fireworks key is required
 - no vLLM/Gemma endpoint is exposed publicly
 - SQLite live sessions stay in-memory and are unused unless live runs are
@@ -65,7 +67,16 @@ Environment:
 ```text
 PORT=8000
 KAAVAL_LIVE_RUNS_ENABLED=0
+KAAVAL_ALLOW_PAID_REMOTE=0
+KAAVAL_ALLOW_ARTIFACT_EXPORT=0
 ```
+
+`KAAVAL_ALLOW_PAID_REMOTE` and `KAAVAL_ALLOW_ARTIFACT_EXPORT` are
+server-operator gates. A client's spend checkbox is an acknowledgment, not
+authorization. Keep both gates closed on public deployments. If artifact
+export is enabled for a private/local demo, each run writes to
+`artifacts/live-exports/<run-id>/`; the curated top-level evidence files are
+never overwritten.
 
 Do **not** ship Gemma weights or expose a vLLM port in the public app
 container. If a future live GPU demo is needed, keep vLLM/Gemma on a private

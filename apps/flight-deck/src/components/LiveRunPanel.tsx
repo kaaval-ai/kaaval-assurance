@@ -163,13 +163,13 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
           {remoteProvider === 'fireworks' && (
             <label className="flex items-center gap-2 px-2 py-1.5 rounded border border-warning/40 bg-warning/5 text-[10px] font-mono text-warning cursor-pointer">
               <input type="checkbox" checked={confirmSpend} onChange={(e) => setConfirmSpend(e.target.checked)} />
-              I confirm this run may spend Fireworks credits (server rejects the run otherwise)
+              I confirm this run may spend Fireworks credits (the server operator must also enable paid remote execution)
             </label>
           )}
 
           <label className="flex items-center gap-2 text-[10px] font-mono text-muted cursor-pointer">
             <input type="checkbox" checked={exportArtifacts} onChange={(e) => setExportArtifacts(e.target.checked)} />
-            Export this run as captured-evidence artifacts (server-side artifacts/)
+            Export to an isolated per-run directory (requires the server operator export gate)
           </label>
 
           <div className="flex items-center gap-3">
