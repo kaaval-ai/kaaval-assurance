@@ -315,6 +315,7 @@ def create_app(
                 "local_provider": req.local_provider,
                 "remote_provider": req.remote_provider,
                 "failure_mode": req.failure_mode,
+                "remote_failure_mode": req.remote_failure_mode,
             },
             "result": {
                 "verified": demo.result.verification.passed,
