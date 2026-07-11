@@ -8,21 +8,28 @@ Kaaval Assurance sits between a task and a model answer. It runs a local
 open-weight tier first, verifies every response against an explicit task
 contract before anyone downstream sees it, escalates only when verification
 fails or quality drifts, and records every attempt as a replayable trajectory.
-The result is not "a model answered" — it is a verified answer with evidence:
-who served it, what it cost, which checks it passed, and why it was routed
-there. Built for AMD Developer Hackathon ACT II, Track 3 (Unicorn / Open
-Innovation). Product wrapper: **KaavalAI**; this repo is the reusable engine.
+The result is not "a model answered" — it is a contract-checked answer with
+evidence: who served it, what it cost, which checks it passed, and why it was
+routed there. Built for AMD Developer Hackathon ACT II, Track 3 (Unicorn /
+Open Innovation). Product wrapper: **KaavalAI**; this repo is the reusable
+engine.
+
+> **What "verified" means here.** Throughout this repo, *verified* means the
+> answer passed every **Layer-1 deterministic contract check** — JSON shape,
+> required fields, enums, numeric ranges, and phrase-triggered grounding
+> rules. It is a contract-conformance claim, not a semantic-correctness
+> claim; that boundary is deliberate and covered in
+> [Limitations](#limitations).
 
 *Route efficiently. Verify continuously. Escalate intelligently.*
 
 ## Why this matters
 
-Open-weight models are now good enough to run real workloads locally — and
-cheap enough that not doing so is leaving money on the table. What teams lack
-is the control plane: something that decides when the local answer can be
-trusted, when to pay for a stronger model, and how to prove either decision
-afterwards. Guardrails check format. Routers predict and hope. Neither leaves
-an audit trail.
+Open-weight models are now good enough to run real workloads locally. What
+teams lack is the control plane: something that tests whether an answer meets
+an explicit contract, decides when to pay for a stronger model, and preserves
+evidence of either decision. Routers predict. Kaaval verifies against declared
+controls and leaves a receipt.
 
 The question Kaaval Assurance answers is not *which model responded*. It is:
 **can we prove the answer satisfied the task contract, at the lowest reliable
@@ -30,7 +37,7 @@ cost?**
 
 This is not a debate bot, a chatbot, or a generic eval app. It is governed
 inference: verifier-gated escalation, source-tagged telemetry, and a cost per
-verified answer you can defend line by line.
+contract-conformant answer you can defend line by line.
 
 ## What it does
 
@@ -52,9 +59,10 @@ verified answer you can defend line by line.
    each answer against the contract's semantic intent and returns structured
    violations JSON. Detection is model-generated; aggregation and
    thresholding over that output are deterministic. Before the signal is
-   trusted, the challenger must pass a false-positive calibration against
-   known-good gold answers — an over-eager critic gets its signal quarantined,
-   not believed. It is a statistical sensor, never a per-response gate.
+   displayed as FP-calibrated, the challenger must stay below a false-positive
+   threshold on known-good reference answers. This calibration only detects
+   over-eager critics, not approve-everything critics. Layer 3 is display-only
+   in this build and never gates a live response or feeds routing.
 6. Every attempt — input, raw output, checks, tokens, latency, cost, routing
    reason — lands in a SQLite trajectory store as a **replayable trajectory**
    row. Any request can be replayed and re-verified later.
@@ -76,13 +84,38 @@ Click the flow for the interactive walkthrough: [HTML](docs/kaaval-assurance-arc
 | Fireworks AI escalation tier | Built, smoke-tested live | Verified remote escalation with cost/token capture; spend requires explicit confirmation |
 | Layer 1 contract verifier | Built | Deterministic accept/reject with stable check IDs — the source of truth |
 | Layer 2 EWMA drift + closed-loop routing | Built | Detects per-category degradation and tightens routing automatically, with recorded reasons |
-| Layer 3 sampled audit + calibration gate | Built | Catches well-formatted-but-wrong answers; calibration stops critic false positives from poisoning routing |
+| Layer 3 sampled audit + FP calibration | Built, display-only | Samples accepted answers as a statistical sensor; model-generated findings do not gate responses or feed routing |
+| Multi-step assurance workflow | Built | Four contract-gated decisions share context; a `no_safe_answer` step halts downstream work |
 | Telemetry truth layer | Built | Every judge-facing claim maps to a stored field with a source tag |
 | Runtime probe | Built | Turns runtime claims from configured into measured; redacts secrets |
 | Streamlit demo console | Built | Live interactive runs plus replay of captured artifacts; hostable without secrets |
 | Inference Flight Deck UI (React) | Built | A captured-run observability surface with two modes: Captured Evidence (replays telemetry/trajectory/probe artifacts with source tags and periodic artifact refresh) and a gated Live Assurance Run that drives the real pipeline server-side. Every value is measured, configured, sample, planned, or honestly not available. |
 
-The full test suite (220+ tests) runs network-free; live calls are explicit, opt-in CLI/script paths.
+The full test suite (330+ tests) runs network-free; live calls are explicit,
+opt-in CLI/script paths.
+
+## Enterprise value
+
+As AI answers become refunds, approvals, classifications, and next actions,
+enterprises inherit operational exposure from decisions they may not be able to
+reconstruct. Kaaval makes each tested decision observable: provider, contract
+checks, routing reason, drift state, latency, tokens, cost, and acceptance
+status travel together as a replayable receipt.
+
+| Stakeholder | Current exposure | What Kaaval changes |
+|---|---|---|
+| **AI platform teams** | Local models reduce inference cost, but opaque failures make unattended use risky | Contract-gated local inference with selective escalation and measured cost per conformant answer |
+| **Risk, governance, and audit teams** | Fluent output leaves weak evidence of which controls ran | Versioned contracts, stable check IDs, source-tagged telemetry, and replayable trajectories |
+| **Security and operations teams** | Provider outages and behavior shifts are difficult to reconstruct | Recorded transport failures, per-category drift, routing decisions, and runtime-to-answer provenance |
+| **Technology-risk assessors** | AI controls are often described only through policy documents | Inspectable evidence of control execution, rejection, recovery, and human-review boundaries |
+
+Kaaval does not claim to eliminate liability or guarantee lower insurance
+premiums. Within synthetic and controlled evaluations, this build demonstrates
+that contract-invalid outputs and provider outages can be caught before
+acceptance, failed answers can be escalated, repeated local failures can alter
+routing, and each tested decision retains a source-tagged receipt. That evidence
+is a foundation for empirically evaluating broader operational risk as the
+Kaaval-AI Agentic Guardian ecosystem expands.
 
 ## AMD + Gemma execution model
 
@@ -120,14 +153,18 @@ marketing claims.
 The July 10 capture is tied to source commit `aa8b5b2` and bundle ID
 `live-5be3acfa-amd-gemma-proof`. The runtime probe confirms the configured
 Gemma model was present in vLLM's served-model list and the final trajectory
-records a verified `vllm-gemma` local attempt. The Flight Deck therefore
+records a contract-conformant `vllm-gemma` local attempt. The Flight Deck therefore
 labels this coherent bundle **MEASURED AMD RUN**, rather than deriving the
 label from a filename or environment variable.
 
+The measured AMD run proves the ROCm/vLLM/Gemma execution and conformance path;
+it does not by itself establish semantic accuracy. Reference-answer accuracy is
+reported separately by the eval runner.
+
 | Evidence-backed result | Value |
 |---|---:|
-| Evaluation cases verified locally | 16 / 16 |
-| Local and final verified rate | 100% |
+| Evaluation cases contract-conformant locally | 16 / 16 |
+| Local and final Layer-1 contract-conformance rate | 100% |
 | Remote escalation rate | 0% |
 | Request latency p50 / p95 | 324.6 ms / 479.6 ms |
 | Final proof request | 272.9 ms; 181 prompt + 37 completion tokens |
@@ -164,7 +201,7 @@ measured runtime.
 Captured per attempt and per run: provider, model id, model family, tier,
 latency, prompt/completion/total tokens, cost, verifier pass/fail with failed
 check IDs, escalation reason, **remote calls avoided** (only when a cached
-always-remote baseline exists), **cost per verified answer**, audit
+always-remote baseline exists), **cost per contract-conformant answer**, audit
 calibration false-positive rate, and the runtime profile (endpoint type,
 host, dtype, KV-cache mode, tensor parallelism, GPU memory utilization,
 prefix caching, structured-output mode).
@@ -180,7 +217,7 @@ The Streamlit console ([apps/demo_console/app.py](apps/demo_console/app.py))
 has two tabs:
 
 - **Live demo run** — drives the real assurance pipeline interactively:
-  choose a contract, a gold input, a local provider (mock or Ollama), a
+  choose a contract, a reference case, a local provider (mock or Ollama), a
   remote provider (mock, or Fireworks behind an explicit spend checkbox),
   and an injected failure mode; watch Layer-1 verification, escalation, and
   the trajectory rows land; export the run as artifacts.
@@ -204,8 +241,8 @@ installing Python/Node dependencies, providing secrets, or running a live GPU
 model endpoint.
 
 ```bash
-docker pull ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii
-docker run --rm -p 8080:8000 ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii
+docker pull ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+docker run --rm -p 8080:8000 ghcr.io/kaaval-ai/kaaval-assurance:act-ii
 ```
 
 Open:
@@ -226,8 +263,18 @@ The hosted/submission deployment should keep:
 
 ```text
 KAAVAL_LIVE_RUNS_ENABLED=0
+KAAVAL_ALLOW_PAID_REMOTE=0
+KAAVAL_ALLOW_ARTIFACT_EXPORT=0
+KAAVAL_ALLOW_DIAGNOSTIC_RAW=0
 PORT=8000
 ```
+
+The `KAAVAL_ALLOW_*` values are global operator feature gates, not caller
+authentication. Keep all of them off on public deployments. A private/local
+operator may enable paid remote execution while still requiring the caller's
+per-run spend acknowledgment. Enabled API exports are isolated under
+`artifacts/live-exports/<run-id>/`; they never replace the curated top-level
+evidence bundle.
 
 ### 2. Optional: private live Gemma/vLLM attachment
 The public app should replay captured evidence, not expose a live GPU model.
@@ -254,7 +301,7 @@ docker run --rm -p 8080:8000 \
   -e VLLM_MODEL=gemma-3-1b-it \
   -e VLLM_MODEL_FAMILY=gemma \
   -e VLLM_HARDWARE_TARGET=amd-hackathon-gpu \
-  ghcr.io/hari-kaaval-ai/kaaval-assurance:act-ii
+  ghcr.io/kaaval-ai/kaaval-assurance:act-ii
 ```
 
 If your Docker runtime already supports `host.docker.internal`, the
@@ -271,6 +318,8 @@ pytest
 
 kaaval-eval --dataset data/eval/telecom_gold.jsonl \
   --audit-provider mock --audit-sample-rate 1.0 --telemetry-summary
+
+kaaval-agent --input "Core router CR-04 dropped all BGP sessions; customer impact confirmed."
 
 cd apps/flight-deck
 npm install
@@ -321,26 +370,32 @@ Configuration is environment-only — copy [.env.example](.env.example) to `.env
 | Telemetry truth layer + runtime probe | Complete |
 | Demo console (live + replay) | Complete |
 | Inference Flight Deck UI (React) | Complete |
+| Multi-step agent workflow (`kaaval-agent`, `/api/agent-runs`) | Complete |
 | Deck / video | To be finalized from captured artifacts |
 
 ## Limitations
 
-- The eval set is synthetic telecom-triage data (16 gold cases across 4
-  contracts); distribution-shift scenarios are simulated, and we say so on
-  camera.
+- The reference datasets are synthetic: 16 telecom cases and 10 deliberately
+  difficult customer-support cases. The eval runner separately reports Layer-1
+  conformance and gold accuracy over deterministic fields; unconstrained free
+  text remains explicitly unscored.
 - Layer 1 verifies structure and constraints — schema, required fields,
   enums, ranges. It does not certify semantic truth; that gap is exactly what
   the sampled Layer 3 audit exists to estimate, statistically.
-- Layer 3 detection is model-generated and sampled. It is calibrated against
-  gold answers before its signal is trusted, and it never gates a live
-  response.
+- Layer 3 detection is model-generated, sampled, FP-calibrated, and
+  display-only. Its current calibration detects over-eager critics but not
+  approve-everything critics; two-sided calibration is roadmap work.
+- When EWMA drift forces a category directly to remote, no local observations
+  are collected to prove recovery. Current recovery is session reset or
+  15-minute expiry; half-open local probes are roadmap work.
 - AMD performance and usage claims are limited to the committed measured-run
   artifacts. The exact GPU marketing name is intentionally not inferred when
   the runtime reports only AMD vendor, card identifiers, and `gfx1100`.
 - Cost figures are computed from configured per-token prices; accuracy
   follows the configuration.
-- This is hackathon-stage software: no auth, no multi-tenant hardening, no
-  production-safety claims.
+- This is hackathon-stage software: operator environment gates are not caller
+  authentication, and there is no multi-tenant hardening or production-safety
+  claim. Public mode keeps paid calls, exports, and diagnostic raw output off.
 
 ## Docs
 

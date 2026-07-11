@@ -4,6 +4,7 @@ Zero cloud access: MockProvider both tiers, in-memory SQLite.
 """
 
 import pytest
+import sqlite3
 
 from kaaval_assurance.pipeline import AssurancePipeline
 from kaaval_assurance.providers import MockProvider
@@ -106,3 +107,37 @@ def test_category_query_supports_trend_seam(store):
     assert len(rows) == 5
     local_fails = [r for r in rows if r.tier == "local" and not r.verifier_passed]
     assert len(local_fails) == 2  # the 3rd request never attempts local
+
+
+def test_legacy_trajectory_db_migrates_receipt_fields(tmp_path):
+    db = tmp_path / "legacy.db"
+    conn = sqlite3.connect(db)
+    conn.executescript(
+        """
+        CREATE TABLE trajectory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id TEXT NOT NULL, ts TEXT NOT NULL, category TEXT NOT NULL,
+            contract_id TEXT NOT NULL, contract_version TEXT NOT NULL,
+            tier TEXT NOT NULL, provider TEXT NOT NULL, model_id TEXT NOT NULL,
+            verifier_passed INTEGER NOT NULL, verifier_failures TEXT NOT NULL,
+            escalated INTEGER NOT NULL DEFAULT 0, latency_ms REAL NOT NULL DEFAULT 0,
+            cost_usd REAL NOT NULL DEFAULT 0, prompt_tokens INTEGER NOT NULL DEFAULT 0,
+            completion_tokens INTEGER NOT NULL DEFAULT 0,
+            task_input TEXT NOT NULL DEFAULT '', raw_text TEXT NOT NULL DEFAULT '',
+            audit_sampled INTEGER NOT NULL DEFAULT 0, audit_result TEXT,
+            audit_violations TEXT
+        );
+        """
+    )
+    conn.close()
+
+    migrated = TrajectoryStore(db)
+    try:
+        columns = {
+            row[1]
+            for row in migrated._conn.execute("PRAGMA table_info(trajectory)")
+        }
+    finally:
+        migrated.close()
+
+    assert {"attempt_status", "error_type", "error_message"} <= columns

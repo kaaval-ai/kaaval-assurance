@@ -27,7 +27,7 @@ export default function EvidenceModeBanner({ mode, label }: EvidenceModeBannerPr
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-muted md:text-xs">
                 {isLive
-                  ? 'Live model calls require provider environment variables and explicit spend confirmation before Fireworks can run.'
+                  ? 'Live model calls require provider configuration; Fireworks additionally requires operator authorization and per-run spend confirmation.'
                   : 'The public demo can run without secrets or paid calls; every number is replayed from captured evidence artifacts.'}
               </p>
             </div>
@@ -40,11 +40,11 @@ export default function EvidenceModeBanner({ mode, label }: EvidenceModeBannerPr
             </span>
             <span className="inline-flex items-center gap-1 rounded border border-border bg-elevated/50 px-2 py-1">
               <KeyRound className="h-3 w-3 text-accent" />
-              {isLive ? 'KAAVAL_CONFIRM_SPEND gates paid calls' : 'No hosted spend path'}
+              {isLive ? 'Operator gate + run confirmation' : 'No hosted spend path'}
             </span>
             <span className="inline-flex items-center gap-1 rounded border border-border bg-elevated/50 px-2 py-1">
               <Archive className="h-3 w-3 text-warning" />
-              {isLive ? 'Rows record pass or failure' : 'Artifacts are the source of truth'}
+              {isLive ? 'Exports isolated per run' : 'Artifacts are the source of truth'}
             </span>
           </div>
         </div>

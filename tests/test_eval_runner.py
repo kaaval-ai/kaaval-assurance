@@ -34,6 +34,14 @@ def test_healthy_run_all_pass(store):
 
     assert report.n_cases == 16
     assert all(r.passed for r in report.results)
+    assert all(r.contract_conformant for r in report.results)
+    # The mock emits schema-valid defaults, not the reference answers. This
+    # distinction is the reason conformance and correctness are separate.
+    assert report.gold_scored_cases == 16
+    assert report.gold_correct_cases == 2
+    assert report.gold_accuracy == pytest.approx(2 / 16)
+    assert report.false_accept_count == 14
+    assert report.false_accept_rate == pytest.approx(14 / 16)
     assert store.count() == 16  # one local attempt per case, all written
 
     m = report.metrics
@@ -135,7 +143,9 @@ def test_cli_text_output_with_injected_failures(capsys):
     rc = cli_main(["--dataset", GOLD, "--failure-mode", "bad_enum"])
     assert rc == 0
     out = capsys.readouterr().out
-    assert "pass rate 100.0%" in out
+    assert "Layer-1 contract-conformance rate 100.0%" in out
+    assert "gold critical-field accuracy 12.5% (2/16)" in out
+    assert "false accepts 14 (87.5%)" in out
     assert "escalation rate 50.0%" in out
     assert "enum:severity=4" in out
     assert "severity_classification" in out
@@ -190,4 +200,3 @@ def test_force_remote_closed_loop_incompatible(capsys):
     rc = cli_main(["--force-remote", "--closed-loop-demo"])
     assert rc == 2
     assert "incompatible" in capsys.readouterr().err
-

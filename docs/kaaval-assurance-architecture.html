@@ -160,7 +160,7 @@
   </aside>
 </main>
 <footer>
-  Honesty: Layer-3 detection is model-generated; aggregation and thresholding are deterministic. Local Ollama runs prove the code path, not AMD usage. The AMD GPU measured run is pending until probe + telemetry artifacts exist. No live backends, no secrets — this page is fully static.
+  Honesty: Layer-3 detection is model-generated, FP-calibrated, sampled, and display-only. Local Ollama runs prove the code path, not AMD usage. The committed probe + telemetry + trajectory bundle records the measured AMD run. No live backends, no secrets — this page is fully static.
 </footer>
 
 <script>
@@ -262,13 +262,13 @@ const MODES = {
   dev:   {localT:"Gemma Local Tier", localS:"mock / ollama (dev stand-in)",
           note:"Dev Mode — mock + Ollama prove the code path on a laptop. This is open-weight local inference for development; it is not AMD usage and never claims to be."},
   amd:   {localT:"Gemma Local Tier — ROCm + vLLM", localS:"AMD GPU VM / AMD Developer Cloud",
-          note:"AMD GPU Mode — the deployment path: Gemma served through ROCm + vLLM on an AMD GPU VM. The measured run is PENDING until runtime probe + telemetry artifacts exist; until then these claims stay configured/planned."},
+          note:"AMD GPU Mode — Gemma served through ROCm + vLLM on a measured AMD host. The committed runtime probe and coherent telemetry bundle provide the evidence; a future deployment must capture a fresh bundle before making the same claim."},
   replay:{localT:"Gemma Local Tier (captured)", localS:"recorded artifacts replay",
           note:"Submission Replay Mode — everything shown comes from captured artifacts: no secrets, no live endpoints. The hosted console replays exactly what was recorded."},
 };
 
 const FLOWS = [
- {name:"1 · Verified Local Pass", steps:[
+ {name:"1 · Contract-Conformant Local Pass", steps:[
   {edge:"input-router", color:"cyan", title:"Task arrives with a contract", tag:"measured",
    why:"Every request binds to an explicit task contract — the unit of agreement the answer must satisfy.",
    payload:'{ "task": "Core router CR-04 dropped all BGP sessions...",\n  "contract_id": "telecom.severity_classification" }'},
@@ -334,7 +334,7 @@ const FLOWS = [
    why:"The routing reason names the drift band that caused it — every decision is explainable from stored data.",
    payload:'routing_reason:\n"threshold 1.00 forces remote tier\n [ewma drift 1.00 >= 0.50; pre-route]"'},
   {edge:"store-telemetry", color:"green", title:"Cost story, honestly gated", tag:"measured",
-   why:"Cost per verified answer rises while quality holds. Remote-calls-avoided appears ONLY when a cached always-remote baseline run exists — otherwise it reads not_available.",
+   why:"Cost per contract-conformant answer rises while conformance holds. Remote-calls-avoided appears ONLY when a cached always-remote baseline run exists — otherwise it reads not_available.",
    payload:'{ "cost_per_verified_answer": "$0.0005",\n  "remote_calls_avoided":\n    "n/a (no always-remote baseline)" }'},
  ]},
  {name:"4 · Sampled Audit", steps:[
@@ -374,7 +374,7 @@ const FLOWS = [
    why:"Telemetry summary + trajectory DB from the pod are the AMD usage evidence Track 3 requires — artifacts, not vibes.",
    payload:'artifacts/telemetry-vllm.md\nartifacts/trajectory-vllm.db'},
   {edge:"telemetry-console", color:"green", title:"Hosted demo replays captured artifacts", tag:"planned",
-   why:"The public URL replays recorded AMD telemetry — no live endpoint required, no secrets deployed. HONESTY: the AMD GPU measured run is pending until these artifacts exist; this flow shows the plan, not a completed run.",
+   why:"The public URL replays the committed measured AMD telemetry — no live endpoint required and no secrets deployed. Infrastructure proof and semantic evaluation remain separate claims.",
    payload:'hosted console banner switches:\n"sample data" → "recorded artifacts"'},
  ]},
 ];

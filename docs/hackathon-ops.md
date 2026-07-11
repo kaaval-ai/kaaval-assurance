@@ -99,7 +99,7 @@ probe always exits 0.
 - Set `FIREWORKS_MODEL` to a model from the event credit allocation (the FAQ
   mentions Kimi and MiniMax endpoints).
 - Prove the economics with telemetry fields, not assertions: cost per
-  verified answer and remote-calls-avoided come from
+  contract-conformant answer and remote-calls-avoided come from
   `--telemetry-summary` with the cached baseline DB.
 
 ### Optional: full Fireworks challenger audit (intentional spend)

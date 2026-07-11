@@ -5,9 +5,18 @@ the router may pre-route high-drift categories directly to remote, otherwise
 it tries local first and escalates only when Layer 1 rejects the local response.
 Every attempt writes its own replayable trajectory row. Layer 3 audit (sampled, offline, never inline)
 attaches after this path returns — it must never gate the live response.
+
+This boundary fails closed. A provider that raises (timeout, connection
+refused, HTTP error) is not an escaped exception: the attempt is recorded as
+a failed trajectory row with a `transport:<ExceptionType>` failure ID, and a
+local transport failure escalates exactly like a Layer-1 rejection. Transport
+failures feed the same Layer-2 signal as verification failures on purpose: a
+local tier that keeps timing out should lose traffic to the remote tier just
+like one that keeps producing malformed output.
 """
 
 import uuid
+from time import perf_counter
 from typing import Optional
 
 from .contracts import get_contract
@@ -65,9 +74,47 @@ class AssurancePipeline:
                 completion_tokens=response.completion_tokens,
                 task_input=task_input,
                 raw_text=response.raw_text,
+                attempt_status=response.attempt_status,
+                error_type=response.error_type,
+                error_message=response.error_message,
             )
         )
         self.router.record_signal(category, verification.passed, response.tier)
+
+    def _attempt(
+        self, provider: Provider, request_id: str, task_input: str, contract
+    ) -> tuple[ModelResponse, VerificationResult]:
+        """One generation attempt that never raises.
+
+        A provider/transport failure becomes a failed attempt with a
+        `transport:<ExceptionType>` check ID and parsed=None — recorded and
+        routed like any other Layer-1 failure, never an escaped exception.
+        """
+        started = perf_counter()
+        try:
+            response = provider.generate(request_id, task_input, contract)
+        except Exception as exc:  # provider failures become typed receipt events
+            response = ModelResponse(
+                request_id=request_id,
+                provider=provider.provider_name,
+                model_id=provider.model_id,
+                tier=provider.tier,
+                raw_text="",
+                parsed=None,
+                latency_ms=(perf_counter() - started) * 1000.0,
+                attempt_status="provider_error",
+                error_type=type(exc).__name__,
+                # Do not persist arbitrary provider exception bodies; they can
+                # contain URLs, request details, or upstream response content.
+                error_message="provider generation failed",
+            )
+            verification = VerificationResult(
+                passed=False,
+                checks_run=0,
+                failures=[f"transport:{type(exc).__name__}"],
+            )
+            return response, verification
+        return response, verify(response, contract, task_input)
 
     def handle_request(
         self,
@@ -82,8 +129,9 @@ class AssurancePipeline:
         routing = self.router.choose_tier(contract.category)
         provider = self.local if routing.tier == "local" else self.remote
 
-        response = provider.generate(request_id, task_input, contract)
-        verification = verify(response, contract, task_input)
+        response, verification = self._attempt(
+            provider, request_id, task_input, contract
+        )
         attempts = 1
         escalated = False
         self._record(
@@ -101,8 +149,9 @@ class AssurancePipeline:
             if escalation is not None:
                 routing = escalation
                 escalated = True
-                response = self.remote.generate(request_id, task_input, contract)
-                verification = verify(response, contract, task_input)
+                response, verification = self._attempt(
+                    self.remote, request_id, task_input, contract
+                )
                 attempts += 1
                 self._record(
                     response,
@@ -114,9 +163,12 @@ class AssurancePipeline:
                     escalated=True,
                 )
 
+        accepted_response = response if verification.passed else None
         return PipelineResult(
             request_id=request_id,
+            status="accepted" if accepted_response is not None else "no_safe_answer",
             response=response,
+            accepted_response=accepted_response,
             verification=verification,
             routing=routing,
             escalated=escalated,

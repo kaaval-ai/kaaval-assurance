@@ -49,6 +49,21 @@ class VerificationTelemetry(BaseModel):
     failures_by_check: dict[str, int] = Field(default_factory=dict)
 
 
+class GoldEvaluationTelemetry(BaseModel):
+    """Deterministic correctness evidence over scorable reference fields."""
+
+    scored_cases: int = 0
+    correct_cases: int = 0
+    accuracy: Optional[float] = None
+    false_accept_count: int = 0
+    false_accept_rate: Optional[float] = None
+    false_reject_count: int = 0
+    false_reject_rate: Optional[float] = None
+    scope: str = (
+        "enum, numeric, boolean, and scalar-array fields only; free text unscored"
+    )
+
+
 class RoutingTelemetry(BaseModel):
     escalation_rate: float
     preroute_remote_rate: float
@@ -70,6 +85,8 @@ class AuditTelemetry(BaseModel):
     errors: int = 0
     violations_by_severity: dict[str, int] = Field(default_factory=dict)
     audit_tokens: int = 0
+    calibration_scope: str = "false_positive_only"
+    routing_integration: str = "display_only"
 
 
 class CostTelemetry(BaseModel):
@@ -107,6 +124,9 @@ class AttemptTelemetry(BaseModel):
     verifier_failures: list[str] = Field(default_factory=list)  # full check ids
     escalated: bool = False
     escalation_reason: Optional[str] = None
+    attempt_status: Literal["completed", "provider_error"] = "completed"
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
 
 
 class ClaimSupport(BaseModel):
@@ -125,6 +145,9 @@ class TelemetrySummary(BaseModel):
     provider_mix: ProviderMix
     runtime: RuntimeTelemetry
     verification: VerificationTelemetry
+    evaluation: GoldEvaluationTelemetry = Field(
+        default_factory=GoldEvaluationTelemetry
+    )
     routing: RoutingTelemetry
     audit: AuditTelemetry
     cost: CostTelemetry
@@ -215,6 +238,15 @@ def build_telemetry_summary(
         local_verified_rate=local_verified / n_requests if n_requests else 0.0,
         final_verified_rate=final_verified / n_requests if n_requests else 0.0,
         failures_by_check=dict(m.failure_counts),
+    )
+    evaluation = GoldEvaluationTelemetry(
+        scored_cases=report.gold_scored_cases,
+        correct_cases=report.gold_correct_cases,
+        accuracy=report.gold_accuracy,
+        false_accept_count=report.false_accept_count,
+        false_accept_rate=report.false_accept_rate,
+        false_reject_count=report.false_reject_count,
+        false_reject_rate=report.false_reject_rate,
     )
 
     audit_telemetry = AuditTelemetry(enabled=audit is not None)
@@ -311,10 +343,15 @@ def build_telemetry_summary(
                 escalation_reason=(
                     reason_by_request.get(row.request_id) if row.escalated else None
                 ),
+                attempt_status=row.attempt_status,
+                error_type=row.error_type,
+                error_message=row.error_message,
             )
         )
 
-    claims = _build_claims(verification, routing, audit_telemetry, cost, runtime)
+    claims = _build_claims(
+        verification, evaluation, routing, audit_telemetry, cost, runtime
+    )
 
     return TelemetrySummary(
         run_id=report.run_id,
@@ -325,6 +362,7 @@ def build_telemetry_summary(
         provider_mix=provider_mix,
         runtime=runtime,
         verification=verification,
+        evaluation=evaluation,
         routing=routing,
         audit=audit_telemetry,
         cost=cost,
@@ -335,6 +373,7 @@ def build_telemetry_summary(
 
 def _build_claims(
     verification: VerificationTelemetry,
+    evaluation: GoldEvaluationTelemetry,
     routing: RoutingTelemetry,
     audit: AuditTelemetry,
     cost: CostTelemetry,
@@ -342,13 +381,13 @@ def _build_claims(
 ) -> list[ClaimSupport]:
     claims = [
         ClaimSupport(
-            claim="Local verified rate",
+            claim="Local Layer-1 contract-conformance rate",
             value=f"{verification.local_verified_rate:.1%}",
             source="measured",
             field="verification.local_verified_rate",
         ),
         ClaimSupport(
-            claim="Final verified rate",
+            claim="Final Layer-1 contract-conformance rate",
             value=f"{verification.final_verified_rate:.1%}",
             source="measured",
             field="verification.final_verified_rate",
@@ -372,11 +411,44 @@ def _build_claims(
             field="routing.high_drift_categories",
         ),
     ]
+    if evaluation.accuracy is not None:
+        claims.extend(
+            [
+                ClaimSupport(
+                    claim="Gold critical-field accuracy",
+                    value=(
+                        f"{evaluation.accuracy:.1%} "
+                        f"({evaluation.correct_cases}/{evaluation.scored_cases})"
+                    ),
+                    source="measured",
+                    field="evaluation.accuracy",
+                ),
+                ClaimSupport(
+                    claim="Gold false-accept rate",
+                    value=f"{evaluation.false_accept_rate:.1%}",
+                    source="measured",
+                    field="evaluation.false_accept_rate",
+                ),
+            ]
+        )
+    else:
+        claims.append(
+            ClaimSupport(
+                claim="Gold critical-field accuracy",
+                value="n/a (no reference-answer fields scored in this run)",
+                source="not_available",
+                field="evaluation.accuracy",
+            )
+        )
     if audit.enabled:
         claims.append(
             ClaimSupport(
-                claim="Layer 3 audit trusted",
-                value="yes" if audit.trusted else "no",
+                claim="Layer 3 FP calibration passed",
+                value=(
+                    "yes; display-only, not a routing input"
+                    if audit.trusted
+                    else "no; display-only"
+                ),
                 source="measured",
                 field="audit.trusted",
             )
@@ -405,7 +477,7 @@ def _build_claims(
     else:
         claims.append(
             ClaimSupport(
-                claim="Layer 3 audit trusted",
+                claim="Layer 3 FP calibration passed",
                 value="no audit in this run",
                 source="not_available",
                 field="audit.enabled",
@@ -413,7 +485,7 @@ def _build_claims(
         )
     claims.append(
         ClaimSupport(
-            claim="Cost per verified answer",
+            claim="Cost per contract-conformant answer",
             value=_fmt_cost(cost.cost_per_verified_answer_usd),
             source="measured",
             field="cost.cost_per_verified_answer_usd",

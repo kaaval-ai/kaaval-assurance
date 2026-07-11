@@ -3,7 +3,6 @@ import type {
   FireworksComparisonArtifact,
   RuntimeProbeReport,
   SourceTag,
-  TelemetrySummary,
 } from './types';
 
 export interface EvidenceMetric {
@@ -119,7 +118,7 @@ export function headlineMetrics(payload: DashboardPayload | null): EvidenceMetri
       tone: comparison ? 'success' : 'muted',
     },
     {
-      label: 'Final verified',
+      label: 'Final contract-conformance',
       value: telemetry ? formatPctFromFraction(telemetry.verification.final_verified_rate) : 'n/a',
       sub: comparison
         ? `always-remote baseline: ${formatPctFromPercent(comparison.always_remote.final_verified_rate)}`
@@ -161,7 +160,7 @@ export function comparisonRows(comparison: FireworksComparisonArtifact | null) {
       delta: `${formatUsd(comparison.comparison.configured_cost_avoided)} avoided`,
     },
     {
-      label: 'Final verified rate',
+      label: 'Final contract-conformance rate',
       localFirst: formatPctFromPercent(comparison.local_first.final_verified_rate),
       alwaysRemote: formatPctFromPercent(comparison.always_remote.final_verified_rate),
       localWidth: comparison.local_first.final_verified_rate,

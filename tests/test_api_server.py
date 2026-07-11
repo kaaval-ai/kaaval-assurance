@@ -459,6 +459,8 @@ class TestLiveRuns:
         assert resp.status_code == 200
         body = resp.json()
         assert body["label"] == "LIVE RUN"
+        assert body["result"]["status"] == "accepted"
+        assert body["result"]["contract_conformant"] is True
         assert body["result"]["verified"] is True
         assert body["result"]["escalated"] is False
         assert len(body["trajectory"]) == 1
@@ -471,6 +473,7 @@ class TestLiveRuns:
         assert resp.status_code == 200
         body = resp.json()
         assert body["result"]["escalated"] is True
+        assert body["result"]["status"] == "accepted"
         assert body["result"]["verified"] is True
         rows = body["trajectory"]
         assert len(rows) == 2
@@ -575,6 +578,7 @@ class TestLiveRuns:
 
     def test_provider_mismatch_rejected(self, live_client, monkeypatch):
         monkeypatch.setenv("FIREWORKS_API_KEY", "sk-test")
+        monkeypatch.setenv("KAAVAL_ALLOW_PAID_REMOTE", "1")
         resp1 = live_client.post("/api/runs", json={**RUN_BODY})
         session_id = resp1.json()["session"]["session_id"]
 

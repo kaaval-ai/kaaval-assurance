@@ -37,6 +37,11 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from apps.api.artifacts import ArtifactStore  # noqa: E402
+from kaaval_assurance.agent import (  # noqa: E402
+    NOC_INCIDENT_WORKFLOW,
+    rows_for_agent_run,
+    run_agent_workflow,
+)
 from kaaval_assurance.demo import (  # noqa: E402
     LIVE_FAILURE_MODES,
     export_live_demo_artifacts,
@@ -50,6 +55,7 @@ from kaaval_assurance.providers import (  # noqa: E402
     create_local_provider,
     create_remote_provider,
 )
+from kaaval_assurance.pipeline import AssurancePipeline  # noqa: E402
 from kaaval_assurance.router import Router
 from kaaval_assurance.trajectory import TrajectoryStore
 
@@ -69,7 +75,21 @@ class RunRequest(BaseModel):
     remote_provider: Literal["mock", "fireworks"] = "mock"
     confirm_spend: bool = False
     failure_mode: Optional[str] = None
+    remote_failure_mode: Optional[str] = None
     export_artifacts: bool = False
+    session_id: Optional[str] = None
+    # Fail-closed boundary: when the final answer did not pass Layer 1, the
+    # response omits it (answer=None, raw_text="") unless the caller
+    # explicitly opts in. The Flight Deck opts in — it is an inspection
+    # surface whose receipts show every attempt verbatim by design.
+    include_unverified_raw: bool = False
+
+
+class AgentRunRequest(BaseModel):
+    task_input: str = Field(min_length=1, max_length=4000)
+    local_provider: Literal["mock", "ollama", "vllm"] = "mock"
+    remote_provider: Literal["mock", "fireworks"] = "mock"
+    confirm_spend: bool = False
     session_id: Optional[str] = None
 
 
@@ -148,6 +168,46 @@ def live_runs_enabled() -> bool:
     return os.environ.get("KAAVAL_LIVE_RUNS_ENABLED", "") == "1"
 
 
+def paid_remote_allowed() -> bool:
+    """Server-side gate for spending the server's Fireworks credential.
+
+    The client's confirm_spend flag is a UX acknowledgment, never
+    authorization: any unauthenticated caller can send confirm_spend=true.
+    Paid remote execution additionally requires the operator to have set
+    KAAVAL_ALLOW_PAID_REMOTE=1 on the server. Default closed.
+    """
+    return os.environ.get("KAAVAL_ALLOW_PAID_REMOTE", "") == "1"
+
+
+def artifact_export_allowed() -> bool:
+    """Server-side gate for writing live-run artifacts to disk.
+
+    Any writable artifact can poison what the evidence dashboard loads, so
+    exports are disabled unless the operator sets
+    KAAVAL_ALLOW_ARTIFACT_EXPORT=1. The submission evidence bundle is
+    curated offline, never through this API. Default closed.
+    """
+    return os.environ.get("KAAVAL_ALLOW_ARTIFACT_EXPORT", "") == "1"
+
+
+def diagnostic_raw_allowed() -> bool:
+    """Operator gate for exposing rejected model output over HTTP."""
+    return os.environ.get("KAAVAL_ALLOW_DIAGNOSTIC_RAW", "") == "1"
+
+
+def _trajectory_for_response(rows, include_raw: bool) -> list[dict]:
+    """Serialize receipts while redacting rejected output by default."""
+    payload: list[dict] = []
+    for row in rows:
+        item = json.loads(row.model_dump_json())
+        withheld = not row.verifier_passed and not include_raw
+        if withheld:
+            item["raw_text"] = ""
+        item["raw_text_withheld"] = withheld
+        payload.append(item)
+    return payload
+
+
 def _static_dir_from_env() -> Path:
     configured = os.environ.get("KAAVAL_STATIC_DIR")
     if configured:
@@ -158,8 +218,13 @@ def _static_dir_from_env() -> Path:
 def create_app(
     store: Optional[ArtifactStore] = None,
     static_dir: Optional[Path] = None,
+    export_root: Optional[Path] = None,
 ) -> FastAPI:
     store = store or ArtifactStore()
+    # Live API exports are deliberately outside the curated bundle root. Each
+    # run gets its own directory, so even an operator-authorized export can
+    # never overwrite the top-level evidence consumed by ArtifactStore.
+    live_export_root = export_root or (ROOT / "artifacts" / "live-exports")
     app = FastAPI(title="Kaaval Assurance Flight Deck API")
     app.add_middleware(
         CORSMiddleware,
@@ -182,6 +247,9 @@ def create_app(
             "status": "ok",
             "service": "kaaval-flight-deck-api",
             "live_runs_enabled": live_runs_enabled(),
+            "paid_remote_allowed": paid_remote_allowed(),
+            "artifact_export_allowed": artifact_export_allowed(),
+            "diagnostic_raw_allowed": diagnostic_raw_allowed(),
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -230,6 +298,35 @@ def create_app(
                 status_code=422,
                 detail="failure injection is supported by the mock local provider only",
             )
+        if req.remote_failure_mode is not None and (
+            req.remote_failure_mode not in LIVE_FAILURE_MODES
+            or req.remote_provider != "mock"
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="remote failure injection requires the mock remote provider "
+                f"and one of {list(LIVE_FAILURE_MODES)}",
+            )
+        if req.remote_provider == "fireworks" and not paid_remote_allowed():
+            raise HTTPException(
+                status_code=403,
+                detail="paid remote execution is disabled on this server; the "
+                "operator must set KAAVAL_ALLOW_PAID_REMOTE=1 (client "
+                "confirm_spend is an acknowledgment, not authorization)",
+            )
+        if req.export_artifacts and not artifact_export_allowed():
+            raise HTTPException(
+                status_code=403,
+                detail="artifact export is disabled on this server; the operator "
+                "must set KAAVAL_ALLOW_ARTIFACT_EXPORT=1. The captured-evidence "
+                "bundle is curated offline, never through this API",
+            )
+        if req.include_unverified_raw and not diagnostic_raw_allowed():
+            raise HTTPException(
+                status_code=403,
+                detail="diagnostic raw output is disabled on this server; the "
+                "operator must set KAAVAL_ALLOW_DIAGNOSTIC_RAW=1",
+            )
         try:
             local = (
                 None
@@ -255,6 +352,7 @@ def create_app(
                         task_input=req.task_input,
                         contract_id=req.contract_id,
                         failure_mode=req.failure_mode,
+                        remote_failure_mode=req.remote_failure_mode,
                         case_id="api",
                         local_provider=local,
                         remote_provider=remote,
@@ -275,8 +373,11 @@ def create_app(
 
                 artifacts_written: list[str] = []
                 if req.export_artifacts:
-                    paths = export_live_demo_artifacts(demo, ROOT / "artifacts")
-                    artifacts_written = [p.name for p in paths]
+                    run_export_dir = live_export_root / demo.result.request_id
+                    paths = export_live_demo_artifacts(demo, run_export_dir)
+                    artifacts_written = [
+                        f"{demo.result.request_id}/{path.name}" for path in paths
+                    ]
 
                 category = demo.category
                 online_ewma_drift = sess.router.online_drift_for(category)
@@ -286,6 +387,7 @@ def create_app(
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
 
+        accepted = demo.result.accepted_response
         return {
             "run_id": demo.result.request_id,
             "mode": "live",
@@ -304,8 +406,13 @@ def create_app(
                 "local_provider": req.local_provider,
                 "remote_provider": req.remote_provider,
                 "failure_mode": req.failure_mode,
+                "remote_failure_mode": req.remote_failure_mode,
             },
             "result": {
+                "status": demo.result.status,
+                "contract_conformant": demo.result.verification.passed,
+                # Backward-compatible alias; contract_conformant is the
+                # authoritative public meaning of this legacy field.
                 "verified": demo.result.verification.passed,
                 "checks_run": demo.result.verification.checks_run,
                 "failures": demo.result.verification.failures,
@@ -313,15 +420,84 @@ def create_app(
                 "attempts": demo.result.attempts,
                 "tier": demo.result.response.tier,
                 "routing_reason": demo.result.routing.reason,
-                "answer": demo.result.response.parsed,
-                "raw_text": demo.result.response.raw_text,
+                "answer": accepted.parsed if accepted is not None else None,
+                "raw_text": accepted.raw_text if accepted is not None else "",
+                "diagnostic_raw_text": (
+                    demo.result.response.raw_text
+                    if req.include_unverified_raw and accepted is None
+                    else None
+                ),
+                "unverified_output_withheld": (
+                    accepted is None and not req.include_unverified_raw
+                ),
             },
-            "trajectory": [json.loads(r.model_dump_json()) for r in demo.rows],
+            "trajectory": _trajectory_for_response(
+                demo.rows, include_raw=req.include_unverified_raw
+            ),
             "telemetry": json.loads(telemetry_summary.model_dump_json()),
             "runtime_profile": (
                 json.loads(profile.model_dump_json()) if profile is not None else None
             ),
             "artifacts_written": artifacts_written,
+        }
+
+    @app.post("/api/agent-runs")
+    def create_agent_run(req: AgentRunRequest):
+        if not live_runs_enabled():
+            raise HTTPException(status_code=403, detail="live runs are disabled")
+        if req.remote_provider == "fireworks" and not paid_remote_allowed():
+            raise HTTPException(
+                status_code=403,
+                detail="paid remote execution is disabled on this server",
+            )
+        try:
+            local = create_local_provider(req.local_provider)
+            remote = create_remote_provider(
+                req.remote_provider, confirm_spend=req.confirm_spend
+            )
+        except SpendConfirmationRequired as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+        try:
+            with session_manager.checkout(
+                req.session_id, req.local_provider, req.remote_provider
+            ) as sess:
+                pipeline = AssurancePipeline(sess.router, local, remote, sess.store)
+                result = run_agent_workflow(
+                    pipeline, req.task_input, NOC_INCIDENT_WORKFLOW
+                )
+                rows = rows_for_agent_run(sess.store, result)
+                session_id = sess.session_id
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+        return {
+            "run_id": result.run_id,
+            "mode": "live",
+            "workflow": "noc_incident",
+            "status": "completed" if result.completed else "blocked",
+            "blocked_at": result.blocked_at,
+            "session_id": session_id,
+            "steps": [
+                {
+                    "request_id": step.request_id,
+                    "status": step.status,
+                    "contract_conformant": step.verification.passed,
+                    "failures": step.verification.failures,
+                    "attempts": step.attempts,
+                    "escalated": step.escalated,
+                    "routing_reason": step.routing.reason,
+                    "accepted_answer": (
+                        step.accepted_response.parsed
+                        if step.accepted_response is not None
+                        else None
+                    ),
+                }
+                for step in result.steps
+            ],
+            "trajectory": _trajectory_for_response(rows, include_raw=False),
         }
 
     resolved_static_dir = static_dir if static_dir is not None else _static_dir_from_env()

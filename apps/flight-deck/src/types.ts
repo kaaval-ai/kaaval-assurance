@@ -31,6 +31,9 @@ export interface AttemptDetail {
   verifier_failures: string[];
   escalated: boolean;
   escalation_reason: string | null;
+  attempt_status?: 'completed' | 'provider_error';
+  error_type?: string | null;
+  error_message?: string | null;
 }
 
 export interface RuntimeProfile {
@@ -77,6 +80,16 @@ export interface TelemetrySummary {
     final_verified_rate: number;
     failures_by_check: Record<string, number>;
   };
+  evaluation?: {
+    scored_cases: number;
+    correct_cases: number;
+    accuracy: number | null;
+    false_accept_count: number;
+    false_accept_rate: number | null;
+    false_reject_count: number;
+    false_reject_rate: number | null;
+    scope: string;
+  };
   routing: {
     escalation_rate: number;
     preroute_remote_rate: number;
@@ -97,6 +110,8 @@ export interface TelemetrySummary {
     errors: number;
     violations_by_severity: Record<string, number>;
     audit_tokens: number;
+    calibration_scope?: string;
+    routing_integration?: string;
   };
   cost: {
     total_cost_usd: number;
@@ -133,6 +148,10 @@ export interface TrajectoryRow {
   completion_tokens: number;
   task_input: string;
   raw_text: string;
+  raw_text_withheld?: boolean;
+  attempt_status: 'completed' | 'provider_error';
+  error_type: string | null;
+  error_message: string | null;
   audit_sampled: boolean;
   audit_result: string | null;
   audit_violations: Record<string, unknown>[] | null;
@@ -242,8 +261,10 @@ export interface LiveRunRequest {
   remote_provider: 'mock' | 'fireworks';
   confirm_spend: boolean;
   failure_mode: string | null;
+  remote_failure_mode: string | null;
   export_artifacts: boolean;
   session_id?: string;
+  include_unverified_raw?: boolean;
 }
 
 export interface LiveRunResponse {
@@ -264,8 +285,11 @@ export interface LiveRunResponse {
     local_provider: string;
     remote_provider: string;
     failure_mode: string | null;
+    remote_failure_mode: string | null;
   };
   result: {
+    status: 'accepted' | 'no_safe_answer';
+    contract_conformant: boolean;
     verified: boolean;
     checks_run: number;
     failures: string[];
@@ -275,6 +299,8 @@ export interface LiveRunResponse {
     routing_reason: string;
     answer: Record<string, unknown> | null;
     raw_text: string;
+    diagnostic_raw_text: string | null;
+    unverified_output_withheld: boolean;
   };
   trajectory: TrajectoryRow[];
   telemetry: TelemetrySummary;

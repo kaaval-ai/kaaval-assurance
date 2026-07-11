@@ -39,6 +39,13 @@ class FireworksConfig:
     timeout_seconds: float = 60.0
     cost_per_prompt_token: float = 0.0
     cost_per_completion_token: float = 0.0
+    # Reasoning models interleave thinking with the answer when max_tokens
+    # truncates them mid-thought; 4096 leaves room for both. reasoning_effort
+    # ("none"/"low"/...) is sent only when set — it suppresses the thinking
+    # channel on models that support it and is a hard error on models that
+    # don't, so it stays opt-in.
+    max_tokens: int = 4096
+    reasoning_effort: Optional[str] = None
 
     @classmethod
     def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "FireworksConfig":
@@ -60,6 +67,8 @@ class FireworksConfig:
             cost_per_completion_token=float(
                 env.get("FIREWORKS_COST_PER_COMPLETION_TOKEN", "0")
             ),
+            max_tokens=int(env.get("FIREWORKS_MAX_TOKENS", "4096")),
+            reasoning_effort=env.get("FIREWORKS_REASONING_EFFORT") or None,
         )
 
 
@@ -86,8 +95,10 @@ class FireworksProvider(Provider):
                 {"role": "user", "content": task_input},
             ],
             "temperature": 0,
-            "max_tokens": 1024,
+            "max_tokens": self.config.max_tokens,
         }
+        if self.config.reasoning_effort is not None:
+            payload["reasoning_effort"] = self.config.reasoning_effort
 
         started = time.perf_counter()
         try:

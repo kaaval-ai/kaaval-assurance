@@ -5,21 +5,24 @@ import { startRun, resetSession, ApiError } from '../api';
 import { CONTRACTS, SAMPLE_INPUTS } from '../mock/data';
 import TrajectoryReplay from './TrajectoryReplay';
 import TelemetryTruth from './TelemetryTruth';
-import { SourceChip } from './Tags';
 
 /* Live Assurance Run: drives the real pipeline through POST /api/runs.
    Everything rendered after submission derives from the returned run —
    never merged with sample or captured data. The request is synchronous;
    the pending state says so honestly. */
 
-const FAILURE_MODES = ['none', 'missing_field', 'bad_enum', 'unparseable', 'undersevere'] as const;
+const FAILURE_MODES = ['none', 'missing_field', 'bad_enum', 'out_of_range', 'unparseable', 'undersevere'] as const;
 
 export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunResponse | null; onRunComplete: (r: LiveRunResponse | null) => void }) {
   const [contractId, setContractId] = useState(CONTRACTS[0].id);
   const [taskInput, setTaskInput] = useState(SAMPLE_INPUTS[CONTRACTS[0].id] ?? '');
   const [localProvider, setLocalProvider] = useState<'mock' | 'ollama' | 'vllm'>('mock');
   const [remoteProvider, setRemoteProvider] = useState<'mock' | 'fireworks'>('mock');
-  const [failureMode, setFailureMode] = useState<string>('none');
+  // Default to the policy-cap near-miss: first click, no configuration,
+  // shows the local tier try to approve $1,000 over the $500 refund cap
+  // and get caught before it ships.
+  const [failureMode, setFailureMode] = useState<string>('out_of_range');
+  const [remoteFailureMode, setRemoteFailureMode] = useState<string>('none');
   const [confirmSpend, setConfirmSpend] = useState(false);
   const [exportArtifacts, setExportArtifacts] = useState(false);
   const [pending, setPending] = useState(false);
@@ -30,6 +33,7 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
   const selectContract = (id: string) => {
     setContractId(id);
     setTaskInput(SAMPLE_INPUTS[id] ?? '');
+    setFailureMode(id === 'support.refund_decision' ? 'out_of_range' : 'none');
   };
 
   const submit = async () => {
@@ -43,8 +47,13 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
         remote_provider: remoteProvider,
         confirm_spend: confirmSpend,
         failure_mode: failureMode === 'none' ? null : failureMode,
+        remote_failure_mode: remoteFailureMode === 'none' ? null : remoteFailureMode,
         export_artifacts: exportArtifacts,
         session_id: sessionId,
+        // The Flight Deck is an inspection surface: receipts show every
+        // attempt verbatim, so it explicitly opts in to seeing unverified
+        // output. Integrations default to the fail-closed behavior.
+        include_unverified_raw: false,
       });
       setSessionId(result.session.session_id);
       onRunComplete(result);
@@ -132,23 +141,35 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
             </label>
             <label className="block text-[10px] font-mono text-muted space-y-1">
               <span className="uppercase tracking-wider">Remote provider</span>
-              <select className={selectCls} value={remoteProvider} onChange={(e) => setRemoteProvider(e.target.value as typeof remoteProvider)}>
+              <select className={selectCls} value={remoteProvider} onChange={(e) => { setRemoteProvider(e.target.value as typeof remoteProvider); if (e.target.value !== 'mock') setRemoteFailureMode('none'); }}>
                 <option value="mock">mock — no network</option>
                 <option value="fireworks">fireworks — spends API credits</option>
               </select>
             </label>
           </div>
 
+          <label className="block text-[10px] font-mono text-muted space-y-1">
+            <span className="uppercase tracking-wider">Remote failure injection (mock remote only) — the double-failure path: the expensive answer is contract-checked too</span>
+            <select
+              className={selectCls}
+              value={remoteFailureMode}
+              onChange={(e) => setRemoteFailureMode(e.target.value)}
+              disabled={remoteProvider !== 'mock'}
+            >
+              {FAILURE_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
+
           {remoteProvider === 'fireworks' && (
             <label className="flex items-center gap-2 px-2 py-1.5 rounded border border-warning/40 bg-warning/5 text-[10px] font-mono text-warning cursor-pointer">
               <input type="checkbox" checked={confirmSpend} onChange={(e) => setConfirmSpend(e.target.checked)} />
-              I confirm this run may spend Fireworks credits (server rejects the run otherwise)
+              I confirm this run may spend Fireworks credits (the server operator must also enable paid remote execution)
             </label>
           )}
 
           <label className="flex items-center gap-2 text-[10px] font-mono text-muted cursor-pointer">
             <input type="checkbox" checked={exportArtifacts} onChange={(e) => setExportArtifacts(e.target.checked)} />
-            Export this run as captured-evidence artifacts (server-side artifacts/)
+            Export to an isolated per-run directory (requires the server operator export gate)
           </label>
 
           <div className="flex items-center gap-3">
@@ -199,23 +220,30 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
             </div>
             <div className="panel-body space-y-2 text-[11px] font-mono">
               <div className="flex items-center gap-2 flex-wrap">
-                {run.result.verified ? (
-                  <span className="flex items-center gap-1 text-success"><CheckCircle className="w-3.5 h-3.5" />Layer 1 verified</span>
+                {run.result.status === 'accepted' ? (
+                  <span className="flex items-center gap-1 text-success"><CheckCircle className="w-3.5 h-3.5" />Contract-conformant answer accepted</span>
                 ) : (
-                  <span className="flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" />NOT verified: {run.result.failures.join(', ')}</span>
+                  <span className="flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" />NO SAFE ANSWER: {run.result.failures.join(', ')}</span>
                 )}
                 <span className="text-muted">·</span>
                 <span className="text-foreground">{run.result.attempts} attempt{run.result.attempts === 1 ? '' : 's'}</span>
                 <span className="text-muted">·</span>
-                <span className={run.result.escalated ? 'text-warning' : 'text-success'}>
-                  {run.result.escalated ? 'escalated to remote tier' : 'resolved locally'}
+                <span className={run.result.tier === 'local' ? 'text-success' : 'text-warning'}>
+                  {run.result.escalated
+                    ? 'escalated to remote tier'
+                    : run.result.tier === 'local'
+                      ? 'resolved locally'
+                      : 'pre-routed to remote tier'}
                 </span>
                 <span className="text-muted">·</span>
                 <span className="text-muted">{run.result.checks_run} deterministic checks</span>
-                <SourceChip tag="measured" />
               </div>
               <div className="text-[10px] text-muted">routing: {run.result.routing_reason}</div>
-              {run.result.answer ? (
+              {run.result.status === 'no_safe_answer' ? (
+                <div className="px-2 py-2 rounded bg-destructive/10 border border-destructive/40 text-[10px] text-destructive">
+                  No model payload crossed the acceptance boundary. Failed check IDs remain visible in the redacted trajectory receipt.
+                </div>
+              ) : run.result.answer ? (
                 <pre className="px-2 py-1.5 rounded bg-elevated border border-border/50 text-[10px] overflow-x-auto">
                   {JSON.stringify(run.result.answer, null, 2)}
                 </pre>
