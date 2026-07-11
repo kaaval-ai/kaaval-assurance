@@ -70,3 +70,14 @@ def test_runtime_modal_does_not_guess_local_model_ids():
     assert "vllm: ''," in modal
     assert "gemma3:4b" not in modal
     assert "gemma-3-1b-it" not in modal
+
+
+def test_live_result_is_readable_without_horizontal_scrolling():
+    panel = (SRC / "components" / "LiveRunPanel.tsx").read_text(encoding="utf-8")
+
+    assert "function AcceptedAnswer" in panel
+    assert "useState<'pretty' | 'json'>('pretty')" in panel
+    assert 'aria-label="Answer format"' in panel
+    assert "whitespace-pre-wrap break-words" in panel
+    assert "whitespace-pre-wrap break-all" in panel
+    assert '<AcceptedAnswer answer={run.result.answer} />' in panel

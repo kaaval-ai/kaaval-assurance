@@ -80,6 +80,65 @@ function RuntimeCard({
   );
 }
 
+function answerLabel(key: string): string {
+  return key.replaceAll('_', ' ');
+}
+
+function answerValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value === null) return 'null';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return JSON.stringify(value, null, 2);
+}
+
+function AcceptedAnswer({ answer }: { answer: Record<string, unknown> }) {
+  const [view, setView] = useState<'pretty' | 'json'>('pretty');
+
+  return (
+    <div className="rounded border border-success/35 bg-success/5 p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="flex items-center gap-1.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-success">
+          <CheckCircle className="h-3.5 w-3.5" /> Answer
+        </p>
+        <div className="flex rounded border border-border/70 bg-background/50 p-0.5" role="group" aria-label="Answer format">
+          {(['pretty', 'json'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={view === option}
+              onClick={() => setView(option)}
+              className={`rounded px-2 py-1 text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                view === option ? 'bg-accent text-white' : 'text-muted hover:text-foreground'
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {view === 'pretty' ? (
+        <dl className="min-w-0 space-y-3">
+          {Object.entries(answer).map(([key, value]) => (
+            <div key={key} className="min-w-0 border-b border-border/40 pb-3 last:border-0 last:pb-0">
+              <dt className="text-[9px] font-mono uppercase tracking-wider text-muted">
+                {answerLabel(key)}
+              </dt>
+              <dd className="mt-1 whitespace-pre-wrap break-words text-[12px] leading-relaxed text-foreground">
+                {answerValue(value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <pre className="whitespace-pre-wrap break-all rounded border border-border/50 bg-background/60 px-3 py-2 text-[10px] leading-relaxed text-foreground">
+          {JSON.stringify(answer, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 export default function LiveRunPanel({ run, onRunComplete }: Props) {
   const [capabilities, setCapabilities] = useState<RuntimeCapabilities | null>(null);
   const [primary, setPrimary] = useState<RuntimeConnection | null>(null);
@@ -279,7 +338,7 @@ export default function LiveRunPanel({ run, onRunComplete }: Props) {
               </div>
               <p className="text-[10px] text-muted">routing: {run.result.routing_reason}</p>
               {run.result.answer ? (
-                <pre className="overflow-x-auto rounded border border-border/50 bg-elevated px-2 py-2 text-[10px]">{JSON.stringify(run.result.answer, null, 2)}</pre>
+                <AcceptedAnswer answer={run.result.answer} />
               ) : (
                 <p className="rounded border border-destructive/40 bg-destructive/10 px-2 py-2 text-[10px] text-destructive">No model payload crossed the acceptance boundary. Failed check IDs remain visible in the receipt.</p>
               )}
