@@ -20,6 +20,9 @@ Run from the repo root:
 import json
 import os
 import sys
+import threading
+import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, Optional
@@ -45,6 +48,8 @@ from kaaval_assurance.providers import (  # noqa: E402
     create_local_provider,
     create_remote_provider,
 )
+from kaaval_assurance.router import Router
+from kaaval_assurance.trajectory import TrajectoryStore
 
 # Local Vite dev origins only. No credentials, so no wildcard+credentials trap.
 DEV_ORIGINS = [
@@ -63,6 +68,64 @@ class RunRequest(BaseModel):
     confirm_spend: bool = False
     failure_mode: Optional[str] = None
     export_artifacts: bool = False
+    session_id: Optional[str] = None
+
+
+class LiveSession:
+    def __init__(self, session_id: str, local_provider: str, remote_provider: str):
+        self.session_id = session_id
+        self.local_provider = local_provider
+        self.remote_provider = remote_provider
+        self.created_at = time.time()
+        self.last_accessed = self.created_at
+        self.router = Router()
+        self.store = TrajectoryStore(":memory:")
+
+
+class SessionManager:
+    def __init__(self):
+        self.sessions: dict[str, LiveSession] = {}
+        self.lock = threading.Lock()
+
+    def _cleanup(self):
+        now = time.time()
+        # 15 minutes TTL
+        expired = [sid for sid, s in self.sessions.items() if now - s.last_accessed > 900]
+        for sid in expired:
+            self.sessions[sid].store.close()
+            del self.sessions[sid]
+        # Max 64 sessions
+        if len(self.sessions) >= 64:
+            oldest = min(self.sessions.values(), key=lambda s: s.last_accessed)
+            oldest.store.close()
+            del self.sessions[oldest.session_id]
+
+    def get_or_create(self, session_id: str | None, local: str, remote: str) -> LiveSession:
+        with self.lock:
+            self._cleanup()
+            if session_id and session_id in self.sessions:
+                sess = self.sessions[session_id]
+                if sess.local_provider != local or sess.remote_provider != remote:
+                    raise ValueError("Provider mismatch for existing session")
+                sess.last_accessed = time.time()
+                return sess
+            new_id = session_id if session_id else uuid.uuid4().hex
+            sess = LiveSession(new_id, local, remote)
+            self.sessions[new_id] = sess
+            return sess
+
+    def reset(self, session_id: str) -> LiveSession:
+        with self.lock:
+            if session_id in self.sessions:
+                old_sess = self.sessions[session_id]
+                old_sess.store.close()
+                new_sess = LiveSession(session_id, old_sess.local_provider, old_sess.remote_provider)
+                self.sessions[session_id] = new_sess
+                return new_sess
+            raise KeyError("Session not found")
+
+
+session_manager = SessionManager()
 
 
 def live_runs_enabled() -> bool:
@@ -112,6 +175,16 @@ def create_app(store: Optional[ArtifactStore] = None) -> FastAPI:
     def runtime_probe():
         return _artifact_response("runtime_probe")
 
+    @app.post("/api/live-sessions/{session_id}/reset")
+    def reset_session(session_id: str):
+        if not live_runs_enabled():
+            raise HTTPException(status_code=403, detail="live runs are disabled")
+        try:
+            sess = session_manager.reset(session_id)
+            return {"status": "ok", "session_id": sess.session_id}
+        except KeyError:
+            raise HTTPException(status_code=404, detail="Session not found")
+
     @app.post("/api/runs")
     def create_run(req: RunRequest):
         if not live_runs_enabled():
@@ -150,6 +223,11 @@ def create_app(store: Optional[ArtifactStore] = None) -> FastAPI:
             raise HTTPException(status_code=422, detail=str(e)) from e
 
         try:
+            sess = session_manager.get_or_create(req.session_id, req.local_provider, req.remote_provider)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
+        try:
             demo = run_live_demo(
                 task_input=req.task_input,
                 contract_id=req.contract_id,
@@ -157,6 +235,8 @@ def create_app(store: Optional[ArtifactStore] = None) -> FastAPI:
                 case_id="api",
                 local_provider=local,
                 remote_provider=remote,
+                router=sess.router,
+                store=sess.store,
             )
         except KeyError as e:
             raise HTTPException(status_code=422, detail=f"unknown contract: {e}") from e
@@ -180,6 +260,13 @@ def create_app(store: Optional[ArtifactStore] = None) -> FastAPI:
             "mode": "live",
             "label": "LIVE RUN",
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            "session": {
+                "session_id": sess.session_id,
+                "category": demo.category,
+                "online_ewma_drift": sess.router.online_drift_for(demo.category),
+                "current_policy_action": sess.router.current_policy_for(demo.category).action,
+                "current_policy_reason": sess.router.current_policy_for(demo.category).reason,
+            },
             "request": {
                 "contract_id": req.contract_id,
                 "category": demo.category,

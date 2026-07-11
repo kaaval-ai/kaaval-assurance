@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Radio, Loader2, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Radio, Loader2, AlertTriangle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import type { LiveRunResponse } from '../types';
-import { startRun, ApiError } from '../api';
+import { startRun, resetSession, ApiError } from '../api';
 import { CONTRACTS, SAMPLE_INPUTS } from '../mock/data';
 import TrajectoryReplay from './TrajectoryReplay';
 import TelemetryTruth from './TelemetryTruth';
@@ -24,6 +24,8 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
   const [exportArtifacts, setExportArtifacts] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | undefined>();
+  const [isResetting, setIsResetting] = useState(false);
 
   const selectContract = (id: string) => {
     setContractId(id);
@@ -42,12 +44,32 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
         confirm_spend: confirmSpend,
         failure_mode: failureMode === 'none' ? null : failureMode,
         export_artifacts: exportArtifacts,
+        session_id: sessionId,
       });
+      setSessionId(result.session.session_id);
       onRunComplete(result);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'request failed');
     } finally {
       setPending(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!sessionId) return;
+    setIsResetting(true);
+    setError(null);
+    try {
+      await resetSession(sessionId);
+      // clear session and response in parent? We can just clear the local state.
+      // Or we can just let the next run create a new session if we clear sessionId.
+      // But resetSession endpoint preserves the ID and returns a fresh session.
+      // To show it's cleared, we should clear the run output.
+      onRunComplete(null as any); // hacky, better to just let user run again.
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'reset failed');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -145,6 +167,26 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
               </span>
             )}
           </div>
+
+          {run?.session && (
+            <div className="mt-4 p-2 rounded bg-elevated border border-border/50 text-[10px] font-mono space-y-1 text-muted">
+              <div className="flex items-center justify-between">
+                <span className="text-foreground font-semibold">Active Session: {run.session.session_id}</span>
+                <button 
+                  onClick={handleReset} 
+                  disabled={isResetting}
+                  className="flex items-center gap-1 hover:text-foreground disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isResetting ? 'animate-spin' : ''}`} />
+                  Reset live session
+                </button>
+              </div>
+              <div>Category: {run.session.category}</div>
+              <div>Online EWMA drift: {run.session.online_ewma_drift.toFixed(2)}</div>
+              <div>Current routing policy: {run.session.current_policy_action}</div>
+              <div className="truncate">Reason: {run.session.current_policy_reason}</div>
+            </div>
+          )}
         </div>
       </div>
 

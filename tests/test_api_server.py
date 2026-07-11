@@ -467,3 +467,58 @@ class TestLiveRuns:
         assert body["mode"] == "live"
         assert body["label"] == "LIVE RUN"
         assert "SAMPLE" not in json.dumps(body)
+
+    def test_session_ewma_progression(self, live_client):
+        # Run 1: failure -> 0.30
+        resp1 = live_client.post("/api/runs", json={**RUN_BODY, "failure_mode": "missing_field"})
+        assert resp1.status_code == 200
+        body1 = resp1.json()
+        session_id = body1["session"]["session_id"]
+        assert body1["session"]["online_ewma_drift"] == 0.30
+
+        # Run 2: failure -> 0.51 -> tightened or force remote (since 0.51 > 0.50 force remote threshold)
+        resp2 = live_client.post("/api/runs", json={**RUN_BODY, "failure_mode": "missing_field", "session_id": session_id})
+        assert resp2.status_code == 200
+        body2 = resp2.json()
+        assert body2["session"]["online_ewma_drift"] == 0.51
+        assert body2["session"]["current_policy_action"] == "force_remote"
+        assert body2["session"]["session_id"] == session_id
+
+        # Run 3: pre-routed remote -> 1 attempt
+        resp3 = live_client.post("/api/runs", json={**RUN_BODY, "failure_mode": "missing_field", "session_id": session_id})
+        assert resp3.status_code == 200
+        body3 = resp3.json()
+        assert body3["result"]["attempts"] == 1
+        assert body3["trajectory"][0]["tier"] == "remote"
+
+    def test_sessions_are_isolated(self, live_client):
+        resp1 = live_client.post("/api/runs", json={**RUN_BODY, "failure_mode": "missing_field"})
+        session_id = resp1.json()["session"]["session_id"]
+
+        # Different session (None)
+        resp2 = live_client.post("/api/runs", json={**RUN_BODY, "failure_mode": "missing_field"})
+        body2 = resp2.json()
+        assert body2["session"]["session_id"] != session_id
+        assert body2["session"]["online_ewma_drift"] == 0.30
+
+    def test_session_reset(self, live_client):
+        resp1 = live_client.post("/api/runs", json={**RUN_BODY, "failure_mode": "missing_field"})
+        session_id = resp1.json()["session"]["session_id"]
+
+        reset_resp = live_client.post(f"/api/live-sessions/{session_id}/reset")
+        assert reset_resp.status_code == 200
+
+        # Run after reset should have drift 0.0 before the run, and 0.30 after the run
+        resp2 = live_client.post("/api/runs", json={**RUN_BODY, "failure_mode": "missing_field", "session_id": session_id})
+        body2 = resp2.json()
+        assert body2["session"]["online_ewma_drift"] == 0.30
+        assert body2["session"]["current_policy_action"] == "tightened"
+
+    def test_provider_mismatch_rejected(self, live_client, monkeypatch):
+        monkeypatch.setenv("FIREWORKS_API_KEY", "sk-test")
+        resp1 = live_client.post("/api/runs", json={**RUN_BODY})
+        session_id = resp1.json()["session"]["session_id"]
+
+        resp2 = live_client.post("/api/runs", json={**RUN_BODY, "remote_provider": "fireworks", "confirm_spend": True, "session_id": session_id})
+        assert resp2.status_code == 422
+        assert "mismatch" in resp2.json()["detail"].lower()

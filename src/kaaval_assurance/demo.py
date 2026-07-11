@@ -51,6 +51,8 @@ def run_live_demo(
     case_id: str = "live",
     local_provider: Optional[Provider] = None,
     remote_provider: Optional[Provider] = None,
+    router: Optional[Router] = None,
+    store: Optional[TrajectoryStore] = None,
 ) -> LiveDemoResult:
     """One request through the assurance pipeline, in-memory store.
 
@@ -65,10 +67,12 @@ def run_live_demo(
             "failure injection applies to the default mock local tier only"
         )
     contract = get_contract(contract_id)
-    store = TrajectoryStore(":memory:")
+    close_store = store is None
+    store = store or TrajectoryStore(":memory:")
+    router = router or Router()
     try:
         pipeline = AssurancePipeline(
-            router=Router(),
+            router=router,
             local_provider=local_provider
             or MockProvider(tier="local", failure_mode=failure_mode),
             remote_provider=remote_provider
@@ -83,7 +87,8 @@ def run_live_demo(
         )
         rows = store.rows_for_request(request_id)
     finally:
-        store.close()
+        if close_store:
+            store.close()
     return LiveDemoResult(
         case_id=case_id,
         contract_id=contract_id,

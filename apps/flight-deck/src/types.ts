@@ -218,6 +218,7 @@ export interface LiveRunRequest {
   confirm_spend: boolean;
   failure_mode: string | null;
   export_artifacts: boolean;
+  session_id?: string;
 }
 
 export interface LiveRunResponse {
@@ -225,6 +226,13 @@ export interface LiveRunResponse {
   mode: 'live';
   label: 'LIVE RUN';
   generated_at: string;
+  session: {
+    session_id: string;
+    category: string;
+    online_ewma_drift: number;
+    current_policy_action: string;
+    current_policy_reason: string;
+  };
   request: {
     contract_id: string;
     category: string;

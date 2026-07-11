@@ -41,3 +41,9 @@ export function startRun(body: LiveRunRequest): Promise<LiveRunResponse> {
     body: JSON.stringify(body),
   });
 }
+
+export function resetSession(sessionId: string): Promise<{ status: string; session_id: string }> {
+  return request<{ status: string; session_id: string }>(`/api/live-sessions/${sessionId}/reset`, {
+    method: 'POST',
+  });
+}

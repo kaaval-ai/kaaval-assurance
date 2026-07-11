@@ -149,3 +149,28 @@ class TestExportArtifacts:
         md = (tmp_path / "unknown" / "demo-live-summary.md").read_text()
         assert "unknown-provider" in md
         assert "AMD claims require vLLM execution" in md
+
+
+class TestMockGroundingScript:
+    def test_script_executes_successfully(self):
+        import subprocess
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        script = root / "scripts" / "mock_grounding_ewma_demo.sh"
+        
+        # Test it uses the correct venv when we explicitly point KAAVAL_PYTHON to sys.executable
+        # or when we just let it run (it should find .venv or fallback successfully)
+        import sys
+        env = {"KAAVAL_PYTHON": sys.executable}
+
+        result = subprocess.run(
+            [str(script)],
+            cwd=str(root),
+            env=env,
+            capture_output=True,
+            text=True
+        )
+
+        assert result.returncode == 0, f"Script failed with output: {result.stderr}"
+        assert "mock-only demo" in result.stdout or "online EWMA drift" in result.stdout
