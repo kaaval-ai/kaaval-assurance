@@ -225,8 +225,10 @@ class TestAttemptTelemetry:
         assert local_fail.total_tokens == (
             local_fail.prompt_tokens + local_fail.completion_tokens
         )
-        assert local_fail.verifier_failure_count == 1
-        assert local_fail.verifier_failure_types == ["enum"]
+        # sev-001 is the first local failure in dataset order and also trips
+        # the regional-outage grounding rule alongside its enum failure.
+        assert local_fail.verifier_failure_count == 2
+        assert local_fail.verifier_failure_types == ["enum", "grounding"]
         assert local_fail.escalation_reason is None
 
         escalated = next(a for a in telemetry.attempts_detail if a.escalated)

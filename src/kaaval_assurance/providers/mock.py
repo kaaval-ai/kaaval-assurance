@@ -14,7 +14,19 @@ from ..models import ModelResponse
 from .base import Provider
 
 # Supported injectable failures.
-FAILURE_MODES = ("missing_field", "bad_enum", "out_of_range", "unparseable")
+FAILURE_MODES = (
+    "missing_field",
+    "bad_enum",
+    "out_of_range",
+    "unparseable",
+    # Mock-only test/demo seam — never a real Gemma failure mode. Returns a
+    # structurally and enum-valid but operationally under-severe P2 for
+    # severity-classification contracts, so tests can exercise the Layer 1
+    # deterministic grounding-rule engine (content-aware, not shape-based)
+    # and the escalation/recovery path it triggers. No-op on contracts
+    # without a "severity" field.
+    "undersevere",
+)
 
 
 def _sample_value(spec: FieldSpec):
@@ -81,6 +93,11 @@ class MockProvider(Provider):
             for spec in contract.fields:
                 if spec.max_value is not None:
                     payload[spec.name] = spec.max_value + 1000
+                    break
+        elif self.failure_mode == "undersevere":
+            for spec in contract.fields:
+                if spec.name == "severity" and spec.enum and "P2" in spec.enum:
+                    payload[spec.name] = "P2"
                     break
         return json.dumps(payload)
 

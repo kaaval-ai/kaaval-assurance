@@ -102,7 +102,16 @@ def test_degraded_local_tier_shows_drift_and_escalation(store):
     assert m.pass_rate == 1.0  # remote rescues every failure
     assert m.escalation_rate == pytest.approx(8 / 16)
     assert m.attempts == 24  # 16 local + 8 remote
-    assert m.failure_counts == {"enum:severity": 4, "enum:urgency": 4}
+    # sev-001 and act-001 also trip the new deterministic grounding rules
+    # (regional-outage / no-redundancy phrases both present) alongside their
+    # enum failure, since bad_enum's replacement value satisfies neither the
+    # field enum nor the rule's allowed_values.
+    assert m.failure_counts == {
+        "enum:severity": 4,
+        "enum:urgency": 4,
+        "grounding:regional_outage_requires_p1": 1,
+        "grounding:no_redundancy_requires_immediate": 1,
+    }
 
     assert m.by_category["severity_classification"].ewma_drift > 0.9
     assert m.by_category["next_action_recommendation"].ewma_drift > 0.9

@@ -5,7 +5,7 @@ requests later in the week). Versioned so Layer 2 trends and Layer 3 audits can
 reference exactly which contract a response was judged against.
 """
 
-from .base import FieldSpec, TaskContract
+from .base import FieldSpec, GroundingRule, TaskContract
 
 SEVERITY_CLASSIFICATION = TaskContract(
     contract_id="telecom.severity_classification",
@@ -23,6 +23,23 @@ SEVERITY_CLASSIFICATION = TaskContract(
         FieldSpec(name="severity", type="string", enum=["P1", "P2", "P3", "P4"]),
         FieldSpec(name="confidence", type="number", min_value=0.0, max_value=1.0),
         FieldSpec(name="rationale", type="string"),
+    ],
+    grounding_rules=[
+        GroundingRule(
+            id="regional_outage_requires_p1",
+            required_input_phrases=[
+                "all BGP sessions",
+                "lost upstream connectivity",
+                "customer impact",
+            ],
+            output_field="severity",
+            allowed_values=["P1"],
+            description=(
+                "A full regional outage (all BGP sessions dropped, upstream "
+                "connectivity lost) with confirmed customer impact must be "
+                "classified P1, not a lower severity."
+            ),
+        ),
     ],
 )
 
@@ -78,6 +95,18 @@ NEXT_ACTION_RECOMMENDATION = TaskContract(
             name="urgency", type="string", enum=["immediate", "scheduled", "monitor"]
         ),
         FieldSpec(name="justification", type="string"),
+    ],
+    grounding_rules=[
+        GroundingRule(
+            id="no_redundancy_requires_immediate",
+            required_input_phrases=["no redundancy", "subscribers"],
+            output_field="urgency",
+            allowed_values=["immediate"],
+            description=(
+                "An incident with no remaining redundancy affecting subscribers "
+                "requires immediate action, not scheduled or monitor."
+            ),
+        ),
     ],
 )
 

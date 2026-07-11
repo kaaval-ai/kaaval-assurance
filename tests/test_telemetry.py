@@ -68,9 +68,13 @@ class TestSummaryDerivation:
         assert t.verification.local_verified_rate == pytest.approx(0.5)
         assert t.verification.final_verified_rate == 1.0
         assert t.routing.escalation_rate == pytest.approx(0.5)
+        # sev-001 and act-001 also trip the deterministic grounding rules
+        # alongside their enum failure (see test_grounding_rules.py).
         assert t.verification.failures_by_check == {
             "enum:severity": 4,
             "enum:urgency": 4,
+            "grounding:regional_outage_requires_p1": 1,
+            "grounding:no_redundancy_requires_immediate": 1,
         }
         assert t.latency_ms_p95 > t.latency_ms_p50
 

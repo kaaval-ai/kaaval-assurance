@@ -44,7 +44,11 @@ def run_closed_loop_demo(
     ewma_alpha: float = DEFAULT_EWMA_ALPHA,
 ) -> ClosedLoopDemoReport:
     demo_id = uuid.uuid4().hex[:8]
-    router = Router()
+    # Online per-request adaptation is disabled here on purpose: the demo's
+    # three phases are a controlled, discrete teaching sequence (batch drift
+    # from phase B applied by hand before phase C), not the live online
+    # closure record_signal drives in production request handling.
+    router = Router(online_adaptation=False)
 
     healthy_local = MockProvider(tier="local")
     degraded_local = MockProvider(

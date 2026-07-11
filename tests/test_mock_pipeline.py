@@ -98,6 +98,11 @@ def test_category_query_supports_trend_seam(store):
         pipeline.handle_request(INCIDENT, "telecom.severity_classification")
 
     rows = store.rows_for_category("severity_classification")
-    assert len(rows) == 6  # 3 failed local + 3 escalated remote
+    # Online Layer-2 EWMA closure (Router.record_signal, alpha 0.3) is live
+    # on a default Router: request 1 fails local (drift 0.00 -> 0.30,
+    # escalates), request 2 fails local again (drift 0.30 -> 0.51,
+    # escalates), request 3 is pre-routed straight to remote (drift >= 0.50)
+    # with no local attempt at all. 2 local + 2 remote + 1 remote-only = 5.
+    assert len(rows) == 5
     local_fails = [r for r in rows if r.tier == "local" and not r.verifier_passed]
-    assert len(local_fails) == 3  # Layer 2 EWMA will consume exactly this signal
+    assert len(local_fails) == 2  # the 3rd request never attempts local

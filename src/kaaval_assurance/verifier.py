@@ -10,9 +10,15 @@ Check ID format:
     enum:<field>          value outside allowed set
     range:<field>         numeric value outside [min_value, max_value]
     min_items:<field>     array shorter than minimum
+    grounding:<rule_id>   content-aware rule triggered by the input; output
+                          field present and type-valid but not in the rule's
+                          allowed_values. Deterministic phrase matching only
+                          — no LLM calls, no fuzzy matching.
 """
 
-from .contracts import FieldSpec, TaskContract
+from typing import Optional
+
+from .contracts import FieldSpec, GroundingRule, TaskContract
 from .models import ModelResponse, VerificationResult
 
 _TYPE_CHECKS = {
@@ -62,8 +68,38 @@ def _check_field(spec: FieldSpec, payload: dict) -> tuple[int, list[str]]:
     return checks_run, failures
 
 
-def verify(response: ModelResponse, contract: TaskContract) -> VerificationResult:
-    """Run every deterministic contract check against one response."""
+def _check_grounding(
+    rule: GroundingRule, contract: TaskContract, task_input: str, payload: dict
+) -> tuple[int, Optional[str]]:
+    """Evaluate one deterministic grounding rule. Returns (checks_run, failure_id)."""
+    triggered = all(
+        phrase.lower() in task_input.lower() for phrase in rule.required_input_phrases
+    )
+    if not triggered:
+        return 0, None
+
+    spec = next((f for f in contract.fields if f.name == rule.output_field), None)
+    if spec is None or rule.output_field not in payload:
+        return 0, None  # absence is already a structural failure, not grounding's job
+
+    value = payload[rule.output_field]
+    if not _TYPE_CHECKS[spec.type](value):
+        return 0, None  # wrong type is already a structural failure
+
+    if value not in rule.allowed_values:
+        return 1, f"grounding:{rule.id}"
+    return 1, None
+
+
+def verify(
+    response: ModelResponse, contract: TaskContract, task_input: str = ""
+) -> VerificationResult:
+    """Run every deterministic contract check against one response.
+
+    task_input defaults to "" for backward-compatible direct calls; grounding
+    rules never trigger against an empty input, so structural-only callers
+    are unaffected.
+    """
     checks_run = 1  # json_parse
     if response.parsed is None:
         return VerificationResult(
@@ -75,6 +111,12 @@ def verify(response: ModelResponse, contract: TaskContract) -> VerificationResul
         ran, failed = _check_field(spec, response.parsed)
         checks_run += ran
         failures.extend(failed)
+
+    for rule in contract.grounding_rules:
+        ran, failure = _check_grounding(rule, contract, task_input, response.parsed)
+        checks_run += ran
+        if failure:
+            failures.append(failure)
 
     return VerificationResult(
         passed=not failures, checks_run=checks_run, failures=failures

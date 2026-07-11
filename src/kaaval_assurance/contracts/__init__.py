@@ -1,6 +1,6 @@
 """Contract registry: lookup by contract_id, optionally pinned to a version."""
 
-from .base import FieldSpec, TaskContract
+from .base import FieldSpec, GroundingRule, TaskContract
 from .telecom import ALL_CONTRACTS
 
 _REGISTRY: dict[tuple[str, str], TaskContract] = {c.key: c for c in ALL_CONTRACTS}
@@ -20,4 +20,10 @@ def list_contracts() -> list[TaskContract]:
     return list(_REGISTRY.values())
 
 
-__all__ = ["FieldSpec", "TaskContract", "get_contract", "list_contracts"]
+__all__ = [
+    "FieldSpec",
+    "GroundingRule",
+    "TaskContract",
+    "get_contract",
+    "list_contracts",
+]

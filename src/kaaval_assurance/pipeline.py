@@ -67,7 +67,7 @@ class AssurancePipeline:
                 raw_text=response.raw_text,
             )
         )
-        self.router.record_signal(category, verification.passed)
+        self.router.record_signal(category, verification.passed, response.tier)
 
     def handle_request(
         self,
@@ -83,7 +83,7 @@ class AssurancePipeline:
         provider = self.local if routing.tier == "local" else self.remote
 
         response = provider.generate(request_id, task_input, contract)
-        verification = verify(response, contract)
+        verification = verify(response, contract, task_input)
         attempts = 1
         escalated = False
         self._record(
@@ -102,7 +102,7 @@ class AssurancePipeline:
                 routing = escalation
                 escalated = True
                 response = self.remote.generate(request_id, task_input, contract)
-                verification = verify(response, contract)
+                verification = verify(response, contract, task_input)
                 attempts += 1
                 self._record(
                     response,

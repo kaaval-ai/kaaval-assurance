@@ -87,7 +87,7 @@ def run_model_comparison(
                 )
             )
             continue
-        verification = verify(response, contract)
+        verification = verify(response, contract, task_input)
         report.entries.append(
             ComparisonEntry(
                 label=label,

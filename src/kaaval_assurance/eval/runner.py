@@ -52,28 +52,40 @@ def run_eval(
     results: list[CaseResult] = []
     run_rows: list[TrajectoryRow] = []
 
-    for case in cases:
-        request_id = f"eval-{run_id}-{case.case_id}"
-        contract = get_contract(case.contract_id, case.contract_version)
-        outcome = pipeline.handle_request(
-            task_input=case.task_input,
-            contract_id=case.contract_id,
-            contract_version=case.contract_version,
-            request_id=request_id,
-        )
-        results.append(
-            CaseResult(
-                case_id=case.case_id,
-                request_id=request_id,
+    # A batch eval run reports Layer-2 metrics against a fixed routing
+    # policy for the whole dataset — it must not let the router's online
+    # closure (record_signal) adapt mid-replay, or metrics would reflect a
+    # moving target instead of one policy. Live per-request adaptation is a
+    # pipeline.handle_request() concern; restore the router's own setting
+    # once the batch finishes.
+    router = pipeline.router
+    prior_online_adaptation = router.online_adaptation
+    router.online_adaptation = False
+    try:
+        for case in cases:
+            request_id = f"eval-{run_id}-{case.case_id}"
+            contract = get_contract(case.contract_id, case.contract_version)
+            outcome = pipeline.handle_request(
+                task_input=case.task_input,
                 contract_id=case.contract_id,
-                category=contract.category,
-                passed=outcome.verification.passed,
-                escalated=outcome.escalated,
-                attempts=outcome.attempts,
-                routing_reason=outcome.routing.reason,
+                contract_version=case.contract_version,
+                request_id=request_id,
             )
-        )
-        run_rows.extend(pipeline.store.rows_for_request(request_id))
+            results.append(
+                CaseResult(
+                    case_id=case.case_id,
+                    request_id=request_id,
+                    contract_id=case.contract_id,
+                    category=contract.category,
+                    passed=outcome.verification.passed,
+                    escalated=outcome.escalated,
+                    attempts=outcome.attempts,
+                    routing_reason=outcome.routing.reason,
+                )
+            )
+            run_rows.extend(pipeline.store.rows_for_request(request_id))
+    finally:
+        router.online_adaptation = prior_online_adaptation
 
     metrics = aggregate(run_rows, alpha=ewma_alpha)
     return EvalRunReport(

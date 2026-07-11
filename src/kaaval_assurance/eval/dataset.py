@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Optional, Union
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from ..contracts import get_contract
 
@@ -20,6 +20,12 @@ class EvalCase(BaseModel):
     contract_version: Optional[str] = None
     task_input: str
     gold_answer: Optional[dict] = None
+    # Which eval set this case belongs to (e.g. "telecom" gold vs. a harder
+    # stress set). Defaults preserve every existing dataset unchanged.
+    workload: str = "telecom"
+    # Reusable stress-case labels (e.g. "distractor_quantity",
+    # "negation_or_temporal_change"); empty for ordinary gold cases.
+    stress_tags: list[str] = Field(default_factory=list)
 
 
 def load_dataset(path: Union[str, Path]) -> list[EvalCase]:
