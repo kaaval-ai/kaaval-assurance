@@ -41,9 +41,9 @@ export default function DemoScriptRail({ payload }: { payload: DashboardPayload 
   return (
     <section className="panel">
       <div className="panel-header">
-        <span className="panel-title">Two-minute demo rail</span>
+        <span className="panel-title">Assurance path</span>
         <span className="text-[10px] font-mono text-muted">
-          scriptable judge path <SourceChip tag={payload ? 'measured' : 'not_available'} />
+          failure-aware runtime proof <SourceChip tag={payload ? 'measured' : 'not_available'} />
         </span>
       </div>
       <div className="panel-body">

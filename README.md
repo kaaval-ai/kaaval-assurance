@@ -223,6 +223,35 @@ npm install
 npm run dev
 ```
 
+### 2b. Containerized Flight Deck
+The submission container serves the compiled React Flight Deck and FastAPI
+artifact API from one process. It defaults to captured-evidence mode, so it
+does not need secrets, Fireworks credits, or a live Gemma/vLLM endpoint.
+
+```bash
+# Uses Finch when available, otherwise Docker. Checks /, /api/health, /api/dashboard.
+CONTAINER_ENGINE=finch IMAGE=kaaval-assurance:local PORT=8080 \
+  scripts/container_smoke.sh
+```
+
+Public registry target for submission:
+
+```bash
+finch build -t ghcr.io/kaaval-ai/kaaval-assurance:act-ii .
+finch push ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+```
+
+Hosted deployments should keep:
+
+```text
+KAAVAL_LIVE_RUNS_ENABLED=0
+PORT=8000
+```
+
+Do not expose a live vLLM/Gemma server in the public app container. The hosted
+URL replays measured AMD evidence; a live GPU endpoint can be attached later
+as a private provider target via `VLLM_BASE_URL`.
+
 ### 3. Using Local Ollama Gemma & Fireworks API Simultaneously
 You can run the full assurance pipeline, routing requests first to your local open-weight Gemma model (via Ollama), and intelligently escalating failing/drifting requests to the Fireworks remote tier.
 

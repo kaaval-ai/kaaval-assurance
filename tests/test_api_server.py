@@ -51,8 +51,8 @@ def make_store(tmp_path, artifacts=None, sample=None, manifest=None):
         (a_dir / "demo-live-manifest.json").write_text(json.dumps(manifest))
     return ArtifactStore(artifacts_dir=a_dir, sample_dir=s_dir)
 
-def client_for(store):
-    return TestClient(create_app(store))
+def client_for(store, static_dir=None):
+    return TestClient(create_app(store, static_dir=static_dir))
 
 
 class TestArtifactResolution:
@@ -388,6 +388,20 @@ class TestApiEndpoints:
         assert body["status"] == "ok"
         assert body["live_runs_enabled"] in (True, False)
 
+    def test_static_flight_deck_served_without_shadowing_api(self, tmp_path):
+        static_dir = tmp_path / "dist"
+        static_dir.mkdir()
+        (static_dir / "index.html").write_text(
+            "<!doctype html><title>Kaaval Flight Deck</title>",
+            encoding="utf-8",
+        )
+        client = client_for(make_store(tmp_path), static_dir=static_dir)
+
+        assert client.get("/api/health").json()["status"] == "ok"
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert "Kaaval Flight Deck" in resp.text
+
     def test_cors_allows_vite_dev_origin_without_credentials(self, tmp_path):
         client = client_for(make_store(tmp_path))
         resp = client.options(
@@ -721,4 +735,3 @@ class TestLiveRuns:
         
         t1.join()
         t2.join()
-

@@ -18,6 +18,10 @@ dependencies = [
 dev = [
     "pytest>=7.0",
 ]
+server = [
+    "fastapi",
+    "uvicorn",
+]
 demo = [
     "streamlit>=1.28",
     "fastapi",

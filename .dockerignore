@@ -1,0 +1,33 @@
+.git
+.gitignore
+.pytest_cache
+.venv
+venv
+__pycache__
+*.py[cod]
+*.egg-info
+.DS_Store
+
+# Secrets and local agent state
+.env
+.claude
+.codex
+.gemini
+CLAUDE.md
+GEMINI.md
+graphify-out
+
+# Frontend build/cache is rebuilt in the Node stage
+apps/flight-deck/node_modules
+apps/flight-deck/dist
+
+# Local runtime outputs that are not needed for the public captured-evidence app
+*.db
+artifacts/*.db
+artifacts/telemetry-mock.md
+artifacts/trajectory-mock.db
+
+# Video/deck scratch files should stay outside the container context
+*.mp4
+*.mov
+*.pptx

@@ -1,36 +1,89 @@
-# Hosted Demo Guide — Streamlit Replay Console
+# Hosted Demo Guide — Flight Deck Container
 
-The console (`apps/demo_console/app.py`) is a telemetry **replay** surface:
-it renders recorded artifacts and ships with synthetic sample data, so the
-hosted copy needs **no secrets, no API keys, no AMD access, and no live
-model endpoint**. The hosted URL satisfies the optional Track 3 hosted-URL
-asset by replaying captured AMD telemetry.
+The submission host should run the React **Inference Flight Deck** and the
+FastAPI artifact API from one container. It renders recorded artifacts and
+ships with sample fallback data, so the public hosted copy needs **no secrets,
+no API keys, no AMD access, and no live model endpoint**.
+
+By default, hosted deployments run in **Captured Evidence** mode:
+
+- `KAAVAL_LIVE_RUNS_ENABLED=0`
+- no Fireworks key is required
+- no vLLM/Gemma endpoint is exposed publicly
+- SQLite live sessions stay in-memory and are unused unless live runs are
+  explicitly enabled
+- telemetry traversal reads committed artifacts first, then sample fallback
 
 ## Local run
+
+```bash
+pip install -e ".[dev,demo]"
+uvicorn apps.api.server:app --host 127.0.0.1 --port 8000
+
+cd apps/flight-deck
+npm install
+npm run dev
+```
+
+## Container run
+
+```bash
+CONTAINER_ENGINE=finch IMAGE=kaaval-assurance:local PORT=8080 \
+  scripts/container_smoke.sh
+```
+
+The smoke test builds the image, starts the container, and checks:
+
+- `/api/health`
+- `/api/dashboard`
+- `/` serving the compiled Flight Deck
+
+## Registry publishing
+
+Recommended public image name:
+
+```text
+ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+```
+
+Build and push after local smoke passes:
+
+```bash
+finch build -t ghcr.io/kaaval-ai/kaaval-assurance:act-ii .
+finch push ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+```
+
+If using Docker instead of Finch, replace `finch` with `docker`.
+
+## Hosting options
+
+Use a low-cost stateless container host. Configure one public port mapped to
+container port `8000`; set no secrets for the captured-evidence deployment.
+
+Environment:
+
+```text
+PORT=8000
+KAAVAL_LIVE_RUNS_ENABLED=0
+```
+
+Do **not** ship Gemma weights or expose a vLLM port in the public app
+container. If a future live GPU demo is needed, keep vLLM/Gemma on a private
+AMD host or private service network and point the API server to it with
+`VLLM_BASE_URL`.
+
+## Fallback — Streamlit replay console
+
+The older console (`apps/demo_console/app.py`) still works as a lightweight
+telemetry replay surface:
 
 ```bash
 pip install -e ".[demo]"
 streamlit run apps/demo_console/app.py
 ```
 
-## Option A — Streamlit Community Cloud
-
-1. Push the repo to GitHub (public).
-2. On share.streamlit.io: New app → pick the repo/branch → set **Main file
-   path** to `apps/demo_console/app.py`.
-3. Dependencies: the platform installs from a `requirements.txt` it
-   discovers in the repo. `apps/demo_console/requirements.txt` exists for
-   this; if the platform does not pick up the nested file, copy it to the
-   repo root on the deployment branch — it contains only `streamlit`.
-4. Deploy. The app starts on sample data and says so in the banner.
-
-## Option B — Hugging Face Spaces
-
-1. Create a Space with the **Streamlit** SDK.
-2. Push the repo (or a trimmed copy containing `apps/`, `demo_artifacts/`,
-   and `requirements.txt`) to the Space.
-3. In the Space `README.md` front matter set `app_file: apps/demo_console/app.py`.
-4. The Space installs `requirements.txt` and serves the console.
+Use this only if the container host is unavailable; the Flight Deck container
+is the stronger submission URL.
 
 ## How artifact loading works
 
@@ -41,25 +94,26 @@ For each artifact name the app checks, in order:
    pipeline with zero cloud access.
 
 The banner states which source is showing. Sample data never claims a
-measured runtime: its runtime status is `planned` and a test enforces that.
+measured runtime: its runtime status is `planned` and tests enforce that.
 
 ## Replacing sample data with real AMD artifacts
 
-After the AMD pod run produces `artifacts/runtime-probe.json` and the eval
-telemetry files:
+After the AMD pod run produces `artifacts/runtime-probe.json`, telemetry, and
+trajectory files:
 
 1. Copy the curated proof files from the pod into the deployment's
    `artifacts/` directory. The main repo git-ignores `artifacts/`, so on the
    deployment branch (or Space) add them explicitly:
 
    ```bash
-   git add -f artifacts/runtime-probe.json artifacts/telemetry-vllm.md
+   git add -f artifacts/runtime-probe.json artifacts/demo-live-telemetry.json \
+     artifacts/demo-live-trajectory.json artifacts/demo-live-manifest.json
    ```
 
    (Hugging Face Spaces also allows uploading the files through the web UI.)
-2. Redeploy. The console switches from the sample banner to the recorded-
-   artifacts banner automatically; runtime sections sourced from the probe
-   show as measured because the artifact says so — never before.
+2. Redeploy. The Flight Deck switches from sample/unavailable states to the
+   recorded-artifacts banner automatically; runtime sections sourced from the
+   probe show as measured because the artifact says so — never before.
 
 Review copied artifacts before publishing: they contain no secrets by
 design (the probe redacts env values), but confirm nothing environment-

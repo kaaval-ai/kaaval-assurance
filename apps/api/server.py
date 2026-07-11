@@ -30,6 +30,7 @@ from typing import Literal, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -147,7 +148,17 @@ def live_runs_enabled() -> bool:
     return os.environ.get("KAAVAL_LIVE_RUNS_ENABLED", "") == "1"
 
 
-def create_app(store: Optional[ArtifactStore] = None) -> FastAPI:
+def _static_dir_from_env() -> Path:
+    configured = os.environ.get("KAAVAL_STATIC_DIR")
+    if configured:
+        return Path(configured)
+    return ROOT / "apps" / "flight-deck" / "dist"
+
+
+def create_app(
+    store: Optional[ArtifactStore] = None,
+    static_dir: Optional[Path] = None,
+) -> FastAPI:
     store = store or ArtifactStore()
     app = FastAPI(title="Kaaval Assurance Flight Deck API")
     app.add_middleware(
@@ -312,6 +323,14 @@ def create_app(store: Optional[ArtifactStore] = None) -> FastAPI:
             ),
             "artifacts_written": artifacts_written,
         }
+
+    resolved_static_dir = static_dir if static_dir is not None else _static_dir_from_env()
+    if resolved_static_dir.exists():
+        app.mount(
+            "/",
+            StaticFiles(directory=resolved_static_dir, html=True),
+            name="flight-deck",
+        )
 
     return app
 
