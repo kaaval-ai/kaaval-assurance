@@ -186,13 +186,21 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
           </div>
           <div className="panel-body">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {t.claims.map((c) => (
+              {t.claims.map((c) => {
+                const claimLabel = {
+                  'Local verified rate': 'Local Layer-1 contract-conformance rate',
+                  'Final verified rate': 'Final Layer-1 contract-conformance rate',
+                  'Cost per verified answer': 'Cost per contract-conformant answer',
+                }[c.claim] ?? c.claim;
+                const claimSource = c.field.startsWith('cost.') ? 'configured' : c.source;
+                return (
                 <div key={c.claim} className="flex items-center gap-2 px-2 py-1 rounded border border-border/40 text-[10px] font-mono">
-                  <span className="text-muted flex-1 truncate">{c.claim}</span>
+                  <span className="text-muted flex-1 truncate">{claimLabel}</span>
                   <span className="text-foreground truncate max-w-[45%]" title={c.value}>{c.value}</span>
-                  <SourceChip tag={c.source === 'measured' && payload?.used_sample ? 'sample' : c.source} />
+                  <SourceChip tag={claimSource === 'measured' && payload?.used_sample ? 'sample' : claimSource} />
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
