@@ -19,7 +19,10 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
   const [taskInput, setTaskInput] = useState(SAMPLE_INPUTS[CONTRACTS[0].id] ?? '');
   const [localProvider, setLocalProvider] = useState<'mock' | 'ollama' | 'vllm'>('mock');
   const [remoteProvider, setRemoteProvider] = useState<'mock' | 'fireworks'>('mock');
-  const [failureMode, setFailureMode] = useState<string>('none');
+  // Default to the policy-cap near-miss: first click, no configuration,
+  // shows the local tier try to approve $1,000 over the $500 refund cap
+  // and get caught before it ships.
+  const [failureMode, setFailureMode] = useState<string>('out_of_range');
   const [remoteFailureMode, setRemoteFailureMode] = useState<string>('none');
   const [confirmSpend, setConfirmSpend] = useState(false);
   const [exportArtifacts, setExportArtifacts] = useState(false);

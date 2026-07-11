@@ -15,6 +15,20 @@ export interface ContractMeta {
 
 export const CONTRACTS: ContractMeta[] = [
   {
+    id: 'support.refund_decision',
+    category: 'refund_decision',
+    label: 'Refund Decision',
+    description: 'Approve, deny, or escalate a refund — the $500 policy cap is a contract range, enforced in code, not a prompt.',
+    checks: ['json_parse', 'required:decision', 'enum:decision', 'required:refund_amount_usd', 'range:refund_amount_usd', 'required:justification'],
+  },
+  {
+    id: 'support.ticket_triage',
+    category: 'ticket_triage',
+    label: 'Support Ticket Triage',
+    description: 'Triage a customer support ticket into a priority tier — impact over tone.',
+    checks: ['json_parse', 'required:priority', 'enum:priority', 'required:confidence', 'range:confidence', 'required:rationale'],
+  },
+  {
     id: 'telecom.severity_classification',
     category: 'severity_classification',
     label: 'Severity Classification',
@@ -41,20 +55,6 @@ export const CONTRACTS: ContractMeta[] = [
     label: 'Next Action',
     description: 'Recommend the next operational action with urgency and justification.',
     checks: ['json_parse', 'required:action', 'required:urgency', 'enum:urgency', 'required:justification'],
-  },
-  {
-    id: 'support.ticket_triage',
-    category: 'ticket_triage',
-    label: 'Support Ticket Triage',
-    description: 'Triage a customer support ticket into a priority tier — impact over tone.',
-    checks: ['json_parse', 'required:priority', 'enum:priority', 'required:confidence', 'range:confidence', 'required:rationale'],
-  },
-  {
-    id: 'support.refund_decision',
-    category: 'refund_decision',
-    label: 'Refund Decision',
-    description: 'Approve, deny, or escalate a refund — the $500 policy cap is a contract range, enforced in code.',
-    checks: ['json_parse', 'required:decision', 'enum:decision', 'required:refund_amount_usd', 'range:refund_amount_usd', 'required:justification'],
   },
 ];
 
