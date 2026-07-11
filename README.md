@@ -1,18 +1,25 @@
 # Kaaval Assurance
 
-![Kaaval Assurance — inference assurance plane for Gemma-first AMD workloads](assets/kaaval-assurance-banner.svg)
+![Kaaval Assurance — Agentic Guardian assurance engine for AI decisions on Gemma-first AMD workloads](assets/kaaval-assurance-banner.svg)
 
-**An inference assurance plane for Gemma-first AMD workloads.**
+**An Agentic Guardian assurance engine for AI decisions on Gemma-first AMD
+workloads.**
 
-Kaaval Assurance sits between a task and a model answer. It runs a local
-open-weight tier first, verifies every response against an explicit task
+Kaaval Assurance sits between a task and an AI decision. It runs a local
+open-weight tier first, checks every response against an explicit task
 contract before anyone downstream sees it, escalates only when verification
 fails or quality drifts, and records every attempt as a replayable trajectory.
 The result is not "a model answered" — it is a contract-checked answer with
 evidence: who served it, what it cost, which checks it passed, and why it was
-routed there. Built for AMD Developer Hackathon ACT II, Track 3 (Unicorn /
-Open Innovation). Product wrapper: **KaavalAI**; this repo is the reusable
-engine.
+routed there.
+
+For agents and multi-step workflows, this is the check before a consequential
+action: refund, escalation, classification, approval, or next step. This build
+includes a four-step contract-gated assurance workflow; it does not claim
+general autonomous planning or arbitrary tool execution. Built for AMD
+Developer Hackathon ACT II, Track 3 (Unicorn / Open Innovation). Product
+wrapper: **KaavalAI**; this repository is the reusable assurance engine and a
+first working slice of the broader Kaaval-AI Agentic Guardian ecosystem.
 
 > **What "verified" means here.** Throughout this repo, *verified* means the
 > answer passed every **Layer-1 deterministic contract check** — JSON shape,
@@ -25,11 +32,13 @@ engine.
 
 ## Why this matters
 
-Open-weight models are now good enough to run real workloads locally. What
-teams lack is the control plane: something that tests whether an answer meets
-an explicit contract, decides when to pay for a stronger model, and preserves
-evidence of either decision. Routers predict. Kaaval verifies against declared
-controls and leaves a receipt.
+Open-weight models are now good enough to run real workloads locally. At the
+same time, AI answers are becoming business decisions: refunds, approvals,
+classifications, incident severity, and next actions. What teams lack is the
+assurance layer: something that tests whether an answer meets an explicit
+contract, decides when to pay for a stronger model, and preserves evidence of
+either decision. Routers predict. Kaaval checks declared controls and leaves a
+receipt.
 
 The question Kaaval Assurance answers is not *which model responded*. It is:
 **can we prove the answer satisfied the task contract, at the lowest reliable
@@ -81,7 +90,7 @@ Click the flow for the interactive walkthrough: [HTML](docs/kaaval-assurance-arc
 | Mock provider | Built | Entire loop runs deterministically with zero cloud access — tests, demos, CI |
 | Ollama local provider | Built | Open-weight local inference on a dev machine; validates the local-tier path before GPU time is spent |
 | vLLM provider for AMD GPU VM | Built — measured on AMD ROCm | Gemma served through the real provider path; runtime, endpoint, verifier, token, latency, and hardware evidence captured |
-| Fireworks AI escalation tier | Built, smoke-tested live | Verified remote escalation with cost/token capture; spend requires explicit confirmation |
+| Fireworks AI escalation tier | Built, smoke-tested live | Contract-conformant remote escalation with cost/token capture; spend requires explicit confirmation |
 | Layer 1 contract verifier | Built | Deterministic accept/reject with stable check IDs — the source of truth |
 | Layer 2 EWMA drift + closed-loop routing | Built | Detects per-category degradation and tightens routing automatically, with recorded reasons |
 | Layer 3 sampled audit + FP calibration | Built, display-only | Samples accepted answers as a statistical sensor; model-generated findings do not gate responses or feed routing |
@@ -107,7 +116,7 @@ status travel together as a replayable receipt.
 | **AI platform teams** | Local models reduce inference cost, but opaque failures make unattended use risky | Contract-gated local inference with selective escalation and measured cost per conformant answer |
 | **Risk, governance, and audit teams** | Fluent output leaves weak evidence of which controls ran | Versioned contracts, stable check IDs, source-tagged telemetry, and replayable trajectories |
 | **Security and operations teams** | Provider outages and behavior shifts are difficult to reconstruct | Recorded transport failures, per-category drift, routing decisions, and runtime-to-answer provenance |
-| **Technology-risk assessors** | AI controls are often described only through policy documents | Inspectable evidence of control execution, rejection, recovery, and human-review boundaries |
+| **Insurers and technology-risk assessors** | AI controls are often described only through policy documents | Inspectable evidence of control execution, rejection, recovery, runtime provenance, and human-review boundaries |
 
 Kaaval does not claim to eliminate liability or guarantee lower insurance
 premiums. Within synthetic and controlled evaluations, this build demonstrates
@@ -117,13 +126,29 @@ routing, and each tested decision retains a source-tagged receipt. That evidence
 is a foundation for empirically evaluating broader operational risk as the
 Kaaval-AI Agentic Guardian ecosystem expands.
 
+### Product and market path
+
+The near-term product path is a provider-neutral assurance gateway that can
+start in **shadow mode**: observe model decisions, evaluate contracts, and
+produce receipts without blocking production. After teams validate their
+contracts and telemetry, the same assurance engine can gate consequential
+actions. Shadow mode is a deployment roadmap item, not a distinct switch in
+this hackathon build.
+
+The commercial hypothesis is an enterprise platform subscription with
+usage-based pricing per contract-conformant decision, plus self-hosted
+deployments for customers that need model traffic and evidence to remain
+inside their boundary. Pricing and insurance impact are not validated claims;
+the build demonstrates the technical evidence layer needed to evaluate them.
+
 ## AMD + Gemma execution model
 
 The system is designed around a **Gemma-first local tier on AMD GPU
 infrastructure**: open weights, an open serving stack (ROCm + vLLM), and
 hardware the operator controls — which is also what makes deeper white-box
-signals (logprobs today, more later) structurally available to the assurance
-plane.
+signals such as logprobs structurally available for future assurance policies.
+This build records the capability seam but does not use local-model logprobs in
+routing.
 
 Execution tiers, honestly labeled:
 

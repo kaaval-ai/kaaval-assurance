@@ -21,7 +21,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
 
 const PANELS = [
   { icon: <GitBranch className="w-3 h-3" />, label: 'Assurance Pipeline', desc: 'One request traced through router, local tier, Layer-1 verification, and (when needed) escalation.', neon: '#00D4FF' },
-  { icon: <Server className="w-3 h-3" />, label: 'Provider Switchboard', desc: 'Providers that actually served attempts in the captured run, with measured latency and verified rates.', neon: '#34C759' },
+  { icon: <Server className="w-3 h-3" />, label: 'Provider Switchboard', desc: 'Providers that actually served attempts in the captured run, with measured latency and contract-conformance rates.', neon: '#34C759' },
   { icon: <ScrollText className="w-3 h-3" />, label: 'Contract Gate', desc: 'The four telecom task contracts and their deterministic Layer-1 checks — shape and constraints, not semantic truth.', neon: '#FFB000' },
   { icon: <BarChart3 className="w-3 h-3" />, label: 'Tier Comparison', desc: 'Local Gemma-first tier vs Fireworks escalation, from captured measurements only.', neon: '#FF6B9D' },
   { icon: <Activity className="w-3 h-3" />, label: 'Telemetry Truth', desc: 'Every claim with its source tag: measured, configured, planned, or honestly not available.', neon: '#7CFF7C' },

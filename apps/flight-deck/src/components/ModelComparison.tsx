@@ -43,7 +43,7 @@ function TierColumn({ title, stats, usedSample }: { title: string; stats: TierSt
         <div className="space-y-1 text-[10px] font-mono">
           <div className="flex justify-between"><span className="text-muted">provider / model</span><span className="text-foreground truncate ml-2">{stats.provider} · {stats.modelId}</span></div>
           <div className="flex justify-between"><span className="text-muted">attempts</span><span className="text-foreground tabular-nums">{stats.attempts}</span></div>
-          <div className="flex justify-between"><span className="text-muted">Layer-1 verified rate</span><span className="text-foreground tabular-nums">{pct(stats.verifiedRate)}</span></div>
+          <div className="flex justify-between"><span className="text-muted">Layer-1 conformance rate</span><span className="text-foreground tabular-nums">{pct(stats.verifiedRate)}</span></div>
           <div className="flex justify-between"><span className="text-muted">mean latency</span><span className="text-foreground tabular-nums">{ms(stats.meanLatencyMs)}</span></div>
           <div className="flex justify-between"><span className="text-muted">total tokens</span><span className="text-foreground tabular-nums">{stats.totalTokens}</span></div>
           <div className="flex justify-between">
@@ -85,7 +85,7 @@ export default function ModelComparison({ telemetry, usedSample }: { telemetry: 
           </div>
         )}
         <p className="pt-2 text-[9px] font-mono text-muted leading-relaxed">
-          Quality here means Layer-1 contract verification outcomes. This system does not
+          Quality here means Layer-1 contract-conformance outcomes. This system does not
           measure accuracy or hallucination rates; semantic risk is estimated separately by
           the calibrated, sampled Layer 3 audit.
         </p>

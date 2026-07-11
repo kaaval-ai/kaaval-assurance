@@ -25,8 +25,8 @@ The full telecom gold evaluation passed locally through the Gemma/vLLM tier:
 | Metric | Measured result |
 |---|---:|
 | Requests / attempts | 16 / 16 |
-| Local verified rate | 100% |
-| Final verified rate | 100% |
+| Local Layer-1 contract-conformance rate | 100% |
+| Final Layer-1 contract-conformance rate | 100% |
 | Escalation rate | 0% |
 | Verifier failures | 0 |
 | Latency p50 | 324.6 ms |

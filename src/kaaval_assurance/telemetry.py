@@ -494,7 +494,7 @@ def _build_claims(
     if audit.enabled:
         claims.append(
             ClaimSupport(
-                claim="Audit cost per verified accepted answer",
+                claim="Audit cost per Layer-1-accepted answer",
                 value=_fmt_cost(cost.audit_cost_per_verified_accepted_usd),
                 source="measured",
                 field="cost.audit_cost_per_verified_accepted_usd",

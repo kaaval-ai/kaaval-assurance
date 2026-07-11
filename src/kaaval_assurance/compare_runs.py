@@ -23,7 +23,7 @@ def load_db_metrics(db_path: str) -> dict:
     remote_attempts = remote_data["remote_attempts"] or 0
     total_cost = remote_data["total_cost"] or 0.0
 
-    # For verified rate, we need to find if the LAST attempt per request_id had verifier_passed=1
+    # Conformance is the final attempt's Layer-1 verifier outcome.
     cur.execute("""
         SELECT request_id, verifier_passed
         FROM trajectory
@@ -102,14 +102,14 @@ def compare_runs(smoke_db_path: str, baseline_db_path: str, output_prefix: str):
         f.write(f"- Total Attempts: {results['local_first']['total_attempts']}\n")
         f.write(f"- Remote Attempts: {results['local_first']['remote_attempts']}\n")
         f.write(f"- Remote Cost: ${results['local_first']['total_configured_remote_cost']:.6f}\n")
-        f.write(f"- Final Verified Rate: {results['local_first']['final_verified_rate']:.1f}%\n\n")
+        f.write(f"- Final Contract-Conformance Rate: {results['local_first']['final_verified_rate']:.1f}%\n\n")
         
         f.write("## Always-Remote (Baseline)\n")
         f.write(f"- Requests: {results['always_remote']['requests']}\n")
         f.write(f"- Total Attempts: {results['always_remote']['total_attempts']}\n")
         f.write(f"- Remote Attempts: {results['always_remote']['remote_attempts']}\n")
         f.write(f"- Remote Cost: ${results['always_remote']['total_configured_remote_cost']:.6f}\n")
-        f.write(f"- Final Verified Rate: {results['always_remote']['final_verified_rate']:.1f}%\n\n")
+        f.write(f"- Final Contract-Conformance Rate: {results['always_remote']['final_verified_rate']:.1f}%\n\n")
 
         f.write("## Comparison Metrics\n")
         f.write(f"- **Remote Calls Avoided**: {results['comparison']['remote_calls_avoided']}\n")
