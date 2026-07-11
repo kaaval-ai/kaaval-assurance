@@ -18,8 +18,8 @@ interface Props {
 
 const MODEL_DEFAULTS: Record<RuntimeProvider, string> = {
   fireworks: 'accounts/fireworks/models/glm-5p2',
-  ollama: 'gemma3:4b',
-  vllm: 'gemma-3-1b-it',
+  ollama: '',
+  vllm: '',
   openai_compatible: '',
 };
 
@@ -147,7 +147,7 @@ export default function RuntimeConnectionModal({
               <input
                 value={modelId}
                 onChange={(event) => setModelId(event.target.value)}
-                placeholder="served model name"
+                placeholder={provider === 'ollama' ? 'exact tag from ollama list' : 'exact served model ID'}
                 className="w-full rounded border border-border bg-elevated px-2 py-1.5 text-[11px] text-foreground"
               />
             </label>
@@ -160,6 +160,17 @@ export default function RuntimeConnectionModal({
               />
             </label>
           </div>
+
+          {provider === 'ollama' && (
+            <p className="text-[10px] font-mono text-muted">
+              Use the exact installed tag reported by <code>ollama list</code>. Kaaval verifies it against the runtime before connecting.
+            </p>
+          )}
+          {provider === 'vllm' && (
+            <p className="text-[10px] font-mono text-muted">
+              Use the exact model ID exposed by the endpoint&apos;s <code>/v1/models</code> response.
+            </p>
+          )}
 
           {provider !== 'fireworks' && (
             <label className="block space-y-1 text-[10px] font-mono text-muted">

@@ -59,3 +59,14 @@ def test_connected_live_run_does_not_send_mock_compatibility_fields():
     assert "failure_mode:" not in panel
     assert "remote_failure_mode:" not in panel
     assert "primary_connection_id: primary.connection_id" in panel
+
+
+def test_runtime_modal_does_not_guess_local_model_ids():
+    modal = (SRC / "components" / "RuntimeConnectionModal.tsx").read_text(
+        encoding="utf-8"
+    )
+
+    assert "ollama: ''," in modal
+    assert "vllm: ''," in modal
+    assert "gemma3:4b" not in modal
+    assert "gemma-3-1b-it" not in modal

@@ -13,7 +13,7 @@ from apps.api.runtime_connections import RuntimeConnectionManager
 class FakeResponse:
     def __init__(self, status_code=200, payload=None):
         self.status_code = status_code
-        self._payload = payload or {"data": []}
+        self._payload = payload or {"data": [{"id": "gemma3:4b"}]}
         self.text = json.dumps(self._payload)
 
     def json(self):
@@ -57,6 +57,29 @@ def test_hosted_mode_rejects_direct_local_endpoint(byok_env, monkeypatch):
             role="primary",
             model_id="gemma3:4b",
             probe=False,
+        )
+
+
+def test_local_connection_rejects_model_not_in_runtime_inventory(
+    byok_env, monkeypatch
+):
+    monkeypatch.setattr(
+        "apps.api.runtime_connections.requests.get",
+        lambda *args, **kwargs: FakeResponse(
+            payload={"data": [{"id": "gemma4:12b"}, {"id": "qwen3.5:9b"}]}
+        ),
+    )
+    manager = RuntimeConnectionManager()
+
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            "model 'gemma3:4b' is not served.*"
+            "gemma4:12b, qwen3.5:9b"
+        ),
+    ):
+        manager.create(
+            provider="ollama", role="primary", model_id="gemma3:4b"
         )
 
 

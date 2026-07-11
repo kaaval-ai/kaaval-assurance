@@ -13,10 +13,17 @@ from typing import Literal, Mapping, Optional
 
 import requests
 
+from ..contracts import TaskContract
+from ..models import ModelResponse
 from .vllm import VllmConfig, VllmProvider, _parse_bool
+from .vllm import VllmError
 
 DEFAULT_BASE_URL = "http://127.0.0.1:11434/v1"
 DEFAULT_HARDWARE_TARGET = "local-mac-ollama"
+
+
+class OllamaError(VllmError):
+    """Ollama endpoint call failed without exposing credentials."""
 
 
 def ollama_config_from_env(env: Optional[Mapping[str, str]] = None) -> VllmConfig:
@@ -63,3 +70,11 @@ class OllamaProvider(VllmProvider):
             tier=tier,
             provider_name="ollama",
         )
+
+    def generate(
+        self, request_id: str, task_input: str, contract: TaskContract
+    ) -> ModelResponse:
+        try:
+            return super().generate(request_id, task_input, contract)
+        except VllmError as exc:
+            raise OllamaError(str(exc)) from exc

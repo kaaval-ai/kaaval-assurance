@@ -296,6 +296,24 @@ class RuntimeConnectionManager:
             raise RuntimeConnectionError(
                 f"runtime connection returned HTTP {response.status_code}"
             )
+        if connection.provider in {"ollama", "vllm"}:
+            try:
+                payload = response.json()
+                served_models = {
+                    str(item["id"])
+                    for item in payload["data"]
+                    if isinstance(item, dict) and item.get("id")
+                }
+            except (ValueError, KeyError, TypeError) as exc:
+                raise RuntimeConnectionError(
+                    "runtime model inventory response was invalid"
+                ) from exc
+            if connection.model_id not in served_models:
+                available = ", ".join(sorted(served_models)) or "none"
+                raise RuntimeConnectionError(
+                    f"model '{connection.model_id}' is not served by this runtime; "
+                    f"available models: {available}"
+                )
 
     def get(
         self, connection_id: str, role: Optional[RuntimeRole] = None

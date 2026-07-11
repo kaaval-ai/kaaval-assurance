@@ -20,6 +20,7 @@ from kaaval_assurance.eval.runner import run_eval
 from kaaval_assurance.pipeline import AssurancePipeline
 from kaaval_assurance.providers import (
     MockProvider,
+    OllamaError,
     OllamaProvider,
     SpendConfirmationRequired,
     create_local_provider,
@@ -44,8 +45,8 @@ OLLAMA_ENV = {
 
 
 class FakeResponse:
-    def __init__(self, payload):
-        self.status_code = 200
+    def __init__(self, payload, status_code=200):
+        self.status_code = status_code
         self._payload = payload
         self.text = json.dumps(payload)
 
@@ -127,6 +128,20 @@ class TestOllamaTelemetryLabels:
         assert profile.model_family == "gemma"
         # vLLM engine knobs are not inherited as false claims
         assert profile.dtype == "" and profile.kv_cache_dtype == ""
+
+    def test_transport_failure_uses_ollama_error_identity(self):
+        class MissingModelSession:
+            def post(self, url, json=None, headers=None, timeout=None):
+                return FakeResponse(
+                    {"error": {"message": "model not found"}}, status_code=404
+                )
+
+        provider = OllamaProvider(
+            ollama_config_from_env(OLLAMA_ENV), session=MissingModelSession()
+        )
+
+        with pytest.raises(OllamaError, match="ollama HTTP 404"):
+            provider.generate("r-missing", "incident text", SEVERITY)
 
     def test_base_url_host_never_leaks_path_or_scheme(self):
         assert base_url_host("http://user:pass@pod:8000/v1") == "pod:8000"
