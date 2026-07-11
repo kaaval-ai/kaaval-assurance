@@ -7,11 +7,16 @@ cd "$(dirname "$0")/.."
 if [ -f .env ]; then set -a; . ./.env; set +a; fi
 
 : "${FIREWORKS_API_KEY:?FIREWORKS_API_KEY not set (copy .env.example to .env and fill it in)}"
+: "${FIREWORKS_COST_PER_PROMPT_TOKEN:?FIREWORKS_COST_PER_PROMPT_TOKEN not set; configure the current model's USD/token input rate before a paid run}"
+: "${FIREWORKS_COST_PER_COMPLETION_TOKEN:?FIREWORKS_COST_PER_COMPLETION_TOKEN not set; configure the current model's USD/token output rate before a paid run}"
 if [ "${KAAVAL_CONFIRM_SPEND:-0}" != "1" ]; then
   echo "refusing to spend Fireworks credits: set KAAVAL_CONFIRM_SPEND=1 to confirm" >&2
   exit 2
 fi
 mkdir -p artifacts
+RUN_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+TRAJECTORY_DB="artifacts/trajectory-fireworks-smoke-${RUN_STAMP}.db"
+TELEMETRY_MD="artifacts/telemetry-fireworks-smoke-${RUN_STAMP}.md"
 
 if [ -n "${KAAVAL_PYTHON:-}" ]; then
   PYTHON_BIN="$KAAVAL_PYTHON"
@@ -32,6 +37,7 @@ PYTHONPATH=src $PYTHON_BIN -m kaaval_assurance.eval.cli \
   --confirm-spend \
   --failure-mode bad_enum --failure-rate 0.25 --seed 3 \
   --telemetry-summary \
-  --db artifacts/trajectory-fireworks-smoke.db
+  --telemetry-markdown "$TELEMETRY_MD" \
+  --db "$TRAJECTORY_DB"
 
-echo "artifacts: artifacts/trajectory-fireworks-smoke.db"
+echo "artifacts: $TRAJECTORY_DB $TELEMETRY_MD"
