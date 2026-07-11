@@ -23,6 +23,7 @@ import sys
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, Optional
@@ -105,7 +106,8 @@ class SessionManager:
             if oldest.session_id in self.sessions:
                 del self.sessions[oldest.session_id]
 
-    def get_or_create(self, session_id: str | None, local: str, remote: str) -> LiveSession:
+    @contextmanager
+    def checkout(self, session_id: str | None, local: str, remote: str):
         with self.lock:
             self._cleanup()
             if session_id:
@@ -114,13 +116,17 @@ class SessionManager:
                     if sess.local_provider != local or sess.remote_provider != remote:
                         raise ValueError("Provider mismatch for existing session")
                     sess.last_accessed = time.time()
-                    return sess
                 else:
                     raise ValueError(f"Unknown session_id: {session_id}")
-            new_id = uuid.uuid4().hex
-            sess = LiveSession(new_id, local, remote)
-            self.sessions[new_id] = sess
-            return sess
+            else:
+                new_id = uuid.uuid4().hex
+                sess = LiveSession(new_id, local, remote)
+                self.sessions[new_id] = sess
+            sess.lock.acquire()
+        try:
+            yield sess
+        finally:
+            sess.lock.release()
 
     def reset(self, session_id: str) -> LiveSession:
         with self.lock:
@@ -232,43 +238,42 @@ def create_app(store: Optional[ArtifactStore] = None) -> FastAPI:
             raise HTTPException(status_code=422, detail=str(e)) from e
 
         try:
-            sess = session_manager.get_or_create(req.session_id, req.local_provider, req.remote_provider)
+            with session_manager.checkout(req.session_id, req.local_provider, req.remote_provider) as sess:
+                try:
+                    demo = run_live_demo(
+                        task_input=req.task_input,
+                        contract_id=req.contract_id,
+                        failure_mode=req.failure_mode,
+                        case_id="api",
+                        local_provider=local,
+                        remote_provider=remote,
+                        router=sess.router,
+                        store=sess.store,
+                    )
+                except KeyError as e:
+                    raise HTTPException(status_code=422, detail=f"unknown contract: {e}") from e
+                except ValueError as e:
+                    raise HTTPException(status_code=422, detail=str(e)) from e
+                except (FireworksError, VllmError) as e:
+                    # provider error strings never contain credentials
+                    raise HTTPException(status_code=502, detail=str(e)) from e
+
+                telemetry_summary = telemetry_for(demo)
+                local_for_profile = local or create_local_provider("mock")
+                profile = local_for_profile.runtime_profile()
+
+                artifacts_written: list[str] = []
+                if req.export_artifacts:
+                    paths = export_live_demo_artifacts(demo, ROOT / "artifacts")
+                    artifacts_written = [p.name for p in paths]
+
+                category = demo.category
+                online_ewma_drift = sess.router.online_drift_for(category)
+                current_policy_action = sess.router.current_policy_for(category).action
+                current_policy_reason = sess.router.current_policy_for(category).reason
+                session_id = sess.session_id
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
-
-        with sess.lock:
-            try:
-                demo = run_live_demo(
-                    task_input=req.task_input,
-                    contract_id=req.contract_id,
-                    failure_mode=req.failure_mode,
-                    case_id="api",
-                    local_provider=local,
-                    remote_provider=remote,
-                    router=sess.router,
-                    store=sess.store,
-                )
-            except KeyError as e:
-                raise HTTPException(status_code=422, detail=f"unknown contract: {e}") from e
-            except ValueError as e:
-                raise HTTPException(status_code=422, detail=str(e)) from e
-            except (FireworksError, VllmError) as e:
-                # provider error strings never contain credentials
-                raise HTTPException(status_code=502, detail=str(e)) from e
-
-            telemetry_summary = telemetry_for(demo)
-            local_for_profile = local or create_local_provider("mock")
-            profile = local_for_profile.runtime_profile()
-
-            artifacts_written: list[str] = []
-            if req.export_artifacts:
-                paths = export_live_demo_artifacts(demo, ROOT / "artifacts")
-                artifacts_written = [p.name for p in paths]
-
-            category = demo.category
-            online_ewma_drift = sess.router.online_drift_for(category)
-            current_policy_action = sess.router.current_policy_for(category).action
-            current_policy_reason = sess.router.current_policy_for(category).reason
 
         return {
             "run_id": demo.result.request_id,
@@ -276,7 +281,7 @@ def create_app(store: Optional[ArtifactStore] = None) -> FastAPI:
             "label": "LIVE RUN",
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "session": {
-                "session_id": sess.session_id,
+                "session_id": session_id,
                 "category": category,
                 "online_ewma_drift": online_ewma_drift,
                 "current_policy_action": current_policy_action,

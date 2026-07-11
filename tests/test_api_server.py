@@ -575,3 +575,112 @@ class TestLiveRuns:
         assert body["session"]["current_policy_action"] == "force_remote"
         assert body["result"]["attempts"] == 1
 
+    def test_checkout_lease_prevents_reset_race(self):
+        from apps.api.server import session_manager
+        import threading
+        import time
+
+        with session_manager.checkout(None, "mock", "mock") as sess:
+            session_id = sess.session_id
+
+        lease_acquired = threading.Event()
+        release_lease = threading.Event()
+        reset_completed = threading.Event()
+        
+        reset_started = False
+        reset_finished = False
+
+        def holding_thread():
+            with session_manager.checkout(session_id, "mock", "mock") as s:
+                lease_acquired.set()
+                release_lease.wait()
+                time.sleep(0.05)
+
+        def reset_thread():
+            nonlocal reset_started, reset_finished
+            lease_acquired.wait()
+            reset_started = True
+            session_manager.reset(session_id)
+            reset_finished = True
+            reset_completed.set()
+
+        t1 = threading.Thread(target=holding_thread)
+        t2 = threading.Thread(target=reset_thread)
+
+        t1.start()
+        t2.start()
+
+        lease_acquired.wait()
+        time.sleep(0.05)
+        
+        assert reset_started is True
+        assert reset_finished is False
+        
+        release_lease.set()
+        reset_completed.wait(timeout=2.0)
+        assert reset_finished is True
+        
+        t1.join()
+        t2.join()
+
+    def test_checkout_lease_prevents_eviction_cleanup(self):
+        from apps.api.server import session_manager
+        import threading
+        import time
+
+        with session_manager.lock:
+            session_manager.sessions.clear()
+            
+        with session_manager.checkout(None, "mock", "mock") as oldest_sess:
+            oldest_id = oldest_sess.session_id
+            
+        lease_acquired = threading.Event()
+        release_lease = threading.Event()
+        cleanup_completed = threading.Event()
+        
+        cleanup_started = False
+        cleanup_finished = False
+        
+        def holding_thread():
+            with session_manager.checkout(oldest_id, "mock", "mock") as s:
+                lease_acquired.set()
+                release_lease.wait()
+                time.sleep(0.05)
+                
+        def cleanup_thread():
+            nonlocal cleanup_started, cleanup_finished
+            lease_acquired.wait()
+            cleanup_started = True
+            
+            # Create 63 other sessions to hit the limit of 64
+            for i in range(63):
+                with session_manager.checkout(None, "mock", "mock") as s:
+                    s.last_accessed += (i + 1)
+            
+            # This 64th new checkout (total 65 created sessions) triggers eviction,
+            # which will block attempting to acquire oldest_sess.lock.
+            with session_manager.checkout(None, "mock", "mock") as new_sess:
+                pass
+            cleanup_finished = True
+            cleanup_completed.set()
+            
+        t1 = threading.Thread(target=holding_thread)
+        t2 = threading.Thread(target=cleanup_thread)
+        
+        t1.start()
+        t2.start()
+        
+        lease_acquired.wait()
+        time.sleep(0.05)
+        
+        assert cleanup_started is True
+        assert cleanup_finished is False
+        
+        release_lease.set()
+        cleanup_completed.wait(timeout=2.0)
+        assert cleanup_finished is True
+        
+        t1.join()
+        t2.join()
+
+
