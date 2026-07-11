@@ -96,6 +96,45 @@ class TestArtifactResolution:
         }
         assert store.dashboard()["label"] == "UNAVAILABLE"
 
+    def test_comparison_artifact_is_optional(self, tmp_path):
+        store = make_store(tmp_path, sample={"telemetry-truth.json": VALID_TELEMETRY})
+        dash = store.dashboard()
+        assert dash["comparison"] is None
+        assert dash["comparison_provenance"] == {
+            "available": False,
+            "artifact": None,
+            "origin": "not_available",
+            "modified_at": None,
+        }
+
+    def test_newest_comparison_artifact_loaded_without_paths(self, tmp_path):
+        old = {
+            "comparison": {"remote_calls_avoided": 1},
+            "local_first": {},
+            "always_remote": {},
+            "caveats": [],
+        }
+        new = {
+            "comparison": {"remote_calls_avoided": 14},
+            "local_first": {},
+            "always_remote": {},
+            "caveats": [],
+        }
+        a_dir = tmp_path / "artifacts"
+        s_dir = tmp_path / "sample"
+        a_dir.mkdir()
+        s_dir.mkdir()
+        old_path = a_dir / "fireworks-cost-comparison-20260711T000000Z.json"
+        new_path = a_dir / "fireworks-cost-comparison-20260711T010000Z.json"
+        old_path.write_text(json.dumps(old))
+        new_path.write_text(json.dumps(new))
+        store = ArtifactStore(artifacts_dir=a_dir, sample_dir=s_dir)
+
+        data, prov = store.resolve_comparison()
+        assert data["comparison"]["remote_calls_avoided"] == 14
+        assert prov["artifact"] == new_path.name
+        assert str(tmp_path) not in json.dumps(prov)
+
     def test_malformed_real_json_falls_through_to_sample(self, tmp_path):
         store = make_store(
             tmp_path,
@@ -682,5 +721,4 @@ class TestLiveRuns:
         
         t1.join()
         t2.join()
-
 

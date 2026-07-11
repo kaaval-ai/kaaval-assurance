@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { Shield, Activity, ChevronDown, Target, Eye, GitBranch, ScrollText, BarChart3, Server, Cpu, ListChecks } from 'lucide-react';
 import type { DashboardPayload } from '../types';
 import { DataLabelBadge, NotAvailable, SourceChip, pct, usd } from './Tags';
+import ProofStrip from './ProofStrip';
+import CostAvoidanceReceipt from './CostAvoidanceReceipt';
+import DemoScriptRail from './DemoScriptRail';
 
 /* Every number on this view derives from the dashboard payload. Missing data
    renders as not available — never as a hardcoded placeholder. */
@@ -27,11 +30,18 @@ const PANELS = [
 ] as const;
 
 export default function SummaryDashboard({ payload }: { payload: DashboardPayload | null }) {
-  const [introOpen, setIntroOpen] = useState(true);
+  const [introOpen, setIntroOpen] = useState(false);
   const t = payload?.telemetry ?? null;
 
   return (
     <div className="space-y-3">
+      <ProofStrip payload={payload} />
+      <DemoScriptRail payload={payload} />
+      <CostAvoidanceReceipt
+        comparison={payload?.comparison ?? null}
+        provenance={payload?.comparison_provenance ?? null}
+      />
+
       {/* Mission intro — truthful copy */}
       <div className="panel panel-sweep overflow-hidden">
         <button

@@ -200,6 +200,47 @@ class ArtifactStore:
         prov = bundle["provenance"].get(kind, {"available": False, "artifact": None, "origin": "not_available", "modified_at": None})
         return data, prov
 
+    def resolve_comparison(self) -> tuple[Optional[object], dict]:
+        """Resolve the newest Fireworks local-first vs always-remote comparison.
+
+        This artifact is intentionally optional: the Flight Deck can prove a
+        captured run without it, but when present it lets the UI show the cost
+        avoidance receipt from recorded trajectory DBs.
+        """
+        if not self.artifacts_dir.exists():
+            return None, {
+                "available": False,
+                "artifact": None,
+                "origin": "not_available",
+                "modified_at": None,
+            }
+
+        candidates = sorted(
+            self.artifacts_dir.glob("fireworks-cost-comparison-*.json"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for path in candidates:
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            return data, {
+                "available": True,
+                "artifact": path.name,
+                "origin": "artifacts",
+                "modified_at": datetime.fromtimestamp(
+                    path.stat().st_mtime, tz=timezone.utc
+                ).isoformat(),
+            }
+
+        return None, {
+            "available": False,
+            "artifact": None,
+            "origin": "not_available",
+            "modified_at": None,
+        }
+
     @staticmethod
     def _amd_status(bundle: dict) -> dict:
         """AMD runtime evidence status."""
@@ -294,6 +335,7 @@ class ArtifactStore:
         trajectory = bundle.get("trajectory")
         probe = bundle.get("runtime_probe")
         prov = bundle["provenance"]
+        comparison, comparison_prov = self.resolve_comparison()
 
         amd = self._amd_status(bundle)
         used_sample = any(
@@ -310,8 +352,9 @@ class ArtifactStore:
             "bundle_id": bundle.get("bundle_id"),
             "consistency_reason": bundle.get("consistency_reason", "unavailable"),
             "provenance": prov,
+            "comparison_provenance": comparison_prov,
             "telemetry": telemetry,
             "trajectory": trajectory,
             "runtime_probe": probe,
+            "comparison": comparison,
         }
-

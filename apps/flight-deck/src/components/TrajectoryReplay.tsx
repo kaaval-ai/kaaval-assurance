@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, SkipBack, SkipForward, RotateCcw, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
-import type { TrajectoryRow } from '../types';
+import type { DataLabel, TrajectoryRow } from '../types';
 import { DataLabelBadge, ms, usd } from './Tags';
 
 /* Replays real trajectory rows — each step is one stored model attempt with
@@ -8,7 +8,7 @@ import { DataLabelBadge, ms, usd } from './Tags';
 
 interface TrajectoryReplayProps {
   rows: TrajectoryRow[];
-  label: 'SAMPLE' | 'REPLAY' | 'LIVE RUN';
+  label: DataLabel | 'LIVE RUN';
   escalationReason?: string | null;
   autoPlay?: boolean;
 }
@@ -57,7 +57,8 @@ export default function TrajectoryReplay({ rows, label, escalationReason, autoPl
 
   useEffect(() => {
     const child = scrollRef.current?.children[currentIndex];
-    child?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    child?.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
   }, [currentIndex]);
 
   const current = rows[currentIndex];
@@ -66,8 +67,8 @@ export default function TrajectoryReplay({ rows, label, escalationReason, autoPl
     <div className="panel panel-sweep">
       <div className="panel-header">
         <span className="panel-title flex items-center gap-2">
-          Trajectory Replay
-          <DataLabelBadge label={label === 'REPLAY' ? 'CAPTURED LOCAL RUN' : label} />
+          Kaaval Receipt
+          <DataLabelBadge label={label} />
         </span>
         <span className="text-[10px] font-mono text-muted">
           {rows.length > 0 ? `${currentIndex + 1}/${rows.length} attempts` : 'no rows'}
@@ -86,10 +87,12 @@ export default function TrajectoryReplay({ rows, label, escalationReason, autoPl
                 const isActive = i === currentIndex;
                 const isPast = i < currentIndex;
                 return (
-                  <div
+                  <button
                     key={`${row.request_id}-${i}`}
                     onClick={() => { stop(); setCurrentIndex(i); }}
-                    className={`flex items-center gap-2 px-2 py-1 rounded border transition-all duration-200 cursor-pointer select-none ${
+                    type="button"
+                    aria-label={`Show receipt attempt ${i + 1}: ${row.provider} ${row.verifier_passed ? 'passed' : 'failed'}`}
+                    className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded border transition-all duration-200 cursor-pointer select-none ${
                       isActive ? 'border-accent bg-accent/5'
                         : isPast ? 'border-border/30 bg-elevated/30'
                         : 'border-border/50 hover:border-accent/20 hover:bg-elevated/50'
@@ -116,26 +119,26 @@ export default function TrajectoryReplay({ rows, label, escalationReason, autoPl
                         </div>
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
 
             <div className="flex items-center justify-center gap-2 pt-1 border-t border-border/30">
               <button onClick={() => { stop(); setCurrentIndex(0); }} disabled={currentIndex === 0}
-                className="p-1 rounded text-muted hover:text-foreground hover:bg-elevated transition-colors duration-150 disabled:opacity-40 active:scale-95" title="Reset">
+                className="p-1 rounded text-muted hover:text-foreground hover:bg-elevated transition-colors duration-150 disabled:opacity-40 active:scale-95" title="Reset" aria-label="Reset receipt replay">
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
               <button onClick={() => { stop(); setCurrentIndex((p) => Math.max(p - 1, 0)); }} disabled={currentIndex === 0}
-                className="p-1 rounded text-muted hover:text-foreground hover:bg-elevated transition-colors duration-150 disabled:opacity-40 active:scale-95" title="Step back">
+                className="p-1 rounded text-muted hover:text-foreground hover:bg-elevated transition-colors duration-150 disabled:opacity-40 active:scale-95" title="Step back" aria-label="Show previous receipt attempt">
                 <SkipBack className="w-3.5 h-3.5" />
               </button>
               <button onClick={() => (playing ? stop() : setPlaying(true))}
-                className="p-1.5 rounded bg-accent text-white hover:bg-accent/90 transition-colors duration-150 active:scale-95" title={playing ? 'Pause' : 'Play'}>
+                className="p-1.5 rounded bg-accent text-white hover:bg-accent/90 transition-colors duration-150 active:scale-95" title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause receipt replay' : 'Play receipt replay'}>
                 {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
               </button>
               <button onClick={() => { stop(); setCurrentIndex((p) => Math.min(p + 1, rows.length - 1)); }} disabled={currentIndex >= rows.length - 1}
-                className="p-1 rounded text-muted hover:text-foreground hover:bg-elevated transition-colors duration-150 disabled:opacity-40 active:scale-95" title="Step forward">
+                className="p-1 rounded text-muted hover:text-foreground hover:bg-elevated transition-colors duration-150 disabled:opacity-40 active:scale-95" title="Step forward" aria-label="Show next receipt attempt">
                 <SkipForward className="w-3.5 h-3.5" />
               </button>
             </div>

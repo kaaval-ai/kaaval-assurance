@@ -2,6 +2,7 @@ import { Cpu, Clock } from 'lucide-react';
 import type { AmdEvidence, Provenance, RuntimeProbeReport, TelemetrySummary } from '../types';
 import { NotAvailable, SourceChip } from './Tags';
 import type { SourceTag } from '../types';
+import { parseAmdFacts } from '../evidence';
 
 /* AMD Runtime Evidence — consumes runtime-probe artifacts only.
    No attestations, signatures, digests, or firmware claims of any kind:
@@ -46,10 +47,9 @@ export default function AMDProof({
   const vllmCli = commands['vllm_version'];
   const endpoint = probe?.endpoint ?? null;
   const profile = telemetry?.runtime.profile ?? null;
+  const facts = parseAmdFacts(probe);
   const cmdTag = (c?: { available: boolean }): SourceTag =>
     c?.available ? 'measured' : 'not_available';
-  const cmdValue = (c?: { available: boolean; output: string | null; error: string | null }) =>
-    c?.available ? (c.output || '').split('\n')[0] : null;
 
   return (
     <div className="panel panel-sweep">
@@ -72,15 +72,16 @@ export default function AMDProof({
           <span className="text-[9px] font-mono text-muted uppercase tracking-wider">Probe facts</span>
           {probe ? (
             <>
-              <Row label="GPU product (rocm-smi)" value={cmdValue(rocmProduct)} tag={cmdTag(rocmProduct)} />
-              <Row label="VRAM (rocm-smi)" value={cmdValue(rocmVram)} tag={cmdTag(rocmVram)} />
-              <Row label="vLLM CLI version" value={cmdValue(vllmCli)} tag={cmdTag(vllmCli)} />
+              <Row label="GPU vendor/model" value={facts.gpu} tag={cmdTag(rocmProduct)} />
+              <Row label="GFX target" value={facts.gfx} tag={cmdTag(rocmProduct)} />
+              <Row label="VRAM total" value={facts.vramGiB} tag={cmdTag(rocmVram)} />
+              <Row label="vLLM CLI version" value={facts.vllmVersion} tag={cmdTag(vllmCli)} />
               <Row
                 label="Endpoint / served model"
                 value={
                   endpoint
                     ? endpoint.reachable
-                      ? endpoint.served_models.join(', ') || 'reachable, none reported'
+                      ? facts.servedModel || 'reachable, none reported'
                       : 'endpoint unreachable at probe time'
                     : null
                 }

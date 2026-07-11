@@ -50,7 +50,7 @@ export default function App() {
 
   const telemetry = payload?.telemetry ?? null;
   const trajectory = payload?.trajectory ?? null;
-  const replayLabel = payload?.provenance.trajectory.origin === 'sample' ? 'SAMPLE' : 'REPLAY';
+  const replayLabel = payload?.label ?? 'UNAVAILABLE';
 
   return (
     <div className="h-full flex flex-col bg-canvas text-foreground bg-noc-grid">

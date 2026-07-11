@@ -179,6 +179,26 @@ export interface Provenance {
   modified_at: string | null;
 }
 
+export interface FireworksRunMetrics {
+  requests: number;
+  total_attempts: number;
+  remote_attempts: number;
+  total_configured_remote_cost: number;
+  final_verified_rate: number;
+}
+
+export interface FireworksComparisonArtifact {
+  local_first: FireworksRunMetrics;
+  always_remote: FireworksRunMetrics;
+  comparison: {
+    remote_calls_avoided: number;
+    remote_call_reduction_percentage: number;
+    configured_cost_avoided: number;
+    cost_reduction_percentage: number;
+  };
+  caveats: string[];
+}
+
 export interface AmdEvidence {
   status: 'measured' | 'configured' | 'pending' | 'unavailable';
   reason: string;
@@ -198,14 +218,19 @@ export interface DashboardPayload {
   label: DataLabel;
   used_sample: boolean;
   amd: AmdEvidence;
+  bundle_consistent?: boolean;
+  bundle_id?: string | null;
+  consistency_reason?: string;
   provenance: {
     telemetry: Provenance;
     trajectory: Provenance;
     runtime_probe: Provenance;
   };
+  comparison_provenance: Provenance;
   telemetry: TelemetrySummary | null;
   trajectory: TrajectoryRow[] | null;
   runtime_probe: RuntimeProbeReport | null;
+  comparison: FireworksComparisonArtifact | null;
 }
 
 /* ── Live runs ── */
