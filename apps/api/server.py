@@ -79,7 +79,8 @@ class LiveSession:
         self.created_at = time.time()
         self.last_accessed = self.created_at
         self.router = Router()
-        self.store = TrajectoryStore(":memory:")
+        self.store = TrajectoryStore(":memory:", check_same_thread=False)
+        self.lock = threading.Lock()
 
 
 class SessionManager:
@@ -90,15 +91,19 @@ class SessionManager:
     def _cleanup(self):
         now = time.time()
         # 15 minutes TTL
-        expired = [sid for sid, s in self.sessions.items() if now - s.last_accessed > 900]
-        for sid in expired:
-            self.sessions[sid].store.close()
-            del self.sessions[sid]
+        expired = [s for s in list(self.sessions.values()) if now - s.last_accessed > 900]
+        for s in expired:
+            with s.lock:
+                s.store.close()
+            if s.session_id in self.sessions:
+                del self.sessions[s.session_id]
         # Max 64 sessions
         if len(self.sessions) >= 64:
             oldest = min(self.sessions.values(), key=lambda s: s.last_accessed)
-            oldest.store.close()
-            del self.sessions[oldest.session_id]
+            with oldest.lock:
+                oldest.store.close()
+            if oldest.session_id in self.sessions:
+                del self.sessions[oldest.session_id]
 
     def get_or_create(self, session_id: str | None, local: str, remote: str) -> LiveSession:
         with self.lock:
@@ -121,7 +126,8 @@ class SessionManager:
         with self.lock:
             if session_id in self.sessions:
                 old_sess = self.sessions[session_id]
-                old_sess.store.close()
+                with old_sess.lock:
+                    old_sess.store.close()
                 new_sess = LiveSession(session_id, old_sess.local_provider, old_sess.remote_provider)
                 self.sessions[session_id] = new_sess
                 return new_sess
@@ -230,33 +236,39 @@ def create_app(store: Optional[ArtifactStore] = None) -> FastAPI:
         except ValueError as e:
             raise HTTPException(status_code=422, detail=str(e))
 
-        try:
-            demo = run_live_demo(
-                task_input=req.task_input,
-                contract_id=req.contract_id,
-                failure_mode=req.failure_mode,
-                case_id="api",
-                local_provider=local,
-                remote_provider=remote,
-                router=sess.router,
-                store=sess.store,
-            )
-        except KeyError as e:
-            raise HTTPException(status_code=422, detail=f"unknown contract: {e}") from e
-        except ValueError as e:
-            raise HTTPException(status_code=422, detail=str(e)) from e
-        except (FireworksError, VllmError) as e:
-            # provider error strings never contain credentials
-            raise HTTPException(status_code=502, detail=str(e)) from e
+        with sess.lock:
+            try:
+                demo = run_live_demo(
+                    task_input=req.task_input,
+                    contract_id=req.contract_id,
+                    failure_mode=req.failure_mode,
+                    case_id="api",
+                    local_provider=local,
+                    remote_provider=remote,
+                    router=sess.router,
+                    store=sess.store,
+                )
+            except KeyError as e:
+                raise HTTPException(status_code=422, detail=f"unknown contract: {e}") from e
+            except ValueError as e:
+                raise HTTPException(status_code=422, detail=str(e)) from e
+            except (FireworksError, VllmError) as e:
+                # provider error strings never contain credentials
+                raise HTTPException(status_code=502, detail=str(e)) from e
 
-        telemetry_summary = telemetry_for(demo)
-        local_for_profile = local or create_local_provider("mock")
-        profile = local_for_profile.runtime_profile()
+            telemetry_summary = telemetry_for(demo)
+            local_for_profile = local or create_local_provider("mock")
+            profile = local_for_profile.runtime_profile()
 
-        artifacts_written: list[str] = []
-        if req.export_artifacts:
-            paths = export_live_demo_artifacts(demo, ROOT / "artifacts")
-            artifacts_written = [p.name for p in paths]
+            artifacts_written: list[str] = []
+            if req.export_artifacts:
+                paths = export_live_demo_artifacts(demo, ROOT / "artifacts")
+                artifacts_written = [p.name for p in paths]
+
+            category = demo.category
+            online_ewma_drift = sess.router.online_drift_for(category)
+            current_policy_action = sess.router.current_policy_for(category).action
+            current_policy_reason = sess.router.current_policy_for(category).reason
 
         return {
             "run_id": demo.result.request_id,
@@ -265,10 +277,10 @@ def create_app(store: Optional[ArtifactStore] = None) -> FastAPI:
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "session": {
                 "session_id": sess.session_id,
-                "category": demo.category,
-                "online_ewma_drift": sess.router.online_drift_for(demo.category),
-                "current_policy_action": sess.router.current_policy_for(demo.category).action,
-                "current_policy_reason": sess.router.current_policy_for(demo.category).reason,
+                "category": category,
+                "online_ewma_drift": online_ewma_drift,
+                "current_policy_action": current_policy_action,
+                "current_policy_reason": current_policy_reason,
             },
             "request": {
                 "contract_id": req.contract_id,

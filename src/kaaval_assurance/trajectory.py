@@ -43,8 +43,8 @@ CREATE INDEX IF NOT EXISTS idx_trajectory_request ON trajectory (request_id);
 
 
 class TrajectoryStore:
-    def __init__(self, path: Union[str, Path] = ":memory:"):
-        self._conn = sqlite3.connect(str(path))
+    def __init__(self, path: Union[str, Path] = ":memory:", check_same_thread: bool = True):
+        self._conn = sqlite3.connect(str(path), check_same_thread=check_same_thread)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(_SCHEMA)
         self._conn.commit()

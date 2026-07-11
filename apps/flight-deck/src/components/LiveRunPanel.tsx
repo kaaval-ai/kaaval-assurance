@@ -14,7 +14,7 @@ import { SourceChip } from './Tags';
 
 const FAILURE_MODES = ['none', 'missing_field', 'bad_enum', 'unparseable', 'undersevere'] as const;
 
-export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunResponse | null; onRunComplete: (r: LiveRunResponse) => void }) {
+export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunResponse | null; onRunComplete: (r: LiveRunResponse | null) => void }) {
   const [contractId, setContractId] = useState(CONTRACTS[0].id);
   const [taskInput, setTaskInput] = useState(SAMPLE_INPUTS[CONTRACTS[0].id] ?? '');
   const [localProvider, setLocalProvider] = useState<'mock' | 'ollama' | 'vllm'>('mock');
@@ -65,7 +65,7 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
       // Or we can just let the next run create a new session if we clear sessionId.
       // But resetSession endpoint preserves the ID and returns a fresh session.
       // To show it's cleared, we should clear the run output.
-      onRunComplete(null as any); // hacky, better to just let user run again.
+      onRunComplete(null); // clear the run output.
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'reset failed');
     } finally {

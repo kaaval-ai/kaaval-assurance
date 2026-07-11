@@ -528,3 +528,50 @@ class TestLiveRuns:
         resp2 = live_client.post("/api/runs", json={**RUN_BODY, "remote_provider": "fireworks", "confirm_spend": True, "session_id": session_id})
         assert resp2.status_code == 422
         assert "mismatch" in resp2.json()["detail"].lower()
+
+    def test_session_store_thread_safe(self):
+        from apps.api.server import LiveSession
+        sess = LiveSession("test_thread_safe", "mock", "mock")
+        import threading
+        
+        errors = []
+        def run_query():
+            try:
+                sess.store._conn.execute("SELECT 1").fetchall()
+            except Exception as e:
+                errors.append(e)
+        
+        t = threading.Thread(target=run_query)
+        t.start()
+        t.join()
+        assert len(errors) == 0, f"Query failed on different thread: {errors}"
+
+    def test_concurrent_session_calls_serialize_safely(self, live_client):
+        import threading
+        task_input = "Core router CR-04 dropped all BGP sessions at 02:13; downstream OLT sites in region south lost upstream connectivity. Customer impact confirmed."
+        resp1 = live_client.post("/api/runs", json={**RUN_BODY, "task_input": task_input, "failure_mode": "undersevere"})
+        assert resp1.status_code == 200
+        session_id = resp1.json()["session"]["session_id"]
+        
+        errors = []
+        def make_call():
+            try:
+                r = live_client.post("/api/runs", json={**RUN_BODY, "task_input": task_input, "failure_mode": "undersevere", "session_id": session_id})
+                assert r.status_code == 200
+            except Exception as e:
+                errors.append(e)
+                
+        threads = [threading.Thread(target=make_call) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+            
+        assert len(errors) == 0, f"Concurrent calls failed: {errors}"
+        
+        final_resp = live_client.post("/api/runs", json={**RUN_BODY, "task_input": task_input, "failure_mode": "undersevere", "session_id": session_id})
+        assert final_resp.status_code == 200
+        body = final_resp.json()
+        assert body["session"]["current_policy_action"] == "force_remote"
+        assert body["result"]["attempts"] == 1
+
