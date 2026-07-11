@@ -39,7 +39,7 @@ export default function StatusBar({ mode, payload, status, lastRefresh, liveRun 
               <span>{liveRun.request.local_provider} / {liveRun.request.remote_provider}</span>
               <span className="text-muted">·</span>
               <span className={liveRun.result.verified ? 'text-success' : 'text-destructive'}>
-                {liveRun.result.verified ? 'verified' : 'NOT verified'}
+                {liveRun.result.verified ? 'contract-conformant' : 'NOT conformant'}
               </span>
               <span className="text-muted">·</span>
               <span>

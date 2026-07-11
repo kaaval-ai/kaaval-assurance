@@ -244,10 +244,10 @@ class TestRendering:
         finally:
             store.close()
         text = render_summary_text(t)
-        assert "Local verified rate: 100.0% [measured]" in text
+        assert "Local Layer-1 contract-conformance rate: 100.0% [measured]" in text
         md = render_summary_markdown(t)
         assert "| Claim | Value | Source |" in md
-        assert "| Local verified rate | 100.0% | measured |" in md
+        assert "| Local Layer-1 contract-conformance rate | 100.0% | measured |" in md
 
 
 class TestCliTelemetry:
@@ -259,7 +259,7 @@ class TestCliTelemetry:
         assert rc == 0
         out = capsys.readouterr().out
         assert "=== telemetry truth summary ===" in out
-        assert "Local verified rate: 100.0% [measured]" in out
+        assert "Local Layer-1 contract-conformance rate: 100.0% [measured]" in out
         assert "Layer 3 audit trusted: yes [measured]" in out
         assert "[planned]" in out  # mock local tier -> runtime planned
 

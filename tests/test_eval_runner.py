@@ -135,7 +135,7 @@ def test_cli_text_output_with_injected_failures(capsys):
     rc = cli_main(["--dataset", GOLD, "--failure-mode", "bad_enum"])
     assert rc == 0
     out = capsys.readouterr().out
-    assert "pass rate 100.0%" in out
+    assert "Layer-1 contract-conformance rate 100.0%" in out
     assert "escalation rate 50.0%" in out
     assert "enum:severity=4" in out
     assert "severity_classification" in out

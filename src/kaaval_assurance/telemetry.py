@@ -342,13 +342,13 @@ def _build_claims(
 ) -> list[ClaimSupport]:
     claims = [
         ClaimSupport(
-            claim="Local verified rate",
+            claim="Local Layer-1 contract-conformance rate",
             value=f"{verification.local_verified_rate:.1%}",
             source="measured",
             field="verification.local_verified_rate",
         ),
         ClaimSupport(
-            claim="Final verified rate",
+            claim="Final Layer-1 contract-conformance rate",
             value=f"{verification.final_verified_rate:.1%}",
             source="measured",
             field="verification.final_verified_rate",
@@ -413,7 +413,7 @@ def _build_claims(
         )
     claims.append(
         ClaimSupport(
-            claim="Cost per verified answer",
+            claim="Cost per contract-conformant answer",
             value=_fmt_cost(cost.cost_per_verified_answer_usd),
             source="measured",
             field="cost.cost_per_verified_answer_usd",

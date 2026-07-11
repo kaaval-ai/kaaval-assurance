@@ -145,7 +145,7 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
           </div>
 
           <label className="block text-[10px] font-mono text-muted space-y-1">
-            <span className="uppercase tracking-wider">Remote failure injection (mock remote only) — the double-failure path: the expensive answer is verified too</span>
+            <span className="uppercase tracking-wider">Remote failure injection (mock remote only) — the double-failure path: the expensive answer is contract-checked too</span>
             <select
               className={selectCls}
               value={remoteFailureMode}
@@ -217,9 +217,9 @@ export default function LiveRunPanel({ run, onRunComplete }: { run: LiveRunRespo
             <div className="panel-body space-y-2 text-[11px] font-mono">
               <div className="flex items-center gap-2 flex-wrap">
                 {run.result.verified ? (
-                  <span className="flex items-center gap-1 text-success"><CheckCircle className="w-3.5 h-3.5" />Layer 1 verified</span>
+                  <span className="flex items-center gap-1 text-success"><CheckCircle className="w-3.5 h-3.5" />Layer-1 contract checks passed</span>
                 ) : (
-                  <span className="flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" />NOT verified: {run.result.failures.join(', ')}</span>
+                  <span className="flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" />FAILED Layer-1 checks: {run.result.failures.join(', ')}</span>
                 )}
                 <span className="text-muted">·</span>
                 <span className="text-foreground">{run.result.attempts} attempt{run.result.attempts === 1 ? '' : 's'}</span>

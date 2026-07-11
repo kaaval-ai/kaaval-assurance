@@ -182,7 +182,7 @@ def _summary_markdown(demo: LiveDemoResult, telemetry: TelemetrySummary) -> str:
     else:
         lines.append("**Escalation:** not needed; local answer accepted.")
     lines.append(
-        f"**Final answer verified:** {demo.result.verification.passed} "
+        f"**Final answer contract-conformant (Layer 1):** {demo.result.verification.passed} "
         f"(tier: {demo.result.response.tier}, attempts: {demo.result.attempts})."
     )
     lines += [

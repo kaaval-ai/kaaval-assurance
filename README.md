@@ -8,10 +8,18 @@ Kaaval Assurance sits between a task and a model answer. It runs a local
 open-weight tier first, verifies every response against an explicit task
 contract before anyone downstream sees it, escalates only when verification
 fails or quality drifts, and records every attempt as a replayable trajectory.
-The result is not "a model answered" — it is a verified answer with evidence:
-who served it, what it cost, which checks it passed, and why it was routed
-there. Built for AMD Developer Hackathon ACT II, Track 3 (Unicorn / Open
-Innovation). Product wrapper: **KaavalAI**; this repo is the reusable engine.
+The result is not "a model answered" — it is a contract-checked answer with
+evidence: who served it, what it cost, which checks it passed, and why it was
+routed there. Built for AMD Developer Hackathon ACT II, Track 3 (Unicorn /
+Open Innovation). Product wrapper: **KaavalAI**; this repo is the reusable
+engine.
+
+> **What "verified" means here.** Throughout this repo, *verified* means the
+> answer passed every **Layer-1 deterministic contract check** — JSON shape,
+> required fields, enums, numeric ranges, and phrase-triggered grounding
+> rules. It is a contract-conformance claim, not a semantic-correctness
+> claim; that boundary is deliberate and covered in
+> [Limitations](#limitations).
 
 *Route efficiently. Verify continuously. Escalate intelligently.*
 
@@ -30,7 +38,7 @@ cost?**
 
 This is not a debate bot, a chatbot, or a generic eval app. It is governed
 inference: verifier-gated escalation, source-tagged telemetry, and a cost per
-verified answer you can defend line by line.
+contract-conformant answer you can defend line by line.
 
 ## What it does
 
@@ -126,8 +134,8 @@ label from a filename or environment variable.
 
 | Evidence-backed result | Value |
 |---|---:|
-| Evaluation cases verified locally | 16 / 16 |
-| Local and final verified rate | 100% |
+| Evaluation cases contract-conformant locally | 16 / 16 |
+| Local and final Layer-1 contract-conformance rate | 100% |
 | Remote escalation rate | 0% |
 | Request latency p50 / p95 | 324.6 ms / 479.6 ms |
 | Final proof request | 272.9 ms; 181 prompt + 37 completion tokens |
@@ -164,7 +172,7 @@ measured runtime.
 Captured per attempt and per run: provider, model id, model family, tier,
 latency, prompt/completion/total tokens, cost, verifier pass/fail with failed
 check IDs, escalation reason, **remote calls avoided** (only when a cached
-always-remote baseline exists), **cost per verified answer**, audit
+always-remote baseline exists), **cost per contract-conformant answer**, audit
 calibration false-positive rate, and the runtime profile (endpoint type,
 host, dtype, KV-cache mode, tensor parallelism, GPU memory utilization,
 prefix caching, structured-output mode).

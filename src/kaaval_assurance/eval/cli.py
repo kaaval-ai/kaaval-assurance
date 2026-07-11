@@ -32,12 +32,14 @@ def _print_text(report: EvalRunReport, dataset: Path) -> None:
     print(f"kaaval-assurance eval — {report.n_cases} cases from {dataset}")
     print(
         f"requests {m.requests} | attempts {m.attempts} | "
-        f"pass rate {m.pass_rate:.1%} | escalation rate {m.escalation_rate:.1%}"
+        f"Layer-1 contract-conformance rate {m.pass_rate:.1%} "
+        f"(deterministic contract checks, not semantic correctness) | "
+        f"escalation rate {m.escalation_rate:.1%}"
     )
     print(
         f"latency p50 {m.latency_ms_p50:.1f}ms p95 {m.latency_ms_p95:.1f}ms | "
         f"total cost {_fmt_cost(m.total_cost_usd)} | "
-        f"cost per verified answer {_fmt_cost(m.cost_per_verified_usd)}"
+        f"cost per contract-conformant answer {_fmt_cost(m.cost_per_verified_usd)}"
     )
     if m.failure_counts:
         counts = ", ".join(f"{k}={v}" for k, v in sorted(m.failure_counts.items()))
@@ -128,7 +130,7 @@ def _judge_line(report, summary) -> str:
         f"Layer 3 sampled {summary.sample_rate:.0%} of accepted answers, "
         f"calibration false-positive rate was "
         f"{summary.calibration.false_positive_rate:.1%}, "
-        f"audit cost per verified answer was "
+        f"audit cost per contract-conformant answer was "
         f"{_fmt_cost(summary.cost_per_verified_accepted_usd)}"
     )
     if report.metrics.preroute_remote_rate > 0:

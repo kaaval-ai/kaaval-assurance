@@ -99,9 +99,9 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
       {t ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <StatCard label="Requests / attempts" value={`${t.requests} / ${t.attempts}`} sub="captured run" />
-          <StatCard label="Final verified rate" value={pct(t.verification.final_verified_rate)} color="text-success" sub={`local: ${pct(t.verification.local_verified_rate)}`} />
+          <StatCard label="Final contract-conformance" value={pct(t.verification.final_verified_rate)} color="text-success" sub={`local: ${pct(t.verification.local_verified_rate)}`} />
           <StatCard label="Escalation rate" value={pct(t.routing.escalation_rate)} color={t.routing.escalation_rate > 0.2 ? 'text-warning' : 'text-foreground'} sub={`pre-route remote: ${pct(t.routing.preroute_remote_rate)}`} />
-          <StatCard label="Cost / verified answer" value={usd(t.cost.cost_per_verified_answer_usd)} sub="configured pricing" />
+          <StatCard label="Cost / conformant answer" value={usd(t.cost.cost_per_verified_answer_usd)} sub="configured pricing" />
         </div>
       ) : (
         <div className="panel px-3 py-4 text-center text-muted text-xs font-mono">
