@@ -56,6 +56,6 @@ design partners running shadow traffic.
 - Repository: https://github.com/kaaval-ai/kaaval-assurance
 - Release: https://github.com/kaaval-ai/kaaval-assurance/releases/tag/act-ii-submission
 - Container: ghcr.io/kaaval-ai/kaaval-assurance:act-ii
-- Immutable tag: ghcr.io/kaaval-ai/kaaval-assurance:sha-a8c95e42c10b
+- Immutable container reference: use the commit-specific tag and digest pinned in
+  the GitHub release notes
 - Hosted demo: ADD AFTER AZURE OR AWS DEPLOYMENT
-
