@@ -58,4 +58,4 @@ design partners running shadow traffic.
 - Container: ghcr.io/kaaval-ai/kaaval-assurance:act-ii
 - Immutable container reference: use the commit-specific tag and digest pinned in
   the GitHub release notes
-- Hosted demo: ADD AFTER AZURE OR AWS DEPLOYMENT
+- Hosted demo: https://kaaval.ai/

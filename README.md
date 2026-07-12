@@ -470,7 +470,7 @@ Configuration is environment-only — copy [.env.example](.env.example) to `.env
 | Multi-step agent workflow (`kaaval-agent`, `/api/agent-runs`) | Complete |
 | Deck / video | Complete; final local deliverables checksum-verified and handed to the team captain |
 | Public container | Complete; `linux/amd64` image publicly pullable and clean-smoke verified |
-| Hosted application | Pending DNS/TLS and final incognito smoke at `https://demo.kaaval.ai` |
+| Hosted application | Complete — live at `https://kaaval.ai/` |
 | LabLab cover image | Complete — `Kaaval-Assurance-Cover.png`, 1280×720 |
 
 ## Limitations
