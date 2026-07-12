@@ -20,13 +20,15 @@ The runtime could not resolve the GPU's marketing name because `libdrm` returned
 
 ## Assurance Results
 
-The full telecom gold evaluation passed locally through the Gemma/vLLM tier:
+All 16 telecom eval cases were Layer-1 contract-conformant locally through
+the Gemma/vLLM tier (deterministic contract checks; not a gold-answer or
+semantic-correctness comparison):
 
 | Metric | Measured result |
 |---|---:|
 | Requests / attempts | 16 / 16 |
-| Local verified rate | 100% |
-| Final verified rate | 100% |
+| Local Layer-1 contract-conformance rate | 100% |
+| Final Layer-1 contract-conformance rate | 100% |
 | Escalation rate | 0% |
 | Verifier failures | 0 |
 | Latency p50 | 324.6 ms |

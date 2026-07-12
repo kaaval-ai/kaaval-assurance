@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS trajectory (
     completion_tokens INTEGER NOT NULL DEFAULT 0,
     task_input TEXT NOT NULL DEFAULT '',
     raw_text TEXT NOT NULL DEFAULT '',
+    attempt_status TEXT NOT NULL DEFAULT 'completed',
+    error_type TEXT,
+    error_message TEXT,
     audit_sampled INTEGER NOT NULL DEFAULT 0,
     audit_result TEXT,                     -- 'pass' | 'fail' | NULL
     audit_violations TEXT                  -- JSON array (Layer 3), NULL if unsampled
@@ -47,7 +50,24 @@ class TrajectoryStore:
         self._conn = sqlite3.connect(str(path), check_same_thread=check_same_thread)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(_SCHEMA)
+        self._migrate_columns()
         self._conn.commit()
+
+    def _migrate_columns(self) -> None:
+        """Add receipt fields to trajectory DBs captured before this schema."""
+        columns = {
+            row[1] for row in self._conn.execute("PRAGMA table_info(trajectory)")
+        }
+        additions = {
+            "attempt_status": "TEXT NOT NULL DEFAULT 'completed'",
+            "error_type": "TEXT",
+            "error_message": "TEXT",
+        }
+        for name, definition in additions.items():
+            if name not in columns:
+                self._conn.execute(
+                    f"ALTER TABLE trajectory ADD COLUMN {name} {definition}"
+                )
 
     def append(self, row: TrajectoryRow) -> int:
         cur = self._conn.execute(
@@ -56,8 +76,9 @@ class TrajectoryStore:
                 request_id, ts, category, contract_id, contract_version,
                 tier, provider, model_id, verifier_passed, verifier_failures,
                 escalated, latency_ms, cost_usd, prompt_tokens, completion_tokens,
-                task_input, raw_text, audit_sampled, audit_result, audit_violations
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                task_input, raw_text, attempt_status, error_type, error_message,
+                audit_sampled, audit_result, audit_violations
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row.request_id,
@@ -77,6 +98,9 @@ class TrajectoryStore:
                 row.completion_tokens,
                 row.task_input,
                 row.raw_text,
+                row.attempt_status,
+                row.error_type,
+                row.error_message,
                 int(row.audit_sampled),
                 row.audit_result,
                 json.dumps(row.audit_violations)
@@ -107,6 +131,9 @@ class TrajectoryStore:
             completion_tokens=r["completion_tokens"],
             task_input=r["task_input"],
             raw_text=r["raw_text"],
+            attempt_status=r["attempt_status"],
+            error_type=r["error_type"],
+            error_message=r["error_message"],
             audit_sampled=bool(r["audit_sampled"]),
             audit_result=r["audit_result"],
             audit_violations=json.loads(r["audit_violations"])

@@ -1,12 +1,12 @@
 """Generic customer-support task contracts, second domain alongside telecom.
 
 Two contracts chosen because every reviewer has lived them: triaging a
-support ticket, and deciding a refund under a policy cap. The refund cap is
-the demo's sharpest line — the contract's numeric range IS the business
-policy, enforced deterministically before any answer is accepted.
+support ticket, and deciding a refund under a policy cap. Layer 1 enforces
+the output shape, enum/range constraints, and a small set of explicit
+phrase-triggered rules. It does not pretend to be a full policy engine.
 """
 
-from .base import FieldSpec, TaskContract
+from .base import FieldSpec, GroundingRule, TaskContract
 
 TICKET_TRIAGE = TaskContract(
     contract_id="support.ticket_triage",
@@ -61,6 +61,40 @@ REFUND_DECISION = TaskContract(
             name="refund_amount_usd", type="number", min_value=0.0, max_value=500.0
         ),
         FieldSpec(name="justification", type="string"),
+    ],
+    grounding_rules=[
+        GroundingRule(
+            id="missing_purchase_evidence_requires_human",
+            required_input_phrases=[
+                "No order number",
+                "no amount",
+                "no date",
+                "doesn't match any purchase record",
+            ],
+            output_field="decision",
+            allowed_values=["escalate_to_human"],
+            description=(
+                "A refund request with no verifiable purchase identifiers must "
+                "not be approved or denied automatically."
+            ),
+        ),
+        GroundingRule(
+            id="consequential_damages_requires_human",
+            required_input_phrases=["$12,000", "$2,500"],
+            output_field="decision",
+            allowed_values=["escalate_to_human"],
+            description=(
+                "Consequential-damages claims above the policy cap require "
+                "human review, even if the model proposes a capped amount."
+            ),
+        ),
+        GroundingRule(
+            id="outside_refund_window_requires_denial",
+            required_input_phrases=["11 months ago", "refunds within 30 days"],
+            output_field="decision",
+            allowed_values=["deny"],
+            description="Requests outside the stated 30-day refund window are denied.",
+        ),
     ],
 )
 

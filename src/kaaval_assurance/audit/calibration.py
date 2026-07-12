@@ -40,7 +40,13 @@ def calibrate_challenger(
 
     total = len(gold_cases)
     rate = false_positives / total if total else 0.0
-    status = "passed" if rate <= threshold and parse_errors == 0 else "failed"
+    # Zero gold cases is a failure to calibrate, never a pass: with no
+    # evidence, the challenger's false-positive rate is unknown.
+    status = (
+        "passed"
+        if total > 0 and rate <= threshold and parse_errors == 0
+        else "failed"
+    )
     return AuditCalibrationReport(
         total_gold=total,
         false_positives=false_positives,

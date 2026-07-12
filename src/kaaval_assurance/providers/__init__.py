@@ -8,7 +8,7 @@ from .factory import (
 )
 from .fireworks import FireworksConfig, FireworksError, FireworksProvider
 from .mock import FAILURE_MODES, MockProvider
-from .ollama import OllamaProvider, ollama_config_from_env
+from .ollama import OllamaError, OllamaProvider, ollama_config_from_env
 from .vllm import VllmConfig, VllmError, VllmProvider
 
 __all__ = [
@@ -19,6 +19,7 @@ __all__ = [
     "FireworksError",
     "FireworksProvider",
     "OllamaProvider",
+    "OllamaError",
     "ollama_config_from_env",
     "VllmConfig",
     "VllmError",

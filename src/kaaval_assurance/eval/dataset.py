@@ -1,8 +1,8 @@
-"""Gold eval dataset loader (JSONL).
+"""Reference-answer eval dataset loader (JSONL).
 
-One case per line. gold_answer is a known-good contract output for the case:
-unused by the mock eval loop today, required from Jul 7 as the calibration
-set for Layer-3 challenger false-positive testing.
+Decision-critical fields in gold_answer are scored by the eval runner. The
+complete answer also remains the Layer-3 calibration input. Free-text fields
+are intentionally not scored by exact string equality.
 """
 
 import json

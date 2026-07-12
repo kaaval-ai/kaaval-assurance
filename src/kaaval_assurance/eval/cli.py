@@ -1,4 +1,4 @@
-"""CLI: run the gold eval locally through the mock pipeline.
+"""CLI: run a reference-answer eval through the assurance pipeline.
 
 Zero cloud access. Failure-injection knobs simulate local-tier degradation so
 the Layer-2 metrics and EWMA drift are demonstrable before real providers land.
@@ -32,12 +32,24 @@ def _print_text(report: EvalRunReport, dataset: Path) -> None:
     print(f"kaaval-assurance eval — {report.n_cases} cases from {dataset}")
     print(
         f"requests {m.requests} | attempts {m.attempts} | "
-        f"pass rate {m.pass_rate:.1%} | escalation rate {m.escalation_rate:.1%}"
+        f"Layer-1 contract-conformance rate {m.pass_rate:.1%} "
+        f"(deterministic contract checks, not semantic correctness) | "
+        f"escalation rate {m.escalation_rate:.1%}"
     )
+    if report.gold_accuracy is None:
+        print("gold critical-field accuracy: n/a (no scorable fields)")
+    else:
+        print(
+            f"gold critical-field accuracy {report.gold_accuracy:.1%} "
+            f"({report.gold_correct_cases}/{report.gold_scored_cases}) | "
+            f"false accepts {report.false_accept_count} "
+            f"({report.false_accept_rate:.1%}) | false rejects "
+            f"{report.false_reject_count} ({report.false_reject_rate:.1%})"
+        )
     print(
         f"latency p50 {m.latency_ms_p50:.1f}ms p95 {m.latency_ms_p95:.1f}ms | "
         f"total cost {_fmt_cost(m.total_cost_usd)} | "
-        f"cost per verified answer {_fmt_cost(m.cost_per_verified_usd)}"
+        f"cost per contract-conformant answer {_fmt_cost(m.cost_per_verified_usd)}"
     )
     if m.failure_counts:
         counts = ", ".join(f"{k}={v}" for k, v in sorted(m.failure_counts.items()))
@@ -55,7 +67,7 @@ def _print_text(report: EvalRunReport, dataset: Path) -> None:
         )
     failed = [r for r in report.results if not r.passed]
     if failed:
-        print(f"unverified after escalation: {', '.join(r.case_id for r in failed)}")
+        print(f"no contract-conformant answer: {', '.join(r.case_id for r in failed)}")
 
 
 def _print_demo(demo, dataset: Path) -> None:
@@ -95,14 +107,18 @@ def _print_audit(summary) -> None:
             f"calibration {cal.status} (false-positive rate "
             f"{cal.false_positive_rate:.1%}, threshold {cal.threshold:.1%})"
         )
-    trust = "trusted" if summary.trusted else "UNTRUSTED — display only, no routing signal"
+    trust = (
+        "FP-calibration passed; display only, no routing input"
+        if summary.trusted
+        else "UNTRUSTED — display only, no routing input"
+    )
     print(
         f"layer-3 audit ({summary.audit_provider}, {summary.audit_model_id}): "
         f"{cal_line} | signal {trust}"
     )
     if cal.status == "failed":
         print(
-            "  audit disabled as a routing signal: challenger flagged "
+            "  audit FP calibration failed: challenger flagged "
             f"{cal.false_positives}/{cal.total_gold} known-good gold answers "
             f"({', '.join(cal.flagged_case_ids) or 'none listed'})"
         )
@@ -128,13 +144,13 @@ def _judge_line(report, summary) -> str:
         f"Layer 3 sampled {summary.sample_rate:.0%} of accepted answers, "
         f"calibration false-positive rate was "
         f"{summary.calibration.false_positive_rate:.1%}, "
-        f"audit cost per verified answer was "
+        f"audit cost per contract-conformant answer was "
         f"{_fmt_cost(summary.cost_per_verified_accepted_usd)}"
     )
     if report.metrics.preroute_remote_rate > 0:
         line += (
-            ", and high-drift categories were routed away from the local "
-            "Gemma tier until confidence recovered"
+            ", and high-drift categories were pre-routed away from the local "
+            "Gemma tier; recovery currently requires session reset or expiry"
         )
     return line + "."
 
@@ -142,8 +158,9 @@ def _judge_line(report, summary) -> str:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="kaaval-eval",
-        description="Replay the gold eval set through the mock assurance pipeline "
-        "and report Layer-2 metrics.",
+        description="Replay a reference-answer eval set through the assurance "
+        "pipeline and report contract conformance, critical-field accuracy, "
+        "and Layer-2 metrics.",
     )
     parser.add_argument(
         "--dataset", type=Path, default=DEFAULT_DATASET, help="JSONL eval dataset"

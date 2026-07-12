@@ -31,6 +31,9 @@ export interface AttemptDetail {
   verifier_failures: string[];
   escalated: boolean;
   escalation_reason: string | null;
+  attempt_status?: 'completed' | 'provider_error';
+  error_type?: string | null;
+  error_message?: string | null;
 }
 
 export interface RuntimeProfile {
@@ -77,6 +80,16 @@ export interface TelemetrySummary {
     final_verified_rate: number;
     failures_by_check: Record<string, number>;
   };
+  evaluation?: {
+    scored_cases: number;
+    correct_cases: number;
+    accuracy: number | null;
+    false_accept_count: number;
+    false_accept_rate: number | null;
+    false_reject_count: number;
+    false_reject_rate: number | null;
+    scope: string;
+  };
   routing: {
     escalation_rate: number;
     preroute_remote_rate: number;
@@ -97,6 +110,8 @@ export interface TelemetrySummary {
     errors: number;
     violations_by_severity: Record<string, number>;
     audit_tokens: number;
+    calibration_scope?: string;
+    routing_integration?: string;
   };
   cost: {
     total_cost_usd: number;
@@ -133,6 +148,10 @@ export interface TrajectoryRow {
   completion_tokens: number;
   task_input: string;
   raw_text: string;
+  raw_text_withheld?: boolean;
+  attempt_status: 'completed' | 'provider_error';
+  error_type: string | null;
+  error_message: string | null;
   audit_sampled: boolean;
   audit_result: string | null;
   audit_violations: Record<string, unknown>[] | null;
@@ -238,13 +257,51 @@ export interface DashboardPayload {
 export interface LiveRunRequest {
   task_input: string;
   contract_id: string;
-  local_provider: 'mock' | 'ollama' | 'vllm';
-  remote_provider: 'mock' | 'fireworks';
   confirm_spend: boolean;
-  failure_mode: string | null;
-  remote_failure_mode: string | null;
   export_artifacts: boolean;
   session_id?: string;
+  include_unverified_raw?: boolean;
+  primary_connection_id: string;
+  escalation_connection_id?: string;
+}
+
+export type RuntimeProvider = 'fireworks' | 'ollama' | 'vllm' | 'openai_compatible';
+export type RuntimeRole = 'primary' | 'escalation';
+
+export interface RuntimeCapabilities {
+  deployment_mode: 'local' | 'hosted';
+  live_runs_enabled: boolean;
+  byok_allowed: boolean;
+  custom_endpoints_allowed: boolean;
+  providers: RuntimeProvider[];
+  default_endpoints: Record<string, string>;
+  connection_ttl_seconds: number;
+}
+
+export interface RuntimeConnectionRequest {
+  provider: RuntimeProvider;
+  role: RuntimeRole;
+  model_id: string;
+  api_key: string;
+  base_url?: string | null;
+  model_family?: string;
+  structured_outputs?: boolean;
+  hardware_target?: string;
+  timeout_seconds?: number;
+  max_tokens?: number;
+}
+
+export interface RuntimeConnection {
+  connection_id: string;
+  provider: RuntimeProvider;
+  role: RuntimeRole;
+  model_id: string;
+  model_family: string;
+  endpoint_host: string | null;
+  structured_outputs: boolean;
+  hardware_target: string;
+  requires_spend_confirmation: boolean;
+  expires_in_seconds: number;
 }
 
 export interface LiveRunResponse {
@@ -265,8 +322,11 @@ export interface LiveRunResponse {
     local_provider: string;
     remote_provider: string;
     failure_mode: string | null;
+    remote_failure_mode: string | null;
   };
   result: {
+    status: 'accepted' | 'no_safe_answer';
+    contract_conformant: boolean;
     verified: boolean;
     checks_run: number;
     failures: string[];
@@ -276,6 +336,8 @@ export interface LiveRunResponse {
     routing_reason: string;
     answer: Record<string, unknown> | null;
     raw_text: string;
+    diagnostic_raw_text: string | null;
+    unverified_output_withheld: boolean;
   };
   trajectory: TrajectoryRow[];
   telemetry: TelemetrySummary;

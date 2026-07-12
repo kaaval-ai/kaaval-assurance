@@ -70,7 +70,7 @@ export default function CostAvoidanceReceipt({
             <div className="rounded-lg border border-success/30 bg-success/5 p-3">
               <div className="flex items-center gap-2 text-success">
                 <TrendingDown className="w-4 h-4" aria-hidden="true" />
-                <span className="text-[10px] font-mono uppercase tracking-wider">judge readout</span>
+                <span className="text-[10px] font-mono uppercase tracking-wider">efficiency readout</span>
               </div>
               <div className="mt-2 text-2xl font-heading font-bold text-foreground tabular-nums">
                 {comparison.comparison.remote_call_reduction_percentage.toFixed(1)}%

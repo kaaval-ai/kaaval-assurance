@@ -70,9 +70,10 @@ export default function App() {
       <EvidenceModeBanner mode={mode} label={payload?.label ?? null} />
 
       <main className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
-        {mode === 'live' ? (
+        <div className={mode === 'live' ? 'block' : 'hidden'}>
           <LiveRunPanel run={liveRun} onRunComplete={setLiveRun} />
-        ) : status === 'unavailable' ? (
+        </div>
+        {mode === 'captured' && (status === 'unavailable' ? (
           <div className="panel px-4 py-10 text-center space-y-2">
             <p className="text-sm font-mono text-destructive">API unavailable — no artifacts to display.</p>
             <p className="text-[11px] font-mono text-muted">
@@ -119,7 +120,7 @@ export default function App() {
               </div>
             </div>
           </>
-        )}
+        ))}
       </main>
 
       <StatusBar 

@@ -64,7 +64,7 @@ def run_agent_workflow(
         )
         steps.append(result)
 
-        if not result.verification.passed:
+        if result.status == "no_safe_answer":
             return AgentRunResult(
                 run_id=run_id,
                 initial_input=initial_input,
@@ -74,7 +74,17 @@ def run_agent_workflow(
                 steps=steps,
             )
 
-        findings.append(f"[{contract_id}] {result.response.parsed}")
+        accepted = result.accepted_response
+        if accepted is None:  # defensive: status and payload must agree
+            return AgentRunResult(
+                run_id=run_id,
+                initial_input=initial_input,
+                contract_sequence=contract_sequence,
+                completed=False,
+                blocked_at=contract_id,
+                steps=steps,
+            )
+        findings.append(f"[{contract_id}] {accepted.parsed}")
         context = initial_input + "\n\nPrior findings:\n" + "\n".join(findings)
 
     return AgentRunResult(

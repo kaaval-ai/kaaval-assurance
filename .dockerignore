@@ -8,14 +8,8 @@ __pycache__
 *.egg-info
 .DS_Store
 
-# Secrets and local agent state
+# Secrets and local development state
 .env
-.claude
-.codex
-.gemini
-CLAUDE.md
-GEMINI.md
-graphify-out
 
 # Frontend build/cache is rebuilt in the Node stage
 apps/flight-deck/node_modules

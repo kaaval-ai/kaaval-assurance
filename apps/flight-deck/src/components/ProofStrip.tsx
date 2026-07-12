@@ -24,7 +24,7 @@ export default function ProofStrip({ payload }: { payload: DashboardPayload | nu
           <div className="flex items-center gap-2 flex-wrap">
             <DataLabelBadge label={payload?.label ?? 'UNAVAILABLE'} />
             <span className="text-[10px] font-mono uppercase tracking-[0.32em] text-muted">
-              evidence-first demo surface
+              captured assurance evidence
             </span>
           </div>
           <h1 className="text-xl md:text-2xl font-heading font-bold tracking-tight text-foreground">

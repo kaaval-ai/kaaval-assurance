@@ -1,0 +1,26 @@
+{
+  "local_first": {
+    "requests": 16,
+    "total_attempts": 18,
+    "remote_attempts": 2,
+    "total_configured_remote_cost": 0.0042428,
+    "final_verified_rate": 100.0
+  },
+  "always_remote": {
+    "requests": 16,
+    "total_attempts": 16,
+    "remote_attempts": 16,
+    "total_configured_remote_cost": 0.03752780000000001,
+    "final_verified_rate": 87.5
+  },
+  "comparison": {
+    "remote_calls_avoided": 14,
+    "remote_call_reduction_percentage": 87.5,
+    "configured_cost_avoided": 0.03328500000000001,
+    "cost_reduction_percentage": 88.69424799748454
+  },
+  "caveats": [
+    "Configured-price estimate from recorded token counts, not provider invoice.",
+    "Local-first smoke used mock local tier; AMD/Gemma proof is a separate measured artifact."
+  ]
+}

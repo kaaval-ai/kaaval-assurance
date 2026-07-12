@@ -8,12 +8,16 @@ instead of feeding a bad finding downstream.
 """
 
 import pytest
+from fastapi.testclient import TestClient
 
+from apps.api.artifacts import ArtifactStore
+from apps.api.server import create_app
 from kaaval_assurance.agent import (
     NOC_INCIDENT_WORKFLOW,
     run_agent_workflow,
     rows_for_agent_run,
 )
+from kaaval_assurance.agent_cli import main as agent_cli_main
 from kaaval_assurance.pipeline import AssurancePipeline
 from kaaval_assurance.providers import MockProvider
 from kaaval_assurance.router import Router
@@ -156,3 +160,60 @@ class TestHonestHardStop:
         categories = {r.category for r in rows}
         assert categories == {"component_extraction"}
         assert "severity_classification" not in categories
+
+
+class TestRunnableAgentSurface:
+    def test_cli_runs_complete_mock_workflow(self, capsys):
+        rc = agent_cli_main(["--input", INCIDENT])
+        output = capsys.readouterr().out
+        assert rc == 0
+        assert '"status": "completed"' in output
+        assert output.count('"contract_conformant": true') == 4
+
+    def test_api_runs_complete_mock_workflow(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("KAAVAL_LIVE_RUNS_ENABLED", "1")
+        store = ArtifactStore(
+            artifacts_dir=tmp_path / "artifacts",
+            sample_dir=tmp_path / "sample",
+        )
+        client = TestClient(create_app(store))
+
+        response = client.post(
+            "/api/agent-runs",
+            json={
+                "task_input": INCIDENT,
+                "local_provider": "mock",
+                "remote_provider": "mock",
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "completed"
+        assert len(body["steps"]) == 4
+        assert all(step["status"] == "accepted" for step in body["steps"])
+        assert all(step["accepted_answer"] for step in body["steps"])
+
+    def test_api_agent_paid_remote_is_operator_gated(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setenv("KAAVAL_LIVE_RUNS_ENABLED", "1")
+        monkeypatch.delenv("KAAVAL_ALLOW_PAID_REMOTE", raising=False)
+        store = ArtifactStore(
+            artifacts_dir=tmp_path / "artifacts",
+            sample_dir=tmp_path / "sample",
+        )
+        client = TestClient(create_app(store))
+
+        response = client.post(
+            "/api/agent-runs",
+            json={
+                "task_input": INCIDENT,
+                "local_provider": "mock",
+                "remote_provider": "fireworks",
+                "confirm_spend": True,
+            },
+        )
+
+        assert response.status_code == 403
+        assert "disabled" in response.json()["detail"]

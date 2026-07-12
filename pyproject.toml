@@ -30,6 +30,7 @@ demo = [
 
 [project.scripts]
 kaaval-eval = "kaaval_assurance.eval.cli:main"
+kaaval-agent = "kaaval_assurance.agent_cli:main"
 
 [dependency-groups]
 dev = [

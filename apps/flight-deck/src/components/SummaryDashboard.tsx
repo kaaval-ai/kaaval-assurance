@@ -21,7 +21,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
 
 const PANELS = [
   { icon: <GitBranch className="w-3 h-3" />, label: 'Assurance Pipeline', desc: 'One request traced through router, local tier, Layer-1 verification, and (when needed) escalation.', neon: '#00D4FF' },
-  { icon: <Server className="w-3 h-3" />, label: 'Provider Switchboard', desc: 'Providers that actually served attempts in the captured run, with measured latency and verified rates.', neon: '#34C759' },
+  { icon: <Server className="w-3 h-3" />, label: 'Provider Switchboard', desc: 'Providers that actually served attempts in the captured run, with measured latency and contract-conformance rates.', neon: '#34C759' },
   { icon: <ScrollText className="w-3 h-3" />, label: 'Contract Gate', desc: 'The four telecom task contracts and their deterministic Layer-1 checks — shape and constraints, not semantic truth.', neon: '#FFB000' },
   { icon: <BarChart3 className="w-3 h-3" />, label: 'Tier Comparison', desc: 'Local Gemma-first tier vs Fireworks escalation, from captured measurements only.', neon: '#FF6B9D' },
   { icon: <Activity className="w-3 h-3" />, label: 'Telemetry Truth', desc: 'Every claim with its source tag: measured, configured, planned, or honestly not available.', neon: '#7CFF7C' },
@@ -67,7 +67,7 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
               </div>
               <p className="text-sm font-mono text-muted leading-relaxed">
                 A captured-run observability surface for the Kaaval Assurance inference plane:
-                a Gemma-first local tier is verified against explicit task contracts (Layer 1),
+                a Gemma-first local tier is checked against explicit task contracts (Layer 1),
                 escalates to Fireworks only when verification fails, and feeds per-category
                 drift tracking (Layer 2) and a calibrated sampled audit (Layer 3). Every value
                 on screen carries a source tag; sample data is labeled as sample, and AMD
@@ -99,9 +99,9 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
       {t ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <StatCard label="Requests / attempts" value={`${t.requests} / ${t.attempts}`} sub="captured run" />
-          <StatCard label="Final verified rate" value={pct(t.verification.final_verified_rate)} color="text-success" sub={`local: ${pct(t.verification.local_verified_rate)}`} />
+          <StatCard label="Final contract-conformance" value={pct(t.verification.final_verified_rate)} color="text-success" sub={`local: ${pct(t.verification.local_verified_rate)}`} />
           <StatCard label="Escalation rate" value={pct(t.routing.escalation_rate)} color={t.routing.escalation_rate > 0.2 ? 'text-warning' : 'text-foreground'} sub={`pre-route remote: ${pct(t.routing.preroute_remote_rate)}`} />
-          <StatCard label="Cost / verified answer" value={usd(t.cost.cost_per_verified_answer_usd)} sub="configured pricing" />
+          <StatCard label="Cost / conformant answer" value={usd(t.cost.cost_per_verified_answer_usd)} sub="configured pricing" />
         </div>
       ) : (
         <div className="panel px-3 py-4 text-center text-muted text-xs font-mono">
@@ -186,13 +186,21 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
           </div>
           <div className="panel-body">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {t.claims.map((c) => (
+              {t.claims.map((c) => {
+                const claimLabel = {
+                  'Local verified rate': 'Local Layer-1 contract-conformance rate',
+                  'Final verified rate': 'Final Layer-1 contract-conformance rate',
+                  'Cost per verified answer': 'Cost per contract-conformant answer',
+                }[c.claim] ?? c.claim;
+                const claimSource = c.field.startsWith('cost.') ? 'configured' : c.source;
+                return (
                 <div key={c.claim} className="flex items-center gap-2 px-2 py-1 rounded border border-border/40 text-[10px] font-mono">
-                  <span className="text-muted flex-1 truncate">{c.claim}</span>
+                  <span className="text-muted flex-1 truncate">{claimLabel}</span>
                   <span className="text-foreground truncate max-w-[45%]" title={c.value}>{c.value}</span>
-                  <SourceChip tag={c.source === 'measured' && payload?.used_sample ? 'sample' : c.source} />
+                  <SourceChip tag={claimSource === 'measured' && payload?.used_sample ? 'sample' : claimSource} />
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

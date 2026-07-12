@@ -45,7 +45,7 @@ export default function Header({
             KAAVAL ASSURANCE
           </h1>
           <p className="text-[10px] text-muted font-mono leading-tight">
-            INFERENCE FLIGHT DECK · {mode === 'live' ? 'live assurance execution' : 'captured-run observability'}
+            INFERENCE FLIGHT DECK · {mode === 'live' ? 'connected runtime assurance' : 'evidence baseline'}
           </p>
         </div>
         {label && <DataLabelBadge label={label} />}
@@ -58,15 +58,15 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Mode switch: Captured Evidence / Live Run */}
+        {/* Product modes: immutable evidence baseline / connected live session. */}
         <div className="flex items-center bg-elevated rounded-md border border-border p-0.5">
           <button onClick={() => onModeChange('captured')} className={seg(mode === 'captured')}>
             <Archive className="w-3 h-3" />
-            Captured Evidence
+            Evidence Baseline
           </button>
           <button onClick={() => onModeChange('live')} className={seg(mode === 'live')}>
             <Radio className="w-3 h-3" />
-            Live Run
+            Live Session
           </button>
         </div>
 

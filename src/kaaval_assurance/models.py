@@ -23,12 +23,17 @@ class ModelResponse(BaseModel):
     completion_tokens: int = 0
     latency_ms: float = 0.0
     cost_usd: float = 0.0
-    # White-box seam: per-token logprobs from vLLM when serving open weights
-    # on AMD infrastructure. Always None for mock and closed-API tiers.
+    # White-box seam for compatible providers, including vLLM serving open
+    # weights on AMD infrastructure. None when the provider does not return it.
     logprobs: Optional[list[float]] = None
     # Provider-reported cached prompt tokens (prefix cache / prompt cache),
     # None when the provider does not report it. Telemetry only.
     cached_tokens: Optional[int] = None
+    # Provider failures are first-class attempts so outages remain replayable
+    # and can drive the same fail-closed routing path as invalid output.
+    attempt_status: Literal["completed", "provider_error"] = "completed"
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
     created_at: datetime = Field(default_factory=_utcnow)
 
 
@@ -106,6 +111,9 @@ class TrajectoryRow(BaseModel):
     # Replayability: full input and raw output are stored verbatim.
     task_input: str = ""
     raw_text: str = ""
+    attempt_status: Literal["completed", "provider_error"] = "completed"
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
     # Layer 3 seams (populated from Jul 7 onward).
     audit_sampled: bool = False
     audit_result: Optional[str] = None  # "pass" | "fail" | None
@@ -116,7 +124,11 @@ class PipelineResult(BaseModel):
     """What one end-to-end request produced."""
 
     request_id: str
+    status: Literal["accepted", "no_safe_answer"]
+    # The last attempt stays available for internal diagnostics and receipts.
+    # Only accepted_response may cross the downstream acceptance boundary.
     response: ModelResponse
+    accepted_response: Optional[ModelResponse] = None
     verification: VerificationResult
     routing: RoutingDecision
     escalated: bool

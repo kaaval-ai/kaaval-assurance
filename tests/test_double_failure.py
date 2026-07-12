@@ -84,6 +84,8 @@ class TestDoubleFailurePath:
                 "remote_failure_mode": "out_of_range",
             },
         ).json()
+        assert body["result"]["status"] == "no_safe_answer"
+        assert body["result"]["contract_conformant"] is False
         assert body["result"]["verified"] is False
         assert body["result"]["escalated"] is True
         assert "range:refund_amount_usd" in body["result"]["failures"]

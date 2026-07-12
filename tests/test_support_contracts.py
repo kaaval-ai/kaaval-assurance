@@ -10,6 +10,7 @@ import pytest
 
 from kaaval_assurance.contracts import get_contract, list_contracts
 from kaaval_assurance.eval import load_dataset
+from kaaval_assurance.eval.runner import run_eval
 from kaaval_assurance.models import ModelResponse
 from kaaval_assurance.pipeline import AssurancePipeline
 from kaaval_assurance.providers import MockProvider
@@ -72,8 +73,53 @@ class TestSupportHardDataset:
         for case in load_dataset(HARD):
             contract = get_contract(case.contract_id)
             assert case.gold_answer is not None, case.case_id
-            result = verify(response_for(case.gold_answer, case.contract_id), contract)
+            result = verify(
+                response_for(case.gold_answer, case.contract_id),
+                contract,
+                case.task_input,
+            )
             assert result.passed, f"{case.case_id}: {result.failures}"
+
+    def test_hard_set_reports_conformance_separately_from_gold_accuracy(self):
+        store = TrajectoryStore(":memory:")
+        try:
+            pipeline = AssurancePipeline(
+                router=Router(),
+                local_provider=MockProvider(tier="local"),
+                remote_provider=MockProvider(
+                    tier="remote", model_id="mock-remote-strong"
+                ),
+                store=store,
+            )
+            report = run_eval(pipeline, load_dataset(HARD))
+        finally:
+            store.close()
+
+        assert report.metrics.pass_rate == pytest.approx(0.7)
+        assert report.gold_scored_cases == 10
+        assert report.gold_accuracy == 0.0
+        assert report.gold_accuracy < report.metrics.pass_rate
+        assert report.false_accept_count == 7
+
+    def test_missing_purchase_evidence_cannot_be_auto_approved(self):
+        contract = get_contract("support.refund_decision")
+        task_input = (
+            "Customer: I want a refund for my purchase. It didn't meet "
+            "expectations. (No order number, no amount, no date, and the "
+            "account email doesn't match any purchase record we can find.)"
+        )
+        unsafe_approval = {
+            "decision": "approve",
+            "refund_amount_usd": 100.0,
+            "justification": "gesture of goodwill",
+        }
+        result = verify(
+            response_for(unsafe_approval, contract.contract_id),
+            contract,
+            task_input,
+        )
+        assert not result.passed
+        assert "grounding:missing_purchase_evidence_requires_human" in result.failures
 
 
 class TestSupportFailurePaths:

@@ -98,7 +98,7 @@ export default function ProviderSwitchboard({ telemetry, usedSample }: { telemet
                 {isExpanded && (
                   <div className="mx-2 mt-1 mb-1.5 px-2 py-1.5 rounded bg-elevated border border-border/50 text-[10px] font-mono space-y-1 animate-[metric-up_0.2s_ease-out]">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted">Layer-1 verified rate</span>
+                      <span className="text-muted">Layer-1 conformance rate</span>
                       <span className="text-foreground tabular-nums">{pct(p.verifiedRate)}</span>
                     </div>
                     <div className="flex items-center justify-between">
@@ -116,10 +116,10 @@ export default function ProviderSwitchboard({ telemetry, usedSample }: { telemet
           })
         )}
 
-        {/* Configured local endpoint from the runtime profile */}
+        {/* Configured primary endpoint from the runtime profile. */}
         <div className="px-2 py-1.5 rounded border border-dashed border-border/60 text-[10px] font-mono">
           <div className="flex items-center gap-2">
-            <span className="text-muted">Local endpoint:</span>
+            <span className="text-muted">Primary endpoint:</span>
             {profile ? (
               <>
                 <span className="text-foreground">
@@ -142,7 +142,7 @@ export default function ProviderSwitchboard({ telemetry, usedSample }: { telemet
         </div>
         {telemetry && !providers.some((p) => p.provider === 'fireworks') && (
           <div className="px-2 text-[9px] font-mono text-muted">
-            Fireworks escalation tier: no attempts in this run.{' '}
+            Escalation tier: no attempts in this run.{' '}
             <NotAvailable note="shown only when escalations exist or the tier is configured" />
           </div>
         )}

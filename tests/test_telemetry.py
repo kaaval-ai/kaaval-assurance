@@ -126,8 +126,13 @@ class TestAuditReflection:
         assert t.audit.enabled and t.audit.trusted is True
         assert t.audit.sampled == 16
         assert t.audit.calibration_status == "passed"
-        claim = next(c for c in t.claims if c.claim == "Layer 3 audit trusted")
-        assert claim.value == "yes" and claim.source == "measured"
+        claim = next(
+            c for c in t.claims if c.claim == "Layer 3 FP calibration passed"
+        )
+        assert claim.value == "yes; display-only, not a routing input"
+        assert claim.source == "measured"
+        assert t.audit.calibration_scope == "false_positive_only"
+        assert t.audit.routing_integration == "display_only"
 
     def test_untrusted_audit_reflected(self):
         store = TrajectoryStore(":memory:")
@@ -148,7 +153,9 @@ class TestAuditReflection:
         finally:
             store.close()
         assert t.audit.enabled is False
-        claim = next(c for c in t.claims if c.claim == "Layer 3 audit trusted")
+        claim = next(
+            c for c in t.claims if c.claim == "Layer 3 FP calibration passed"
+        )
         assert claim.source == "not_available"
 
 
@@ -244,10 +251,10 @@ class TestRendering:
         finally:
             store.close()
         text = render_summary_text(t)
-        assert "Local verified rate: 100.0% [measured]" in text
+        assert "Local Layer-1 contract-conformance rate: 100.0% [measured]" in text
         md = render_summary_markdown(t)
         assert "| Claim | Value | Source |" in md
-        assert "| Local verified rate | 100.0% | measured |" in md
+        assert "| Local Layer-1 contract-conformance rate | 100.0% | measured |" in md
 
 
 class TestCliTelemetry:
@@ -259,8 +266,11 @@ class TestCliTelemetry:
         assert rc == 0
         out = capsys.readouterr().out
         assert "=== telemetry truth summary ===" in out
-        assert "Local verified rate: 100.0% [measured]" in out
-        assert "Layer 3 audit trusted: yes [measured]" in out
+        assert "Local Layer-1 contract-conformance rate: 100.0% [measured]" in out
+        assert (
+            "Layer 3 FP calibration passed: yes; display-only, not a routing input "
+            "[measured]" in out
+        )
         assert "[planned]" in out  # mock local tier -> runtime planned
 
     def test_telemetry_json_parses(self, capsys):

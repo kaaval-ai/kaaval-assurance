@@ -27,10 +27,11 @@ can be disqualified.
 
 ## AMD proof artifacts (mandatory usage evidence)
 
-- [ ] `artifacts/runtime-probe.json` from the AMD pod — rocm-smi product
+- [x] `artifacts/runtime-probe.json` from the AMD pod — rocm-smi product
       name + VRAM, vLLM version, served Gemma model (source: measured).
-- [ ] `artifacts/telemetry-vllm.md` / trajectory DB from the pod eval run —
-      local Gemma tier verified rates, runtime profile recorded.
+- [x] `artifacts/telemetry-vllm.md` / trajectory evidence from the pod eval
+      run — local Gemma tier contract-conformance rates and runtime profile
+      recorded.
 - [ ] Telemetry summary lines in deck/video sourced from these artifacts
       only; anything not yet measured stays labeled configured/planned.
 
