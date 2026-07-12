@@ -21,6 +21,7 @@ BANNED_STRINGS = [
     "hallucinationRate",
     "Sigstore",
     "Presidio",
+    "Pending until a real AMD probe artifact exists",
 ]
 
 
@@ -81,3 +82,54 @@ def test_live_result_is_readable_without_horizontal_scrolling():
     assert "whitespace-pre-wrap break-words" in panel
     assert "whitespace-pre-wrap break-all" in panel
     assert '<AcceptedAnswer answer={run.result.answer} />' in panel
+
+
+def test_captured_hierarchy_has_one_rail_and_one_visible_receipt():
+    dashboard = (SRC / "components" / "SummaryDashboard.tsx").read_text(
+        encoding="utf-8"
+    )
+
+    assert dashboard.count("<DemoScriptRail") == 1
+    assert dashboard.count("<CostAvoidanceReceipt") == 1
+    rail = dashboard.index("<DemoScriptRail")
+    receipt = dashboard.index("<CostAvoidanceReceipt")
+    deep_dive = dashboard.index("ENGINEERING DEEP DIVE")
+    assert rail < receipt < deep_dive
+
+
+def test_live_failures_and_receipt_are_visible_before_internal_details():
+    panel = (SRC / "components" / "LiveRunPanel.tsx").read_text(encoding="utf-8")
+    receipt = (SRC / "components" / "LiveAssuranceReceipt.tsx").read_text(
+        encoding="utf-8"
+    )
+
+    pipeline = panel.index("<PipelinePanel")
+    telemetry = panel.index("<TelemetryTruth")
+    kaaval_receipt = panel.index("<LiveAssuranceReceipt")
+    internals = panel.index("ADDITIONAL LIVE INTERNALS")
+    assert pipeline < kaaval_receipt < internals
+    assert telemetry < kaaval_receipt < internals
+    assert "NO SAFE ANSWER" in panel
+    assert "Caught before acceptance" in receipt
+    assert "transport:${row.error_type" in receipt
+    assert "row.verifier_failures" in receipt
+
+
+def test_dormant_crt_overlay_is_removed():
+    css = (SRC / "index.css").read_text(encoding="utf-8")
+    assert ".bg-crt" not in css
+    assert "Scan-line CRT effect" not in css
+
+
+def test_layer3_is_described_as_display_only_everywhere():
+    root = SRC.parents[2]
+    architecture = (root / "docs" / "kaaval-assurance-architecture.html").read_text(
+        encoding="utf-8"
+    )
+    runner = (
+        root / "src" / "kaaval_assurance" / "audit" / "runner.py"
+    ).read_text(encoding="utf-8")
+
+    assert "informs routing only through" not in architecture
+    assert "feed Layer-2 EWMA" not in runner
+    assert "No challenger verdict gates a response or feeds routing" in architecture

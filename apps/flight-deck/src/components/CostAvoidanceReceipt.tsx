@@ -48,7 +48,7 @@ export default function CostAvoidanceReceipt({
       <div className="panel-header">
         <span className="panel-title flex items-center gap-1.5">
           <ReceiptText className="w-3 h-3 text-success" />
-          Cost Avoidance Receipt
+          Kaaval Receipt · Cost Avoidance
         </span>
         <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted">
           {provenance?.available ? provenance.artifact : 'comparison not loaded'}

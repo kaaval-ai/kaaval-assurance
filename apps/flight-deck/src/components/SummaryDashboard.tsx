@@ -33,7 +33,7 @@ const PANELS = [
   { icon: <BarChart3 className="w-3 h-3" />, label: 'Tier Comparison', desc: 'Local Gemma-first tier vs Fireworks escalation, from captured measurements only.', neon: '#FF6B9D' },
   { icon: <Activity className="w-3 h-3" />, label: 'Telemetry Truth', desc: 'Every claim with its source tag: measured, configured, planned, or honestly not available.', neon: '#7CFF7C' },
   { icon: <ListChecks className="w-3 h-3" />, label: 'Trajectory Replay', desc: 'Replayable stored attempts: exact inputs, outputs, failed check IDs, cost.', neon: '#A78BFA' },
-  { icon: <Cpu className="w-3 h-3" />, label: 'AMD Runtime Evidence', desc: 'Runtime-probe facts (rocm-smi, vLLM, served model) plus configured serving parameters. Pending until a real AMD probe artifact exists.', neon: '#FF8C42' },
+  { icon: <Cpu className="w-3 h-3" />, label: 'AMD Runtime Evidence', desc: 'Captured runtime-probe facts (rocm-smi, vLLM, served model) plus clearly separated configured serving parameters.', neon: '#FF8C42' },
 ] as const;
 
 export default function SummaryDashboard({ payload }: { payload: DashboardPayload | null }) {
@@ -45,8 +45,12 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
     <div className="space-y-3">
       <ProofStrip payload={payload} />
       <DemoScriptRail payload={payload} />
+      <CostAvoidanceReceipt
+        comparison={payload?.comparison ?? null}
+        provenance={payload?.comparison_provenance ?? null}
+      />
 
-      {/* Deep Dive Accordion */}
+      {/* Engineering Deep Dive Accordion */}
       <div className="panel panel-sweep overflow-hidden mt-6 border-accent/30">
         <button
           onClick={() => setDeepDiveOpen(!deepDiveOpen)}
@@ -54,7 +58,7 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
         >
           <div className="flex items-center gap-2 text-accent">
             <BarChart3 className="w-4 h-4" />
-            <span className="text-sm font-heading font-semibold tracking-wider">DEEP DIVE: TELEMETRY & AUDIT</span>
+            <span className="text-sm font-heading font-semibold tracking-wider">ENGINEERING DEEP DIVE</span>
           </div>
           <ChevronDown className={`w-4 h-4 text-muted transition-transform ${deepDiveOpen ? 'rotate-180' : ''}`} />
         </button>
@@ -90,7 +94,7 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
                       escalates to Fireworks only when verification fails, and feeds per-category
                       drift tracking (Layer 2) and a calibrated sampled audit (Layer 3). Every value
                       on screen carries a source tag; sample data is labeled as sample, and AMD
-                      runtime claims stay pending until a real probe artifact exists.
+                      runtime claims follow the status of the loaded probe artifact.
                     </p>
                   </div>
                   <div>
@@ -128,11 +132,6 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
               </div>
             )}
 
-            <CostAvoidanceReceipt
-              comparison={payload?.comparison ?? null}
-              provenance={payload?.comparison_provenance ?? null}
-            />
-            
             {t && (
               <>
                 {/* Row 2: provider mix + drift + audit */}

@@ -268,8 +268,8 @@ installing Python/Node dependencies. Captured evidence opens immediately;
 live execution starts after you connect Fireworks, Ollama, or vLLM.
 
 ```bash
-docker pull ghcr.io/kaaval-ai/kaaval-assurance:latest
-docker run --rm -p 8080:8000 ghcr.io/kaaval-ai/kaaval-assurance:latest
+docker pull ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+docker run --rm -p 8080:8000 ghcr.io/kaaval-ai/kaaval-assurance:act-ii
 ```
 
 Open:
@@ -305,7 +305,7 @@ Then run Kaaval with host networking available:
 ```bash
 docker run --rm -p 8080:8000 \
   --add-host=host.docker.internal:host-gateway \
-  ghcr.io/kaaval-ai/kaaval-assurance:latest
+  ghcr.io/kaaval-ai/kaaval-assurance:act-ii
 ```
 
 In the UI, use `http://host.docker.internal:8000/v1` for vLLM or

@@ -1,10 +1,11 @@
 # Track 3 Submission Checklist (Unicorn / Open Innovation)
 
-Per the participant guide: Track 3 does **not** require a Docker image.
-Automated pre-screening inspects the GitHub repo, the slide deck PDF, and the
-live/hosted URL if provided — it does **not** process the demo video. AMD
-compute usage is mandatory; projects without demonstrated AMD resource usage
-can be disqualified.
+Track 3 pre-screening centers on a clear implementation path, a genuinely
+runnable project, original use of approved compute, and complete setup and
+external-service documentation. AMD compute usage is mandatory. The release
+path for this submission is the public repository, one public container, and
+one hosted Flight Deck URL; the deck remains required by the AMD-specific
+instructions.
 
 ## Required assets
 
@@ -18,12 +19,20 @@ can be disqualified.
       architecture flow, the telemetry truth table with source tags, and the
       AMD proof artifacts. Export as PDF, keep text machine-readable (no
       screenshots of text).
+- [ ] **16:9 cover image** — final branded submission cover.
+- [ ] **Paste-ready form copy** — title (max 50), short description (max 255),
+      long description (100+ words), technologies, and additional information.
 
-## Optional but recommended
+## Public delivery path
 
-- [ ] **Hosted URL** — demo console (`apps/demo_console/`) on Streamlit
-      Community Cloud or Hugging Face Spaces. It replays captured AMD
-      telemetry; no live model endpoint is required or implied.
+- [ ] **Public image** — `ghcr.io/kaaval-ai/kaaval-assurance:act-ii` plus an
+      immutable `sha-<commit>` tag and recorded digest, all from final `main`.
+- [ ] **Clean pull test** — pull the digest into a clean Finch VM with no
+      repository files or secrets; verify Evidence Baseline, `/api/health`,
+      Live Session onboarding, fail-closed rejection, and non-root UID.
+- [ ] **Hosted URL** — deploy the same image digest. Evidence Baseline must
+      load without credentials; public Fireworks use is BYOK and explicitly
+      spend-confirmed.
 
 ## AMD proof artifacts (mandatory usage evidence)
 
@@ -37,7 +46,10 @@ can be disqualified.
 
 ## Final pass
 
-- [ ] `pytest` green.
+- [x] Local acceptance: 361 tests, TypeScript, Vite build, dependency checks,
+      AMD checksums, and `linux/amd64` container smoke are green.
 - [ ] Forbidden-string and secrets grep clean.
+- [ ] Public repository, image, hosted URL, deck, and video pass an incognito
+      access/link audit.
 - [ ] Deck, video, README, and console all tell the same numbers — every
       claim maps to a stored telemetry field.

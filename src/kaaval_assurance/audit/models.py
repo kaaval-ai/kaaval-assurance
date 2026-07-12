@@ -71,7 +71,7 @@ class AuditCalibrationReport(BaseModel):
     A false positive is a fail verdict against a gold answer (the deterministic
     aggregation already folds major/critical violations into fail). This is a
     hard gate: if status is not "passed", audit results may be shown but must
-    not be trusted as a Layer-2 signal.
+    not be presented as trusted evidence. Audit is display-only in this build.
     """
 
     total_gold: int
@@ -85,13 +85,12 @@ class AuditCalibrationReport(BaseModel):
 
 class AuditRunSummary(BaseModel):
     """Sampled offline audit summary for one eval run. Reporting only —
-    audit signals do not enter Layer-2 EWMA unless trusted is True, and the
-    EWMA feed itself is a later, separately gated step.
+    audit signals do not enter Layer-2 EWMA in this build.
     """
 
     audit_provider: str
     audit_model_id: str
-    trusted: bool  # calibration passed; untrusted results are display-only
+    trusted: bool  # calibration passed; all results remain display-only
     calibration: AuditCalibrationReport
     sample_rate: float
     seed: int

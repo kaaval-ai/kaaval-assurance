@@ -354,7 +354,7 @@ const FLOWS = [
    why:"audit_sampled, audit_result, audit_violations land on the trajectory row — the audit trail lives with the evidence it audited.",
    payload:'UPDATE trajectory SET audit_sampled=1,\n  audit_result=’fail’, audit_violations=[...]'},
   {edge:"store-telemetry", color:"violet", title:"A statistical sensor, not a judge", tag:"measured",
-   why:"Audit results aggregate into trend statistics. No single challenger verdict gates a response — it informs routing only through calibrated, thresholded aggregates.",
+   why:"Audit results aggregate into display-only trend statistics. No challenger verdict gates a response or feeds routing in this build; two-sided calibration and audit-to-routing integration remain roadmap work.",
    payload:'{ "audit": { "sampled": 2, "failed": 1,\n  "trusted": true,\n  "violations_by_severity": {"major": 1} } }'},
  ]},
  {name:"5 · AMD Proof Run", steps:[
