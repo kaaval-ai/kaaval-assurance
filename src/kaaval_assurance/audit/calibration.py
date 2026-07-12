@@ -3,7 +3,8 @@
 Run the challenger against known-good gold answers. Every fail verdict
 against a gold answer is a false positive ("critic finds something because
 it was told to critique"). If the false-positive rate exceeds the threshold,
-calibration fails and audit results must not be trusted as a routing signal.
+calibration fails and audit results must not be presented as trusted evidence.
+All audit results remain display-only in this build regardless of calibration.
 """
 
 from ..contracts import get_contract

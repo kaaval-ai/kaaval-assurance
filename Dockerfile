@@ -28,9 +28,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.11-slim AS runtime
 
+ARG VCS_REF=unknown
+
 LABEL org.opencontainers.image.title="Kaaval Assurance" \
       org.opencontainers.image.description="Contract-gated inference assurance plane" \
       org.opencontainers.image.source="https://github.com/kaaval-ai/kaaval-assurance" \
+      org.opencontainers.image.revision="$VCS_REF" \
       org.opencontainers.image.licenses="MIT"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

@@ -53,11 +53,28 @@ ghcr.io/kaaval-ai/kaaval-assurance:act-ii
 Build and push after local smoke passes:
 
 ```bash
-finch build -t ghcr.io/kaaval-ai/kaaval-assurance:act-ii .
+VCS_REF="$(git rev-parse HEAD)"
+finch build --build-arg VCS_REF="$VCS_REF" \
+  -t ghcr.io/kaaval-ai/kaaval-assurance:act-ii \
+  -t "ghcr.io/kaaval-ai/kaaval-assurance:sha-${VCS_REF:0:12}" .
 finch push ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+finch push "ghcr.io/kaaval-ai/kaaval-assurance:sha-${VCS_REF:0:12}"
 ```
 
 If using Docker instead of Finch, replace `finch` with `docker`.
+
+Record the registry digest after pushing and use it for the clean-machine
+acceptance test:
+
+```bash
+docker buildx imagetools inspect ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+docker pull ghcr.io/kaaval-ai/kaaval-assurance@sha256:<published-digest>
+docker run --rm -p 8080:8000 \
+  ghcr.io/kaaval-ai/kaaval-assurance@sha256:<published-digest>
+```
+
+The digest, immutable `sha-<commit>` tag, and `org.opencontainers.image.revision`
+label must all resolve to the same final merged commit.
 
 ## Hosting options
 

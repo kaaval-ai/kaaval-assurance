@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
+  ChevronDown,
   Loader2,
   PlugZap,
   Radio,
@@ -25,6 +26,7 @@ import {
 } from '../api';
 import { CONTRACTS } from '../mock/data';
 import ContractGate from './ContractGate';
+import LiveAssuranceReceipt from './LiveAssuranceReceipt';
 import ModelComparison from './ModelComparison';
 import PipelinePanel from './PipelinePanel';
 import ProviderSwitchboard from './ProviderSwitchboard';
@@ -151,6 +153,7 @@ export default function LiveRunPanel({ run, onRunComplete }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [isResetting, setIsResetting] = useState(false);
+  const [internalsOpen, setInternalsOpen] = useState(false);
 
   useEffect(() => {
     fetchCapabilities()
@@ -347,14 +350,28 @@ export default function LiveRunPanel({ run, onRunComplete }: Props) {
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <PipelinePanel trajectory={run.trajectory} telemetry={run.telemetry} />
-            <ProviderSwitchboard telemetry={run.telemetry} usedSample={false} />
+            <TelemetryTruth telemetry={run.telemetry} usedSample={false} />
           </div>
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-            <ContractGate telemetry={run.telemetry} />
-            <div className="lg:col-span-2"><TelemetryTruth telemetry={run.telemetry} usedSample={false} /></div>
+          <LiveAssuranceReceipt run={run} />
+
+          <div className="panel overflow-hidden border-accent/30">
+            <button
+              type="button"
+              onClick={() => setInternalsOpen(!internalsOpen)}
+              className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-surface/50"
+            >
+              <span className="text-sm font-heading font-semibold tracking-wider text-accent">ADDITIONAL LIVE INTERNALS</span>
+              <ChevronDown className={`h-4 w-4 text-muted transition-transform ${internalsOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {internalsOpen && (
+              <div className="space-y-3 border-t border-border/40 bg-surface/30 p-3 md:p-4">
+                <ProviderSwitchboard telemetry={run.telemetry} usedSample={false} />
+                <ContractGate telemetry={run.telemetry} />
+                <ModelComparison telemetry={run.telemetry} usedSample={false} />
+                <TrajectoryReplay rows={run.trajectory} label="LIVE RUN" escalationReason={run.result.escalated ? run.result.routing_reason : null} autoPlay />
+              </div>
+            )}
           </div>
-          <ModelComparison telemetry={run.telemetry} usedSample={false} />
-          <TrajectoryReplay rows={run.trajectory} label="LIVE RUN" escalationReason={run.result.escalated ? run.result.routing_reason : null} autoPlay />
         </>
       )}
     </div>

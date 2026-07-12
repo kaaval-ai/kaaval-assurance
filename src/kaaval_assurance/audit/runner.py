@@ -4,9 +4,9 @@ Runs after the live path has completed — it never gates a response. Only
 Layer-1-passing final attempts are eligible; a seeded RNG samples them at
 the configured rate; results persist into the trajectory audit columns.
 
-Audit results feed Layer-2 EWMA only when calibration passed (trusted=True),
-and that feed is a separate, later step — this runner reports and persists,
-nothing else.
+Audit results are display-only in this build. This runner reports and persists
+them; it never gates a response or feeds Layer-2 routing. Two-sided calibration
+and audit-to-routing integration remain roadmap work.
 """
 
 import json
