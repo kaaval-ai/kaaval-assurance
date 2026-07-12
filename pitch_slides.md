@@ -25,7 +25,7 @@ style: |
     <em style="color: #ffd166; font-size: 14px; font-family: monospace;">Verify, not predict. Receipts, not promises.</em>
   </div>
   <div>
-    <img src="assets/slide1-hero.png" style="width: 100%; border-radius: 12px; border: 1px solid #10B981; box-shadow: 0 0 15px rgba(16,185,129,0.2);" />
+    <img src="assets/slide1-hero.png" style="width: 100%; max-height: 380px; object-fit: contain; border-radius: 12px; border: 1px solid #10B981; box-shadow: 0 0 15px rgba(16,185,129,0.2);" />
   </div>
 </div>
 
@@ -40,7 +40,7 @@ style: |
     <p><strong>The Business Risk:</strong> As agents handle refunds, claims, and quotes, quality drift translates directly into financial exposure.</p>
   </div>
   <div>
-    <img src="assets/slide2-problem.png" style="width: 100%; border-radius: 12px; border: 1px solid #FF8C42; box-shadow: 0 0 15px rgba(255,140,66,0.25);" />
+    <img src="assets/slide2-problem.png" style="width: 100%; max-height: 380px; object-fit: contain; border-radius: 12px; border: 1px solid #FF8C42; box-shadow: 0 0 15px rgba(255,140,66,0.25);" />
   </div>
 </div>
 
@@ -58,7 +58,7 @@ style: |
     </ol>
   </div>
   <div>
-    <img src="assets/slide3-solution.png" style="width: 100%; border-radius: 12px; border: 1px solid #10B981; box-shadow: 0 0 15px rgba(16,185,129,0.25);" />
+    <img src="assets/slide3-solution.png" style="width: 100%; max-height: 380px; object-fit: contain; border-radius: 12px; border: 1px solid #10B981; box-shadow: 0 0 15px rgba(16,185,129,0.25);" />
   </div>
 </div>
 
@@ -76,7 +76,7 @@ style: |
     Calibration-gated adversarial auditing. Critic model challenges a 10% sample of accepted answers.</p>
   </div>
   <div>
-    <img src="assets/kaaval-architecture-flow.svg" style="width: 100%; border-radius: 8px; background-color: #060a11; border: 1px solid #172233; padding: 10px;" />
+    <img src="assets/kaaval-architecture-flow.svg" style="width: 100%; max-height: 350px; object-fit: contain; border-radius: 8px; background-color: #060a11; border: 1px solid #172233; padding: 10px;" />
   </div>
 </div>
 
