@@ -260,18 +260,19 @@ lives in this repo's telemetry artifacts and the deck built from them.
 
 ## Quickstart
 
+**The strongest way to evaluate Kaaval Assurance is to pull the public container. You can inspect the measured AMD evidence immediately without any credentials. Connect your own model endpoint only when you want to run live assurance.**
+
 ### 1. Run the submitted container
 The judge path is container-first. It does **not** require cloning the repo or
 installing Python/Node dependencies. Captured evidence opens immediately;
-live execution starts after the user connects Fireworks, Ollama, or vLLM.
+live execution starts after you connect Fireworks, Ollama, or vLLM.
 
 ```bash
-docker pull ghcr.io/kaaval-ai/kaaval-assurance:act-ii
-docker run --rm -p 8080:8000 ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+docker pull ghcr.io/kaaval-ai/kaaval-assurance:latest
+docker run --rm -p 8080:8000 ghcr.io/kaaval-ai/kaaval-assurance:latest
 ```
 
 Open:
-
 ```text
 http://localhost:8080
 ```
@@ -284,24 +285,7 @@ process. It provides two product modes:
 - **Live Session** opens a runtime connection dialog and executes the real
   assurance pipeline against Fireworks BYOK or a host-local Ollama/vLLM server.
 
-The image defaults to safe interactive onboarding:
-
-```text
-KAAVAL_DEPLOYMENT_MODE=local
-KAAVAL_LIVE_RUNS_ENABLED=1
-KAAVAL_ALLOW_BYOK=1
-KAAVAL_ALLOW_CUSTOM_ENDPOINTS=0
-KAAVAL_ALLOW_PAID_REMOTE=0
-KAAVAL_ALLOW_ARTIFACT_EXPORT=0
-KAAVAL_ALLOW_DIAGNOSTIC_RAW=0
-PORT=8000
-```
-
-BYOK credentials exist only in backend memory for 15 idle minutes and are
-never written to telemetry, SQLite, artifacts, logs, or browser storage.
-Fireworks still requires per-run spend confirmation. The separate
-`KAAVAL_ALLOW_PAID_REMOTE` gate applies only when an operator supplies the
-server's own Fireworks credential through environment configuration.
+The image defaults to safe interactive onboarding. The application **boots without secrets or model downloads**. BYOK credentials (e.g., Fireworks API key) exist only in backend memory for 15 idle minutes and are never written to telemetry, SQLite, artifacts, logs, or browser storage. Fireworks still requires per-run spend confirmation.
 
 ### 2. Connect local Gemma through Ollama or vLLM
 The image does not bundle model weights. Start Gemma in Ollama or vLLM on the
@@ -321,7 +305,7 @@ Then run Kaaval with host networking available:
 ```bash
 docker run --rm -p 8080:8000 \
   --add-host=host.docker.internal:host-gateway \
-  ghcr.io/kaaval-ai/kaaval-assurance:act-ii
+  ghcr.io/kaaval-ai/kaaval-assurance:latest
 ```
 
 In the UI, use `http://host.docker.internal:8000/v1` for vLLM or
