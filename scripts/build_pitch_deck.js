@@ -263,87 +263,70 @@ const deck = newDeck();
   s.addText("03", { x: 12.3, y: 7.1, w: 0.5, h: 0.3, fontFace: FONT, fontSize: 10, color: C.body, align: "right", margin: 0 });
 }
 
-// ---------- Slide 4: 3-layer engine, native architecture diagram ----------
+// ---------- Slide 4: the 5-step assurance path — what + why per step ----------
 {
   const s = deck.addSlide({ masterName: "BASE" });
-  addKicker(s, "The product");
-  addTitle(s, "One gate turns model traffic into governed decisions.");
-  s.addText("The request path stays deterministic; deeper audit remains sampled and offline.", {
+  addKicker(s, "How it works");
+  addTitle(s, "The 5-step assurance path.");
+  s.addText("What each step does — and what breaks without it.", {
     x: 0.5, y: 1.55, w: 12, h: 0.4, fontFace: FONT, fontSize: 14, color: C.body, margin: 0,
   });
 
-  const layers = [
-    { n: "1", t: "Conformance Gate", d: "Deterministic JSON shape, enums, ranges, and grounding checks. Pure code — no model judges another model inline.", c: C.accent },
-    { n: "2", t: "Adaptive EWMA Routing", d: "Tracks per-category contract-failure drift in real time; tightens or pre-routes to remote when a category keeps failing.", c: C.ink },
-    { n: "3", t: "Sampled Offline Audit", d: "FP-calibrated challenger samples accepted answers. Display-only — two-sided calibration and audit-to-routing are roadmap work, not shipped.", c: C.body },
+  const steps = [
+    { n: "1", name: "STRUGGLE", c: C.danger,
+      what: "An open-weight model on AMD answers first.",
+      why: "Cloud-for-everything is the cost you're trying to avoid. Most answers don't need it." },
+    { n: "2", name: "CATCH", c: C.configured,
+      what: "Layer 1 checks the contract in code — shape, enums, ranges, policy rules. No model judges a model.",
+      why: "A fluent wrong answer passes every “looks safe” filter. Only an explicit contract catches it." },
+    { n: "3", name: "RESCUE", c: C.measured,
+      what: "Only a failed answer pays for the stronger remote model — checked by the identical contract.",
+      why: "Paying for the expensive model every call is waste. Trusting it blindly is the same risk again." },
+    { n: "4", name: "ADAPT", c: "1D4ED8",
+      what: "EWMA tracks per-category failure; a category that keeps failing gets pre-routed to remote.",
+      why: "Model quality drifts silently between versions. Static routing can't see it coming." },
+    { n: "5", name: "PROVE", c: "7C3AED",
+      what: "Provider, cost, tokens, latency, checks, and routing reason are stored as a replayable receipt.",
+      why: "“The AI decided” is not a defense. You need to reconstruct exactly what happened, later." },
   ];
-  let ly = 2.15;
-  layers.forEach((l) => {
+
+  const n = steps.length, gap = 0.18, cw = (12.3 - gap * (n - 1)) / n; // 5 cards
+  const cy = 2.2, ch = 4.05;
+  steps.forEach((st, i) => {
+    const x = 0.5 + i * (cw + gap);
     s.addShape("roundRect", {
-      x: 0.5, y: ly, w: 0.5, h: 0.5, rectRadius: 0.25,
-      fill: { color: l.c }, line: { color: l.c, width: 0 },
+      x, y: cy, w: cw, h: ch, rectRadius: 0.08,
+      fill: { color: C.cardBg }, line: { color: C.cardBorder, width: 1 },
     });
-    s.addText(l.n, { x: 0.5, y: ly, w: 0.5, h: 0.5, fontFace: FONT, fontSize: 16, bold: true, color: "FFFFFF", align: "center", valign: "middle", margin: 0 });
-    s.addText(l.t, { x: 1.15, y: ly - 0.03, w: 5, h: 0.4, fontFace: FONT, fontSize: 15, bold: true, color: C.ink, margin: 0 });
-    s.addText(l.d, { x: 1.15, y: ly + 0.38, w: 5.15, h: 0.75, fontFace: FONT, fontSize: 11.5, color: C.body, lineSpacingMultiple: 1.25, valign: "top", margin: 0 });
-    ly += 1.28;
+    // number badge
+    s.addShape("roundRect", { x: x + 0.2, y: cy + 0.22, w: 0.42, h: 0.42, rectRadius: 0.21, fill: { color: st.c }, line: { color: st.c, width: 0 } });
+    s.addText(st.n, { x: x + 0.2, y: cy + 0.22, w: 0.42, h: 0.42, fontFace: FONT, fontSize: 14, bold: true, color: "FFFFFF", align: "center", valign: "middle", margin: 0 });
+    s.addText(st.name, { x: x + 0.72, y: cy + 0.26, w: cw - 0.9, h: 0.36, fontFace: FONT, fontSize: 13, bold: true, color: st.c, valign: "middle", charSpacing: 0.5, margin: 0 });
+    // divider
+    s.addShape("line", { x: x + 0.2, y: cy + 0.82, w: cw - 0.4, h: 0, line: { color: C.cardBorder, width: 0.75 } });
+    // WHAT
+    s.addText("WHAT", { x: x + 0.2, y: cy + 0.95, w: cw - 0.4, h: 0.25, fontFace: FONT, fontSize: 9, bold: true, color: C.ink, charSpacing: 1, margin: 0 });
+    s.addText(st.what, { x: x + 0.2, y: cy + 1.2, w: cw - 0.4, h: 1.35, fontFace: FONT, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.25, valign: "top", margin: 0 });
+    // WHY
+    s.addText("WHY", { x: x + 0.2, y: cy + 2.55, w: cw - 0.4, h: 0.25, fontFace: FONT, fontSize: 9, bold: true, color: C.accent, charSpacing: 1, margin: 0 });
+    s.addText(st.why, { x: x + 0.2, y: cy + 2.8, w: cw - 0.4, h: 1.15, fontFace: FONT, fontSize: 10.5, color: C.body, lineSpacingMultiple: 1.25, valign: "top", margin: 0 });
+    // chevron between cards
+    if (i < n - 1) {
+      s.addText("›", { x: x + cw - 0.02, y: cy + ch / 2 - 0.3, w: gap + 0.04, h: 0.6, fontFace: FONT, fontSize: 20, bold: true, color: C.accent, align: "center", valign: "middle", margin: 0 });
+    }
   });
 
-  // Native pipeline diagram, right side — fixed box, cannot overflow.
-  const dx = 6.7, dy = 2.15, dw = 6.1, dh = 4.5;
-  s.addShape("roundRect", {
-    x: dx, y: dy, w: dw, h: dh, rectRadius: 0.1,
-    fill: { color: "0B1220" }, line: { color: "1F2937", width: 1 },
-  });
-  s.addText("INFERENCE ASSURANCE FLOW", {
-    x: dx, y: dy + 0.25, w: dw, h: 0.35, fontFace: FONT, fontSize: 13, bold: true, color: "FBBF24",
-    align: "center", charSpacing: 1, margin: 0,
-  });
-
-  // Linear row (Task Input -> Provider Router -> Layer 1 Verifier) plus one
-  // escalation branch directly below Layer 1 Verifier. Every arrow is
-  // axis-aligned between two node edges - no diagonals, nothing can cross
-  // through a box.
-  const rowY = dy + 1.1, rowH = 0.85, rowMidY = rowY + rowH / 2;
-  const nodes = [
-    { x: dx + 0.35, y: rowY, w: 1.5, h: rowH, t: "Task Input", sub: "refund request", c: "38BDF8" },
-    { x: dx + 2.15, y: rowY, w: 1.7, h: rowH, t: "Provider Router", sub: "tier policy", c: "38BDF8" },
-    { x: dx + 4.15, y: rowY, w: 1.7, h: rowH, t: "Layer 1 Verifier", sub: "contract checks", c: "38BDF8" },
-    { x: dx + 4.15, y: rowY + 1.5, w: 1.7, h: rowH, t: "Fireworks Tier", sub: "escalation, re-verified", c: "FBBF24" },
-  ];
-  nodes.forEach((n) => {
-    s.addShape("roundRect", {
-      x: n.x, y: n.y, w: n.w, h: n.h, rectRadius: 0.08,
-      fill: { color: "111827" }, line: { color: n.c, width: 1.25 },
-    });
-    s.addText(n.t, { x: n.x, y: n.y + 0.14, w: n.w, h: 0.35, fontFace: FONT, fontSize: 11, bold: true, color: "FFFFFF", align: "center", lineSpacingMultiple: 1, margin: 0 });
-    s.addText(n.sub, { x: n.x + 0.08, y: n.y + 0.52, w: n.w - 0.16, h: 0.28, fontFace: FONT, fontSize: 8, color: "9CA3AF", align: "center", margin: 0 });
-  });
-  const arrow = (x1, y1, x2, y2, color) => s.addShape("line", {
-    x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1),
-    line: { color, width: 1.5, endArrowType: "triangle" },
-    flipV: y2 < y1,
-  });
-  // Task Input -> Provider Router (edge to edge)
-  arrow(dx + 1.85, rowMidY, dx + 2.15, rowMidY, "38BDF8");
-  // Provider Router -> Layer 1 Verifier (edge to edge)
-  arrow(dx + 3.85, rowMidY, dx + 4.15, rowMidY, "38BDF8");
-  // Layer 1 Verifier -> Fireworks Tier (down, left side of the shared column)
-  arrow(dx + 4.55, rowY + rowH, dx + 4.55, rowY + 1.5, "FBBF24");
-  // Fireworks Tier -> Layer 1 Verifier (up, right side - offset so arrows never touch)
-  arrow(dx + 5.4, rowY + 1.5, dx + 5.4, rowY + rowH, "FBBF24");
-  s.addText("fail →", { x: dx + 4.15, y: rowY + rowH + 0.08, w: 0.65, h: 0.22, fontFace: FONT, fontSize: 7.5, color: "FBBF24", align: "center", margin: 0 });
-  s.addText("re-verified", { x: dx + 4.95, y: rowY + rowH + 0.08, w: 0.9, h: 0.22, fontFace: FONT, fontSize: 7.5, color: "FBBF24", align: "center", margin: 0 });
-
-  s.addText("Only Layer 1 gates acceptance. Provider errors and double failure return NO SAFE ANSWER.", {
-    x: dx + 0.35, y: dy + 3.55, w: dw - 0.7, h: 0.65,
-    fontFace: FONT, fontSize: 10, color: "D1D5DB", lineSpacingMultiple: 1.3, margin: 0,
-  });
+  // Honest boundary band — where the 3 layers actually gate.
+  s.addShape("roundRect", { x: 0.5, y: 6.45, w: 12.3, h: 0.5, rectRadius: 0.08, fill: { color: C.navy }, line: { color: C.navy, width: 0 } });
+  s.addText([
+    { text: "Only Layer 1 (Catch) gates acceptance.  ", options: { bold: true, color: "FFFFFF" } },
+    { text: "Adapt is Layer 2. A sampled offline audit (Layer 3) is display-only — it never gates a live answer.", options: { color: "CBD5E1" } },
+  ], { x: 0.8, y: 6.45, w: 11.7, h: 0.5, fontFace: FONT, fontSize: 11, valign: "middle", margin: 0, wrap: false });
 
   s.addText("Implemented path: AssurancePipeline → Router → Verifier → TrajectoryStore", {
-    x: 0.5, y: 6.95, w: 12, h: 0.3, fontFace: FONT, fontSize: 10, italic: true, color: C.body, margin: 0,
+    x: 0.5, y: 7.05, w: 12, h: 0.28, fontFace: FONT, fontSize: 9.5, italic: true, color: C.body, margin: 0,
   });
-  s.addText("04", { x: 12.3, y: 7.1, w: 0.5, h: 0.3, fontFace: FONT, fontSize: 10, color: C.body, align: "right", margin: 0 });
+  s.addText("04", { x: 12.3, y: 7.05, w: 0.5, h: 0.28, fontFace: FONT, fontSize: 10, color: C.body, align: "right", margin: 0 });
 }
 
 // ---------- Slide 5: Measured proof, correctly source-tagged ----------
