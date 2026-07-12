@@ -41,8 +41,8 @@ export default function ProofStrip({ payload }: { payload: DashboardPayload | nu
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-3 gap-2">
-        {metrics.filter(m => ['AMD proof', 'Cost avoided', 'Final contract-conformance'].includes(m.label)).map((metric) => {
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+        {metrics.filter(m => ['AMD proof', 'Gemma runtime', 'Cost avoided', 'Final contract-conformance'].includes(m.label)).map((metric) => {
           const Icon = ICONS[metrics.indexOf(metric)] ?? ShieldCheck;
           return (
             <div key={metric.label} className={`rounded-lg border px-3 py-2.5 ${TONE_CLASS[metric.tone]}`}>
