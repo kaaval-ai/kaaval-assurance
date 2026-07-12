@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Shield, LayoutDashboard, BarChart3, RefreshCw, Radio, Archive } from 'lucide-react';
+import { Shield, RefreshCw, Radio, Archive } from 'lucide-react';
 import type { ConnectionStatus, DataLabel } from '../types';
 import { DataLabelBadge } from './Tags';
 
 export type AppMode = 'captured' | 'live';
-export type DashboardView = 'summary' | 'telemetry';
-
 interface HeaderProps {
   mode: AppMode;
   onModeChange: (mode: AppMode) => void;
-  view: DashboardView;
-  onViewChange: (view: DashboardView) => void;
   label: DataLabel | 'LIVE RUN' | null;
   status: ConnectionStatus;
   onRefresh: () => void;
@@ -18,7 +14,7 @@ interface HeaderProps {
 }
 
 export default function Header({
-  mode, onModeChange, view, onViewChange, label, status, onRefresh, refreshing,
+  mode, onModeChange, label, status, onRefresh, refreshing,
 }: HeaderProps) {
   const [time, setTime] = useState(() =>
     new Date().toLocaleTimeString('en-GB', { hour12: false })
@@ -69,19 +65,6 @@ export default function Header({
             Live Session
           </button>
         </div>
-
-        {mode === 'captured' && (
-          <div className="flex items-center bg-elevated rounded-md border border-border p-0.5">
-            <button onClick={() => onViewChange('summary')} className={seg(view === 'summary')}>
-              <LayoutDashboard className="w-3 h-3" />
-              Summary
-            </button>
-            <button onClick={() => onViewChange('telemetry')} className={seg(view === 'telemetry')}>
-              <BarChart3 className="w-3 h-3" />
-              Telemetry
-            </button>
-          </div>
-        )}
 
         <button
           onClick={onRefresh}
