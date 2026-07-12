@@ -45,9 +45,6 @@ export default function SummaryDashboard({ payload }: { payload: DashboardPayloa
     <div className="space-y-3">
       <ProofStrip payload={payload} />
       <DemoScriptRail payload={payload} />
-      <DemoScriptRail payload={payload} />
-
-
 
       {/* Deep Dive Accordion */}
       <div className="panel panel-sweep overflow-hidden mt-6 border-accent/30">
