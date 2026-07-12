@@ -12,7 +12,7 @@ instructions.
 - [ ] **GitHub repository URL** — public, MIT LICENSE, README current, no
       secrets (`.env` untracked), sample demo data present so the repo runs
       standalone.
-- [ ] **Demo video (< 5 min)** — follow [demo-script.md](demo-script.md);
+- [ ] **Demo video (< 5 min)** — follow the `demo_video_script_narrative.md` in your artifacts;
       Our 3:30 planned video perfectly fits. Both honesty lines spoken (synthetic shift data; Layer 3 is a sampled
       offline audit signal, not a judge of record).
 - [ ] **Slide deck PDF (~5 slides)** — pre-screening reads this: include the
