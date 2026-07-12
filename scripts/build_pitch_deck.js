@@ -374,7 +374,56 @@ const deck = newDeck();
   s.addText("05", { x: 12.3, y: 7.1, w: 0.5, h: 0.3, fontFace: FONT, fontSize: 10, color: C.body, align: "right", margin: 0 });
 }
 
-// ---------- Slide 6: Delivery + honest roadmap ----------
+// ---------- Slide 6: Market / why now — the trust gap is the wedge ----------
+{
+  const s = deck.addSlide({ masterName: "BASE" });
+  addKicker(s, "Why now");
+  addTitle(s, "Enterprises deployed AI. They don't trust it unattended.");
+  s.addText("Every AI answer is becoming a business action — refunds, approvals, claims, severity calls. Adoption raced ahead of governance.", {
+    x: 0.5, y: 1.55, w: 12.3, h: 0.6, fontFace: FONT, fontSize: 14, color: C.body, lineSpacingMultiple: 1.25, margin: 0,
+  });
+
+  // Three sourced stat callouts
+  const stats = [
+    { v: "88%", l: "of contact centers already run AI", sub: "adoption is not the question" },
+    { v: "25%", l: "have fully integrated it unattended", sub: "the trust gap — Kaaval's wedge", hi: true },
+    { v: "$15B", l: "AI customer-service market, 2026", sub: "the surface Kaaval attaches to" },
+  ];
+  const sw = 3.95, sx0 = 0.5, sy = 2.35, gap = 0.23;
+  stats.forEach((st, i) => {
+    const x = sx0 + i * (sw + gap);
+    s.addShape("roundRect", {
+      x, y: sy, w: sw, h: 1.85, rectRadius: 0.1,
+      fill: { color: st.hi ? C.measuredBg : C.cardBg }, line: { color: st.hi ? C.measuredBorder : C.cardBorder, width: st.hi ? 1.5 : 1 },
+    });
+    s.addText(st.v, { x, y: sy + 0.22, w: sw, h: 0.7, fontFace: FONT, fontSize: 40, bold: true, color: st.hi ? C.measured : C.accent, align: "center", margin: 0 });
+    s.addText(st.l, { x: x + 0.2, y: sy + 1.0, w: sw - 0.4, h: 0.5, fontFace: FONT, fontSize: 12.5, bold: true, color: C.ink, align: "center", lineSpacingMultiple: 1.1, margin: 0 });
+    s.addText(st.sub, { x: x + 0.2, y: sy + 1.48, w: sw - 0.4, h: 0.3, fontFace: FONT, fontSize: 10.5, italic: true, color: st.hi ? C.measured : C.body, align: "center", margin: 0 });
+  });
+
+  // Wedge -> expansion band
+  s.addShape("roundRect", { x: 0.5, y: 4.6, w: 12.3, h: 1.75, rectRadius: 0.1, fill: { color: C.cardBg }, line: { color: C.cardBorder, width: 1 } });
+  const wedge = [
+    { t: "BEACHHEAD", c: C.accent, h: "AI platform teams", d: "Refund, triage, severity decisions where a wrong answer triggers a real action." },
+    { t: "EXPAND", c: "1D4ED8", h: "Regulated verticals", d: "Support, telecom, finance, healthcare — every flow where “probably right” is a liability." },
+    { t: "VISION", c: C.measured, h: "Every AI action, a receipt", d: "The acceptance layer on top of inference spend — not the whole market, the governance slice of it." },
+  ];
+  const ww = 3.85, wx0 = 0.75, wy = 4.85;
+  wedge.forEach((col, i) => {
+    const x = wx0 + i * (ww + 0.18);
+    s.addText(col.t, { x, y: wy, w: ww, h: 0.3, fontFace: FONT, fontSize: 10, bold: true, color: col.c, charSpacing: 1, margin: 0 });
+    s.addText(col.h, { x, y: wy + 0.3, w: ww, h: 0.35, fontFace: FONT, fontSize: 14, bold: true, color: C.ink, margin: 0 });
+    s.addText(col.d, { x, y: wy + 0.68, w: ww, h: 0.75, fontFace: FONT, fontSize: 11, color: C.body, lineSpacingMultiple: 1.25, valign: "top", margin: 0 });
+    if (i < 2) s.addText("→", { x: x + ww - 0.02, y: wy + 0.25, w: 0.2, h: 0.5, fontFace: FONT, fontSize: 18, bold: true, color: C.accent, align: "center", margin: 0 });
+  });
+
+  s.addText("Sources: AI customer-service market reports 2026 (Lorikeet, CMSWire, EZY-CALLS) · adoption/integration split publicly reported. Kaaval's wedge is the assurance layer, not the whole market.", {
+    x: 0.5, y: 6.95, w: 12.3, h: 0.3, fontFace: FONT, fontSize: 9.5, italic: true, color: C.body, margin: 0,
+  });
+  s.addText("06", { x: 12.3, y: 7.1, w: 0.5, h: 0.3, fontFace: FONT, fontSize: 10, color: C.body, align: "right", margin: 0 });
+}
+
+// ---------- Slide 7: Delivery + honest roadmap ----------
 {
   const s = deck.addSlide({ masterName: "BASE" });
   addKicker(s, "Runnable delivery");
@@ -427,7 +476,7 @@ const deck = newDeck();
   s.addText("github.com/kaaval-ai/kaaval-assurance · Track 3 — Unicorn / Open Innovation", {
     x: 0.5, y: 7.1, w: 8, h: 0.3, fontFace: FONT, fontSize: 10, color: C.body, margin: 0,
   });
-  s.addText("06", { x: 12.3, y: 7.1, w: 0.5, h: 0.3, fontFace: FONT, fontSize: 10, color: C.body, align: "right", margin: 0 });
+  s.addText("07", { x: 12.3, y: 7.1, w: 0.5, h: 0.3, fontFace: FONT, fontSize: 10, color: C.body, align: "right", margin: 0 });
 }
 
 deck.writeFile({ fileName: "Kaaval-Assurance-Pitch-v2.pptx" }).then(() => {
