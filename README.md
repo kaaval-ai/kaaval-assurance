@@ -1,6 +1,6 @@
 # Kaaval Assurance
 
-![Kaaval Assurance — Agentic Guardian assurance engine for AI decisions on Gemma-first AMD workloads](assets/kaaval-assurance-illustration.png)
+![Kaaval Assurance — Agentic Guardian assurance engine for AI decisions on Gemma-first AMD workloads](assets/kaaval-assurance-banner.svg)
 
 **An Agentic Guardian assurance engine for AI decisions on Gemma-first AMD
 workloads.**
