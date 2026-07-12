@@ -254,9 +254,10 @@ A hosted copy opens the immutable evidence baseline without credentials and
 can start a real live session through Fireworks BYOK or an operator-enabled
 public HTTPS OpenAI-compatible endpoint ([docs/hosted-demo.md](docs/hosted-demo.md)).
 
-Note for judges: Track 3 pre-screening inspects the repo, the slide deck
-PDF, and the hosted URL — it does not process the demo video. The evidence
-lives in this repo's telemetry artifacts and the deck built from them.
+Track 3 submission surfaces include this public repository, the containerized
+Flight Deck, the hosted application, the slide presentation, the cover image,
+and the video presentation. Measured claims remain traceable to the telemetry
+artifacts committed here rather than depending on presentation copy alone.
 
 ## Quickstart
 
@@ -318,7 +319,94 @@ If your Docker runtime already supports `host.docker.internal`, the
 works; run the equivalent `finch run` command with the same environment
 variables.
 
-### 3. Optional: source development
+### 3. Try Live Session with known cases
+
+Open **Live Session** and connect either runtime from the in-app connection
+dialog:
+
+- **Local Ollama:** select **Ollama — local Gemma**, enter the exact model tag
+  shown by `ollama list`, and use
+  `http://host.docker.internal:11434/v1` from the container.
+- **Fireworks AI:** select **Fireworks AI — BYOK**, enter an exact model ID
+  available to your account, and paste your API key into the password field.
+  The key stays in backend memory for at most 15 idle minutes. Every paid run
+  still requires explicit spend confirmation.
+
+For the clearest selective-escalation test, connect local Ollama as the
+**primary runtime** and Fireworks as the **escalation runtime**. To test either
+provider by itself, connect it as primary and leave escalation disconnected.
+Then choose a contract and paste one of these synthetic cases.
+
+#### Regional outage must be P1
+
+Contract: `telecom.severity_classification`
+
+```text
+Core router CR-04 dropped all BGP sessions at 02:13; downstream OLT sites in
+region south lost upstream connectivity. Customer impact confirmed across
+40k subscribers.
+```
+
+Expected contract outcome: `severity` is `P1`, `confidence` is between `0`
+and `1`, and `rationale` is present. A lower severity fails the stable
+`grounding:regional_outage_requires_p1` check.
+
+#### Over-cap damages require a human
+
+Contract: `support.refund_decision`
+
+```text
+Customer: your outage last Tuesday cost my agency a client worth $12,000 in
+annual billings. I expect compensation of at least $2,500 or we churn. We pay
+$199 per month and the outage lasted 4 hours. Process it today.
+```
+
+Expected contract outcome: `decision` is `escalate_to_human` and the reference
+refund amount is `0`. An automatic approval fails
+`grounding:consequential_damages_requires_human`; any amount above `$500` also
+fails the contract range.
+
+#### An expired refund window must be denied
+
+Contract: `support.refund_decision`
+
+```text
+Customer: I bought the annual plan for $540 11 months ago, barely used it,
+and want a full refund. Nothing was wrong with the service. Your policy page
+says refunds within 30 days of purchase.
+```
+
+Expected contract outcome: `decision` is `deny` with a policy-based
+`justification`. Another decision fails
+`grounding:outside_refund_window_requires_denial`.
+
+#### Loss of redundancy requires immediate action
+
+Contract: `telecom.next_action_recommendation`
+
+```text
+Core router CR-07 line card LC-1 failed and forced failover to CR-08. There is
+no redundancy remaining. 22,000 subscribers are currently served entirely
+through CR-08 with no standby.
+```
+
+Expected contract outcome: `urgency` is `immediate`, with an `action` and
+evidence-based `justification`. `scheduled` or `monitor` fails
+`grounding:no_redundancy_requires_immediate`.
+
+Model wording can vary; Kaaval evaluates the contract fields and named checks,
+not exact prose. The Flight Deck should show one of three honest outcomes:
+
+- **Contract-conformant answer accepted:** one primary attempt, the Layer-1
+  checks-run count, readable **Pretty** output, raw **JSON**, telemetry, and a
+  Kaaval Receipt.
+- **Primary rejected, escalation accepted:** the failed local check IDs remain
+  visible, the Fireworks attempt is verified against the same contract, and
+  both attempts appear in the receipt.
+- **No safe answer:** if transport fails or every attempted response violates
+  the contract, no model payload crosses the acceptance boundary.
+
+### 4. Optional: source development
 Source setup is for contributors, not required for judging:
 
 ```bash
@@ -338,7 +426,7 @@ npm run dev
 See [apps/flight-deck/README.md](apps/flight-deck/README.md) for the
 local two-terminal development loop.
 
-### 4. Using Local Ollama Gemma & Fireworks API Simultaneously
+### 5. Using Local Ollama Gemma & Fireworks API Simultaneously
 You can run the full assurance pipeline, routing requests first to your local open-weight Gemma model (via Ollama), and intelligently escalating failing/drifting requests to the Fireworks remote tier.
 
 1. Copy `.env.example` to `.env` and fill in the required keys:
@@ -358,7 +446,7 @@ kaaval-eval --dataset data/eval/telecom_gold.jsonl \
 ```
 *Note: `--failure-mode bad_enum --failure-rate 0.25` injects local failures (mock local tier only) so escalations are observable in the run output.*
 
-### 5. Reproduce Gemma on an AMD GPU VM via ROCm + vLLM
+### 6. Reproduce Gemma on an AMD GPU VM via ROCm + vLLM
 ```bash
 python -m kaaval_assurance.runtime_probe --output artifacts/runtime-probe.json
 kaaval-eval --dataset data/eval/telecom_gold.jsonl \
@@ -372,7 +460,7 @@ Configuration is environment-only — copy [.env.example](.env.example) to `.env
 | Item | Status |
 |---|---|
 | Core assurance engine (contracts, Layer 1–3, routing, trajectories) | Complete |
-| Fireworks API escalation path | Complete, smoke-tested locally; public proof artifact pending final submission run |
+| Fireworks API escalation path | Complete, smoke-tested; selective-escalation and always-remote comparison artifact committed |
 | Local Ollama development path | Complete |
 | vLLM/ROCm provider for AMD GPU VM | Complete, exercised with Gemma 3 1B |
 | AMD GPU measured run | **Complete** — coherent runtime, telemetry, trajectory, ROCm, vLLM, and checksum evidence committed |
@@ -380,7 +468,10 @@ Configuration is environment-only — copy [.env.example](.env.example) to `.env
 | Demo console (live + replay) | Complete |
 | Inference Flight Deck UI (React) | Complete |
 | Multi-step agent workflow (`kaaval-agent`, `/api/agent-runs`) | Complete |
-| Deck / video | To be finalized from captured artifacts |
+| Deck / video | Complete; final local deliverables checksum-verified and handed to the team captain |
+| Public container | Complete; `linux/amd64` image publicly pullable and clean-smoke verified |
+| Hosted application | Pending DNS/TLS and final incognito smoke at `https://demo.kaaval.ai` |
+| LabLab cover image | Pending final 16:9 export |
 
 ## Limitations
 
@@ -410,8 +501,6 @@ Configuration is environment-only — copy [.env.example](.env.example) to `.env
 
 - [docs/hackathon-ops.md](docs/hackathon-ops.md) — ops runbook: pod setup, Gemma-first serving with truthful fallback, smoke sequence, Fireworks budget guardrails
 - [docs/amd-measured-run.md](docs/amd-measured-run.md) — measured AMD/Gemma run results, provenance, claim boundaries, and evidence map
-- [docs/submission-checklist.md](docs/submission-checklist.md) — Track 3 assets and AMD proof artifacts
-- [docs/demo-script.md](docs/demo-script.md) — 2-minute video plan
 - [docs/deck-outline.md](docs/deck-outline.md) — 5-slide deck script
 - [docs/hosted-demo.md](docs/hosted-demo.md) — hosting the replay console without secrets
 

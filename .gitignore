@@ -13,3 +13,26 @@ artifacts/
 
 # Local recording/choreography notes
 docs/demo-script.md
+docs/submission-checklist.md
+docs/submission-copy.md
+docs/private/
+
+# Generated hackathon submission deliverables
+*.mp4
+*.mp4.sha256
+*.pptx
+*.pptx.sha256
+*.pptx.inspect.ndjson
+
+# Reproducible video/deck build outputs stay local; source files remain trackable
+submission/video-final/audio/
+submission/video-final/voice-samples/*.aiff
+submission/video-final/voice-samples/*.wav
+submission/video-final/work/
+submission/video-final/previews/
+submission/video-final/previews-final/
+submission/video-browser-clip/frames/
+submission/video-browser-clip/panels/
+submission/video-storyboard/rendered/
+submission/video-storyboard/flight-deck-measured.png
+submission/deck-v2/**/slide-*.png
