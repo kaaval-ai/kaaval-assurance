@@ -35,7 +35,7 @@ export default function ProofStrip({ payload }: { payload: DashboardPayload | nu
             </span>
           </div>
           <h1 className="text-xl md:text-2xl font-heading font-bold tracking-tight text-foreground">
-            Real AMD hardware. Real Gemma inference. Kaaval proves the local tier earned the answer.
+            gemma-3-1b-it on AMD ROCm + vLLM. Receipts, not promises.
           </h1>
           <p className="max-w-3xl text-xs md:text-sm font-mono text-muted leading-relaxed">
             Local Gemma/open-weight inference runs on the AMD GPU below, routed through deterministic
