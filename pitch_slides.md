@@ -66,12 +66,19 @@ style: |
 
 ## Three-Layer Assurance Architecture
 
-- **Layer 1: Contract Conformance**
-  Structured JSON schema, enums, range checks, and grounding rules. Deterministic, code-only checks (no LLM judging LLM).
-- **Layer 2: Adaptive Drift Routing**
-  Exponentially Weighted Moving Average (EWMA) failure tracking. Automatically tightens routing thresholds when local quality degrades.
-- **Layer 3: Sampled Offline Audit**
-  Calibration-gated adversarial auditing. Critic model challenges a 10% sample of accepted answers.
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: center;">
+  <div style="font-size: 14px; line-height: 1.4;">
+    <p><strong>Layer 1: Contract Conformance</strong><br/>
+    Structured JSON schema, enums, range checks, and grounding rules. Deterministic, code-only checks (no LLM judging LLM).</p>
+    <p><strong>Layer 2: Adaptive Drift Routing</strong><br/>
+    EWMA failure tracking. Automatically tightens routing thresholds when local quality degrades.</p>
+    <p><strong>Layer 3: Sampled Offline Audit</strong><br/>
+    Calibration-gated adversarial auditing. Critic model challenges a 10% sample of accepted answers.</p>
+  </div>
+  <div>
+    <img src="assets/kaaval-architecture-flow.svg" style="width: 100%; border-radius: 8px; background-color: #060a11; border: 1px solid #172233; padding: 10px;" />
+  </div>
+</div>
 
 ---
 
