@@ -243,6 +243,20 @@ const deck = newDeck();
   s.addText("→", { x: 4.15, y: 3.9, w: 0.4, h: 0.5, fontFace: FONT, fontSize: 22, bold: true, color: C.accent, align: "center", margin: 0 });
   s.addText("→", { x: 8.18, y: 3.9, w: 0.4, h: 0.5, fontFace: FONT, fontSize: 22, bold: true, color: C.accent, align: "center", margin: 0 });
 
+  // The distinction a technical judge will actually be checking for:
+  // this reads as a content filter unless stated plainly that it isn't.
+  s.addShape("roundRect", {
+    x: 0.5, y: 6.28, w: 12.3, h: 0.55, rectRadius: 0.08,
+    fill: { color: C.navy }, line: { color: C.navy, width: 0 },
+  });
+  s.addText([
+    { text: "Not a content filter.  ", options: { bold: true, color: "FFFFFF" } },
+    { text: "A guardrail blocks bad text. Kaaval decides which model answers — and proves what it cost.", options: { color: "CBD5E1" } },
+  ], {
+    x: 0.8, y: 6.28, w: 11.7, h: 0.55, fontFace: FONT, fontSize: 12.5,
+    valign: "middle", lineSpacingMultiple: 1.15, margin: 0, wrap: false,
+  });
+
   s.addText("Synthetic hard case · support.refund_decision · deterministic grounding rule (src/kaaval_assurance/contracts/support.py)", {
     x: 0.5, y: 6.95, w: 12, h: 0.3, fontFace: FONT, fontSize: 10, italic: true, color: C.body, margin: 0,
   });
