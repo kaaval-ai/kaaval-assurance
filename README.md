@@ -141,6 +141,12 @@ deployments for customers that need model traffic and evidence to remain
 inside their boundary. Pricing and insurance impact are not validated claims;
 the build demonstrates the technical evidence layer needed to evaluate them.
 
+The post-hackathon product sequence, including the validation-gated integration
+with NanoCanary, is documented in the
+[Kaaval product roadmap](docs/kaaval-product-roadmap.md). The proposed move from
+the hackathon workspace into a durable `kaaval-ai` product workspace is a
+separate [verified migration plan](docs/kaaval-workspace-migration.md).
+
 ## AMD + Gemma execution model
 
 The system is designed around a **Gemma-first local tier on AMD GPU
@@ -262,6 +268,34 @@ artifacts committed here rather than depending on presentation copy alone.
 ## Quickstart
 
 **The strongest way to evaluate Kaaval Assurance is to pull the public container. You can inspect the measured AMD evidence immediately without any credentials. Connect your own model endpoint only when you want to run live assurance.**
+
+### 0. Assure your first call in five minutes (in-process SDK)
+
+No proxy, no container, no change to how you call your model — wrap the
+function that produces the answer:
+
+```python
+from kaaval_assurance.sdk import Kaaval, NoSafeAnswer
+
+kaaval = Kaaval(mode="shadow", receipts="kaaval-receipts.db")
+
+@kaaval.assure(contract="support.refund_decision")
+def decide_refund(task_input: str) -> str:
+    # your existing model call, unchanged
+    return client.chat.completions.create(...).choices[0].message.content
+
+answer = decide_refund("Customer: charged twice for order #88231 …")
+print(kaaval.last_decision())   # conformant?, failed check IDs, receipt id
+```
+
+`mode="shadow"` never changes behavior — it verifies and writes a replayable
+receipt for every call, which is how a team measures its real violation rate
+before gating anything. Switch to `mode="enforce"` and a non-conformant
+answer raises `NoSafeAnswer(failures, receipt_id)` instead of returning — a
+typed failure, never an unsafe value with a warning flag. Exceptions from
+your own function are receipted as `provider_error` and re-raised unchanged.
+Escalation and drift routing stay in the pipeline/gateway tier; the SDK is
+the zero-infrastructure on-ramp.
 
 ### 1. Run the submitted container
 The judge path is container-first. It does **not** require cloning the repo or
