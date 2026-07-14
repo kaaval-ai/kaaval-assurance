@@ -6,6 +6,7 @@ GET  /api/telemetry      raw telemetry artifact with provenance
 GET  /api/trajectory     raw trajectory artifact with provenance
 GET  /api/runtime-probe  raw runtime-probe artifact with provenance
 GET  /api/capabilities   deployment/runtime onboarding capabilities
+GET  /api/ops/snapshot   redacted live-session operations snapshot
 POST /api/runtime-connections  test and hold one ephemeral runtime credential
 POST /api/runs           execute one real assurance pipeline run (gated)
 
@@ -69,6 +70,13 @@ from kaaval_assurance.providers import (  # noqa: E402
     create_remote_provider,
 )
 from kaaval_assurance.pipeline import AssurancePipeline  # noqa: E402
+from kaaval_assurance import __version__ as assurance_version  # noqa: E402
+from kaaval_assurance.ops import (  # noqa: E402
+    OpsRoutingState,
+    OpsSessionInput,
+    OpsSnapshot,
+    build_ops_snapshot,
+)
 from kaaval_assurance.router import Router
 from kaaval_assurance.trajectory import TrajectoryStore
 
@@ -79,6 +87,10 @@ DEV_ORIGINS = [
     "http://localhost:4173",
     "http://127.0.0.1:4173",
 ]
+
+# K Top's quick MVP is a polling client. Bound each active session's copied
+# history so one read-only poll cannot scan an ever-growing in-memory store.
+OPS_DECISIONS_PER_SESSION_LIMIT = 100
 
 
 class RunRequest(BaseModel):
@@ -138,7 +150,7 @@ class SessionManager:
         self.sessions: dict[str, LiveSession] = {}
         self.lock = threading.Lock()
 
-    def _cleanup(self):
+    def _cleanup(self, reserve_new_session: bool = False):
         now = time.time()
         # 15 minutes TTL
         expired = [s for s in list(self.sessions.values()) if now - s.last_accessed > 900]
@@ -147,8 +159,9 @@ class SessionManager:
                 s.store.close()
             if s.session_id in self.sessions:
                 del self.sessions[s.session_id]
-        # Max 64 sessions
-        if len(self.sessions) >= 64:
+        # Reserve capacity only when a caller is about to create a new session.
+        # Read-only snapshots and checkouts of existing sessions must not evict.
+        if reserve_new_session and len(self.sessions) >= 64:
             oldest = min(self.sessions.values(), key=lambda s: s.last_accessed)
             with oldest.lock:
                 oldest.store.close()
@@ -158,7 +171,7 @@ class SessionManager:
     @contextmanager
     def checkout(self, session_id: str | None, local: str, remote: str):
         with self.lock:
-            self._cleanup()
+            self._cleanup(reserve_new_session=session_id is None)
             if session_id:
                 if session_id in self.sessions:
                     sess = self.sessions[session_id]
@@ -187,6 +200,46 @@ class SessionManager:
                 self.sessions[session_id] = new_sess
                 return new_sess
             raise KeyError("Session not found")
+
+    def ops_inputs(self) -> list[OpsSessionInput]:
+        """Copy content-bearing session rows into a short-lived server view.
+
+        Only ``build_ops_snapshot`` sees these rows. The public record produced
+        from them omits task input, model output, exception bodies, credentials,
+        connection identifiers, and local paths.
+        """
+
+        snapshots: list[OpsSessionInput] = []
+        with self.lock:
+            self._cleanup()
+            for sess in self.sessions.values():
+                with sess.lock:
+                    rows, window_truncated = sess.store.recent_request_window(
+                        OPS_DECISIONS_PER_SESSION_LIMIT
+                    )
+                    routing = []
+                    for category in sorted({row.category for row in rows}):
+                        policy = sess.router.current_policy_for(category)
+                        routing.append(
+                            OpsRoutingState(
+                                session_id=sess.session_id,
+                                category=category,
+                                verifier_failure_ewma=(
+                                    sess.router.online_drift_for(category)
+                                ),
+                                action=policy.action,
+                                reason=policy.reason,
+                            )
+                        )
+                    snapshots.append(
+                        OpsSessionInput(
+                            session_id=sess.session_id,
+                            rows=tuple(rows),
+                            routing=tuple(routing),
+                            window_truncated=window_truncated,
+                        )
+                    )
+        return snapshots
 
 
 session_manager = SessionManager()
@@ -344,6 +397,25 @@ def create_app(
     @app.get("/api/runtime-probe")
     def runtime_probe():
         return _artifact_response("runtime_probe")
+
+    @app.get("/api/ops/snapshot", response_model=OpsSnapshot)
+    def ops_snapshot():
+        """Return a bounded, content-free view of real live-session state."""
+
+        if deployment_mode() != "local":
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "the K Top preview is local-only; hosted operations access "
+                    "requires the future authenticated, tenant-scoped API"
+                ),
+            )
+        return build_ops_snapshot(
+            session_manager.ops_inputs(),
+            runtime_version=assurance_version,
+            deployment_mode=deployment_mode(),
+            live_runs_enabled=live_runs_enabled(),
+        )
 
     @app.post("/api/live-sessions/{session_id}/reset")
     def reset_session(session_id: str):

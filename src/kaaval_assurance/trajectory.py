@@ -174,6 +174,46 @@ class TrajectoryStore:
         rows = self._conn.execute("SELECT * FROM trajectory ORDER BY id").fetchall()
         return [self._to_row(r) for r in rows]
 
+    def recent_request_window(
+        self, request_limit: int = 100
+    ) -> tuple[list[TrajectoryRow], bool]:
+        """Return a bounded window of complete recent request groups.
+
+        ``AssurancePipeline`` records at most two contiguous attempts for one
+        request. Reading at most two rows for ``limit + 1`` requests therefore
+        uses SQLite's primary-key order without a full-history GROUP BY scan,
+        preserves complete recovery paths, and provides one truncation sentinel.
+        """
+
+        if request_limit <= 0:
+            return [], self.count() > 0
+        raw_rows = self._conn.execute(
+            "SELECT * FROM trajectory ORDER BY id DESC LIMIT ?",
+            ((request_limit + 1) * 2,),
+        ).fetchall()
+        newest_request_ids: list[str] = []
+        for raw in raw_rows:
+            request_id = str(raw["request_id"])
+            if request_id not in newest_request_ids:
+                newest_request_ids.append(request_id)
+                if len(newest_request_ids) > request_limit:
+                    break
+        truncated = len(newest_request_ids) > request_limit
+        selected = set(newest_request_ids[:request_limit])
+        rows = [raw for raw in reversed(raw_rows) if raw["request_id"] in selected]
+        return [self._to_row(row) for row in rows], truncated
+
+    def recent_request_rows(self, request_limit: int = 100) -> list[TrajectoryRow]:
+        rows, _ = self.recent_request_window(request_limit)
+        return rows
+
+    def request_count(self) -> int:
+        return int(
+            self._conn.execute(
+                "SELECT COUNT(DISTINCT request_id) FROM trajectory"
+            ).fetchone()[0]
+        )
+
     def count(self) -> int:
         return int(self._conn.execute("SELECT COUNT(*) FROM trajectory").fetchone()[0])
 

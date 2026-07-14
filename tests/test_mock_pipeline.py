@@ -109,6 +109,20 @@ def test_category_query_supports_trend_seam(store):
     assert len(local_fails) == 2  # the 3rd request never attempts local
 
 
+def test_recent_request_rows_keeps_complete_recovery_path(store):
+    pipeline = make_pipeline(store, local_failure="bad_enum")
+    first = pipeline.handle_request(INCIDENT, "telecom.severity_classification")
+    second = pipeline.handle_request(INCIDENT, "telecom.severity_classification")
+
+    recent, truncated = store.recent_request_window(request_limit=1)
+
+    assert store.request_count() == 2
+    assert truncated is True
+    assert {item.request_id for item in recent} == {second.request_id}
+    assert [item.tier for item in recent] == ["local", "remote"]
+    assert first.request_id != second.request_id
+
+
 def test_legacy_trajectory_db_migrates_receipt_fields(tmp_path):
     db = tmp_path / "legacy.db"
     conn = sqlite3.connect(db)

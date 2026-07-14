@@ -29,6 +29,7 @@ demo = [
 ]
 
 [project.scripts]
+kaaval = "kaaval_assurance.cli:main"
 kaaval-eval = "kaaval_assurance.eval.cli:main"
 kaaval-agent = "kaaval_assurance.agent_cli:main"
 

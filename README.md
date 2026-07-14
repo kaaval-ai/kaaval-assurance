@@ -99,6 +99,7 @@ Click the flow for the interactive walkthrough: [HTML](docs/kaaval-assurance-arc
 | Runtime probe | Built | Turns runtime claims from configured into measured; redacts secrets |
 | Streamlit demo console | Built | Live interactive runs plus replay of captured artifacts; hostable without secrets |
 | Inference Flight Deck UI (React) | Built | Evidence Baseline replays immutable telemetry/trajectory/probe artifacts; Live Session connects Fireworks BYOK or local Ollama/vLLM and feeds real responses into the same pipeline, EWMA, telemetry, and receipt readers. |
+| K Top terminal preview | Built — local MVP | `kaaval top` renders a content-free SAMPLE showcase or polls real in-memory assurance sessions through one redacted operations schema; full durable history and SSE are roadmap work |
 
 The full test suite (330+ tests) runs network-free; live calls are explicit,
 opt-in CLI/script paths.
@@ -262,6 +263,43 @@ artifacts committed here rather than depending on presentation copy alone.
 ## Quickstart
 
 **The strongest way to evaluate Kaaval Assurance is to pull the public container. You can inspect the measured AMD evidence immediately without any credentials. Connect your own model endpoint only when you want to run live assurance.**
+
+### Developer preview: K Top
+
+K Top is the read-only terminal surface for assured decisions. The offline
+showcase requires no credentials, model, GPU, or network call after the local
+environment is installed:
+
+```bash
+uv sync --group dev
+uv run kaaval top --demo
+```
+
+Use `j`/`k` or the arrow keys to move, `Enter` to inspect the redacted receipt,
+`/` to filter, `p` to pause the viewport, and `q` to quit. For CI or a screen
+capture, render one plain-text frame:
+
+```bash
+uv run kaaval top --demo --once --width 120
+```
+
+To watch real local API sessions, start the server and K Top in separate
+terminals, then submit requests through `/api/runs` or the Flight Deck:
+
+```bash
+KAAVAL_LIVE_RUNS_ENABLED=1 uv run uvicorn apps.api.server:app --port 8000
+uv run kaaval top --endpoint http://127.0.0.1:8000
+```
+
+The current preview polls `/api/ops/snapshot`. That endpoint is generated from
+the real process-local session stores but deliberately excludes task input,
+model output, provider exception bodies, credentials, and full path/URL-shaped
+model identifiers. Each session contributes at most 100 complete recent
+decisions per poll, and the screen marks truncated windows. Sessions expire
+after 15 idle minutes. The latency shown is the sum of recorded model-call
+latencies, not end-to-end request duration. Durable history, authentication,
+cross-worker aggregation, and SSE reconnect are not claimed by this MVP; see the
+[K Top requirements](docs/k-top-requirements.md).
 
 ### 1. Run the submitted container
 The judge path is container-first. It does **not** require cloning the repo or
