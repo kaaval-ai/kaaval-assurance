@@ -1,0 +1,14 @@
+K TOP  Kaaval decision assurance
+STATE DEMO | DATA SAMPLE | MODE UNAVAILABLE
+AUTHORITY DISPLAY ONLY | CONTENT WITHHELD
+endpoint demo://local  runtime 0.1.0-demo  deployment local-demo
+Window decisions 4  Calls/min 4  Final contract-conformance 50.0%  Recovered 1  No safe 1  Provider errors 1
+Attempts 7  Escalations 3  p95 model-call latency sum 1334ms  Recorded cost $0.0000
+Verifier failure trend (recent local contract failures, not model accuracy): refund_decision 0.51 FORCE_REMOTE
+
+  TIME      DECISION       CONTRACT@VERSION                 MODEL                  PATH  OUTCOME       CALL LAT SUM
+> 10:05:00  demo-conform…  telecom.severity_classificati…  gemma-3-1b-it           L     CONFORMANT              83ms
+  10:05:00  demo-recover…  support.refund_decision@1.0     accounts/fireworks/mo…  L>R   RECOVERED              298ms
+  10:05:00  demo-no-safe…  support.refund_decision@1.0     accounts/fireworks/mo…  L>R   NO SAFE                390ms
+  10:05:00  demo-provide…  telecom.severity_classificati…  accounts/fireworks/mo…  L>R   PROVIDER ERROR        1500ms
+j/k move  Enter inspect  / filter  p pause  ? help  q quit  rows 1-4/4

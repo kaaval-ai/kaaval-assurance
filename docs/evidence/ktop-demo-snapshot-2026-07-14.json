@@ -1,0 +1,250 @@
+{
+  "schema_version": "0.1",
+  "generated_at": "2026-07-13T16:05:00Z",
+  "provenance": "sample",
+  "authority": "display_only",
+  "service": {
+    "service": "kaaval-assurance",
+    "runtime_version": "0.1.0-demo",
+    "deployment_mode": "local-demo",
+    "live_runs_enabled": false,
+    "execution_mode": "unavailable",
+    "redaction": "content_withheld"
+  },
+  "totals": {
+    "sessions": 1,
+    "decisions": 4,
+    "attempts": 7,
+    "calls_last_minute": 4,
+    "final_contract_conformance_rate": 0.5,
+    "recovered": 1,
+    "no_safe_answer": 1,
+    "provider_errors": 1,
+    "escalations": 3,
+    "p95_recorded_model_call_latency_sum_ms": 1333.5,
+    "recorded_cost_usd": 0.0,
+    "decision_window_truncated": false
+  },
+  "routing": [
+    {
+      "session_id": "demo-session",
+      "category": "refund_decision",
+      "verifier_failure_ewma": 0.51,
+      "action": "force_remote",
+      "reason": "recent local contract failures crossed the 0.50 policy band"
+    },
+    {
+      "session_id": "demo-session",
+      "category": "severity_classification",
+      "verifier_failure_ewma": 0.3,
+      "action": "tightened",
+      "reason": "recent local contract failures are under tightened watch"
+    }
+  ],
+  "decisions": [
+    {
+      "decision_id": "demo-conformant-001",
+      "session_id": "demo-session",
+      "timestamp": "2026-07-13T16:05:00Z",
+      "category": "severity_classification",
+      "contract_id": "telecom.severity_classification",
+      "contract_version": "1.0",
+      "contract_hash": null,
+      "final_outcome": "conformant",
+      "provenance": "sample",
+      "authority": "display_only",
+      "attempts": [
+        {
+          "ordinal": 1,
+          "timestamp": "2026-07-13T16:05:00Z",
+          "provider": "vllm-gemma",
+          "model_id": "gemma-3-1b-it",
+          "tier": "local",
+          "attempt_status": "completed",
+          "contract_conformant": true,
+          "failed_check_ids": [],
+          "escalated": false,
+          "latency_ms": 83.0,
+          "prompt_tokens": 80,
+          "completion_tokens": 24,
+          "recorded_cost_usd": 0.0,
+          "error_type": null,
+          "audit_sampled": false,
+          "audit_result": null
+        }
+      ],
+      "recorded_model_call_latency_sum_ms": 83.0,
+      "recorded_cost_usd": 0.0,
+      "content_redaction": "withheld"
+    },
+    {
+      "decision_id": "demo-recovered-002",
+      "session_id": "demo-session",
+      "timestamp": "2026-07-13T16:05:00Z",
+      "category": "refund_decision",
+      "contract_id": "support.refund_decision",
+      "contract_version": "1.0",
+      "contract_hash": null,
+      "final_outcome": "recovered",
+      "provenance": "sample",
+      "authority": "display_only",
+      "attempts": [
+        {
+          "ordinal": 1,
+          "timestamp": "2026-07-13T16:05:00Z",
+          "provider": "ollama",
+          "model_id": "llama3.2:1b",
+          "tier": "local",
+          "attempt_status": "completed",
+          "contract_conformant": false,
+          "failed_check_ids": [
+            "range:refund_amount_usd"
+          ],
+          "escalated": false,
+          "latency_ms": 91.0,
+          "prompt_tokens": 80,
+          "completion_tokens": 24,
+          "recorded_cost_usd": 0.0,
+          "error_type": null,
+          "audit_sampled": false,
+          "audit_result": null
+        },
+        {
+          "ordinal": 2,
+          "timestamp": "2026-07-13T16:05:00Z",
+          "provider": "fireworks",
+          "model_id": "accounts/fireworks/models/kimi-k2p6",
+          "tier": "remote",
+          "attempt_status": "completed",
+          "contract_conformant": true,
+          "failed_check_ids": [],
+          "escalated": true,
+          "latency_ms": 207.0,
+          "prompt_tokens": 80,
+          "completion_tokens": 24,
+          "recorded_cost_usd": 0.0,
+          "error_type": null,
+          "audit_sampled": false,
+          "audit_result": null
+        }
+      ],
+      "recorded_model_call_latency_sum_ms": 298.0,
+      "recorded_cost_usd": 0.0,
+      "content_redaction": "withheld"
+    },
+    {
+      "decision_id": "demo-no-safe-003",
+      "session_id": "demo-session",
+      "timestamp": "2026-07-13T16:05:00Z",
+      "category": "refund_decision",
+      "contract_id": "support.refund_decision",
+      "contract_version": "1.0",
+      "contract_hash": null,
+      "final_outcome": "no_safe_answer",
+      "provenance": "sample",
+      "authority": "display_only",
+      "attempts": [
+        {
+          "ordinal": 1,
+          "timestamp": "2026-07-13T16:05:00Z",
+          "provider": "ollama",
+          "model_id": "llama3.2:1b",
+          "tier": "local",
+          "attempt_status": "completed",
+          "contract_conformant": false,
+          "failed_check_ids": [
+            "range:refund_amount_usd"
+          ],
+          "escalated": false,
+          "latency_ms": 88.0,
+          "prompt_tokens": 80,
+          "completion_tokens": 24,
+          "recorded_cost_usd": 0.0,
+          "error_type": null,
+          "audit_sampled": false,
+          "audit_result": null
+        },
+        {
+          "ordinal": 2,
+          "timestamp": "2026-07-13T16:05:00Z",
+          "provider": "fireworks",
+          "model_id": "accounts/fireworks/models/kimi-k2p6",
+          "tier": "remote",
+          "attempt_status": "completed",
+          "contract_conformant": false,
+          "failed_check_ids": [
+            "grounding:consequential_damages_requires_human"
+          ],
+          "escalated": true,
+          "latency_ms": 302.0,
+          "prompt_tokens": 80,
+          "completion_tokens": 24,
+          "recorded_cost_usd": 0.0,
+          "error_type": null,
+          "audit_sampled": false,
+          "audit_result": null
+        }
+      ],
+      "recorded_model_call_latency_sum_ms": 390.0,
+      "recorded_cost_usd": 0.0,
+      "content_redaction": "withheld"
+    },
+    {
+      "decision_id": "demo-provider-error-004",
+      "session_id": "demo-session",
+      "timestamp": "2026-07-13T16:05:00Z",
+      "category": "severity_classification",
+      "contract_id": "telecom.severity_classification",
+      "contract_version": "1.0",
+      "contract_hash": null,
+      "final_outcome": "provider_error",
+      "provenance": "sample",
+      "authority": "display_only",
+      "attempts": [
+        {
+          "ordinal": 1,
+          "timestamp": "2026-07-13T16:05:00Z",
+          "provider": "vllm-gemma",
+          "model_id": "gemma-3-1b-it",
+          "tier": "local",
+          "attempt_status": "provider_error",
+          "contract_conformant": false,
+          "failed_check_ids": [
+            "transport:TimeoutError"
+          ],
+          "escalated": false,
+          "latency_ms": 1000.0,
+          "prompt_tokens": 80,
+          "completion_tokens": 24,
+          "recorded_cost_usd": 0.0,
+          "error_type": "TimeoutError",
+          "audit_sampled": false,
+          "audit_result": null
+        },
+        {
+          "ordinal": 2,
+          "timestamp": "2026-07-13T16:05:00Z",
+          "provider": "fireworks",
+          "model_id": "accounts/fireworks/models/kimi-k2p6",
+          "tier": "remote",
+          "attempt_status": "provider_error",
+          "contract_conformant": false,
+          "failed_check_ids": [
+            "transport:ConnectionError"
+          ],
+          "escalated": true,
+          "latency_ms": 500.0,
+          "prompt_tokens": 80,
+          "completion_tokens": 24,
+          "recorded_cost_usd": 0.0,
+          "error_type": "ConnectionError",
+          "audit_sampled": false,
+          "audit_result": null
+        }
+      ],
+      "recorded_model_call_latency_sum_ms": 1500.0,
+      "recorded_cost_usd": 0.0,
+      "content_redaction": "withheld"
+    }
+  ]
+}
