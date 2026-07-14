@@ -37,3 +37,8 @@ submission/video-browser-clip/panels/
 submission/video-storyboard/rendered/
 submission/video-storyboard/flight-deck-measured.png
 submission/deck-v2/**/slide-*.png
+
+# Build tooling noise at repo root
+node_modules/
+output/
+tmp/
