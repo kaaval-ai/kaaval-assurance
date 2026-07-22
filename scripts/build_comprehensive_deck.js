@@ -130,16 +130,23 @@ function statusTag(s,x,y,kind){
   const items=[
     {n:"01",h:"Agents are taking real actions",d:"Frameworks now let AI execute tools, move money, and change records autonomously. The blast radius of a wrong decision just went up."},
     {n:"02",h:"Regulation makes it mandatory",d:"The EU AI Act's high-risk record-keeping obligations take effect Aug 2, 2026. Penalties reach €15M or 3% of global turnover. Deployers stay liable even for vendor AI."},
-    {n:"03",h:"Adoption raced ahead of trust",d:"88% of contact centers already run AI; only ~25% trust it unattended. Everyone deployed. Almost no one governs. That gap is the wedge."},
+    {n:"03",h:"Adoption raced ahead of trust",d:"88% of contact centers already run AI; only ~25% trust it unattended. Everyone deployed. Almost no one governs."},
   ];
-  let y=2.35;
+  let y=2.1;
   items.forEach((it)=>{
     s.addText(it.n,{x:0.6,y,w:0.9,h:0.7,fontFace:MONO,fontSize:26,bold:true,color:C.accent,margin:0});
     s.addText(it.h,{x:1.7,y:y+0.02,w:10.9,h:0.4,fontFace:FONT,fontSize:17,bold:true,color:C.ink,margin:0});
-    s.addText(it.d,{x:1.7,y:y+0.48,w:10.9,h:0.8,fontFace:FONT,fontSize:13.5,color:C.body,lineSpacingMultiple:1.3,valign:"top",margin:0});
-    y+=1.55;
+    s.addText(it.d,{x:1.7,y:y+0.46,w:10.9,h:0.75,fontFace:FONT,fontSize:13,color:C.body,lineSpacingMultiple:1.25,valign:"top",margin:0});
+    y+=1.28;
   });
-  footer(s,"Sources: EU AI Act Articles 12 & 19 (artificialintelligenceact.eu) · AI customer-service market reports 2026 · adoption/integration split publicly reported");
+  // Category confirmation band — Gartner named the category in Feb 2026.
+  s.addShape("roundRect",{x:0.6,y:6.05,w:12.1,h:0.72,rectRadius:0.08,fill:{color:C.measuredBg},line:{color:C.measuredBorder,width:1}});
+  s.addText([
+    {text:"Gartner named the category: ",options:{color:C.body}},
+    {text:"“Guardian Agents” — runtime enforcement for agentic AI (Feb 2026). ",options:{bold:true,color:C.measured}},
+    {text:"AI TRiSM: $3.1B → $13.8B by 2030 · 95% of C-suites report AI incidents · ungoverned incidents average $4.4M.",options:{bold:true,color:C.ink}},
+  ],{x:0.95,y:6.05,w:11.4,h:0.72,fontFace:FONT,fontSize:11.5,valign:"middle",lineSpacingMultiple:1.2,margin:0});
+  footer(s,"Sources: EU AI Act Art. 12/19 (artificialintelligenceact.eu) · Gartner AI TRiSM Market Guide + Guardian Agents Market Guide (Feb 2026) · market reports 2026");
   pageno(s,"04");
 }
 
@@ -201,8 +208,12 @@ function statusTag(s,x,y,kind){
     {text:"⚡ provider failure ",options:{color:C.danger,bold:true}},{text:"not the model's fault",options:{color:C.body}},
   ],{x:0.6,y:5.0,w:12.1,h:0.4,fontFace:FONT,fontSize:12.5,align:"center",margin:0});
   s.addText("Implemented path: AssurancePipeline → Router → Verifier → TrajectoryStore.  Layer-2 drift routing and a sampled, display-only Layer-3 audit sit around it.",
-    {x:0.6,y:5.7,w:12.1,h:0.6,fontFace:FONT,fontSize:12,italic:true,color:C.faint,align:"center",lineSpacingMultiple:1.3,margin:0});
-  pageno(s,"06");
+    {x:0.6,y:5.55,w:12.1,h:0.45,fontFace:FONT,fontSize:12,italic:true,color:C.faint,align:"center",lineSpacingMultiple:1.25,margin:0});
+  s.addText([
+    {text:"A 50-year-old engineering pattern, applied to AI decisions: ",options:{color:C.body,italic:true}},
+    {text:"the Simplex runtime-assurance architecture — unverified controller, verified safety monitor, deterministic fallback.",options:{bold:true,color:C.ink,italic:true}},
+  ],{x:0.6,y:6.15,w:12.1,h:0.5,fontFace:FONT,fontSize:12,align:"center",lineSpacingMultiple:1.25,margin:0});
+  pageno(s);
 }
 
 /* ── 7 · Proof (traction) ── */
