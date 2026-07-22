@@ -24,10 +24,13 @@ deck.layout = "LAYOUT_WIDE"; // 13.3 x 7.5
 deck.defineSlideMaster({ title: "BASE", background: { color: C.bg } });
 
 const S = () => deck.addSlide({ masterName: "BASE" });
+let PAGE = 0;
 function kicker(s, t){ s.addText(t.toUpperCase(), {x:0.6,y:0.4,w:11,h:0.35,fontFace:FONT,fontSize:12,bold:true,color:C.accent,charSpacing:2,margin:0}); }
 function title(s, t, y=0.75){ s.addText(t, {x:0.6,y,w:12.1,h:0.95,fontFace:FONT,fontSize:31,bold:true,color:C.ink,margin:0}); }
 function sub(s, t, y=1.7){ s.addText(t, {x:0.6,y,w:12.1,h:0.55,fontFace:FONT,fontSize:14.5,color:C.body,lineSpacingMultiple:1.25,margin:0}); }
-function pageno(s, n){ s.addText(n, {x:12.4,y:7.06,w:0.5,h:0.3,fontFace:FONT,fontSize:10,color:C.faint,align:"right",margin:0}); }
+// Auto-incrementing page number; any legacy numeric arg is ignored so
+// inserting slides never requires renumbering the rest.
+function pageno(s){ PAGE++; s.addText(String(PAGE).padStart(2,"0"), {x:12.4,y:7.06,w:0.5,h:0.3,fontFace:FONT,fontSize:10,color:C.faint,align:"right",margin:0}); }
 function footer(s, t){ s.addShape("line",{x:0.6,y:7.0,w:12.1,h:0,line:{color:C.cardBorder,width:0.75}}); s.addText(t,{x:0.6,y:7.06,w:11,h:0.3,fontFace:FONT,fontSize:9.5,italic:true,color:C.faint,margin:0}); }
 function statusTag(s,x,y,kind){
   const m={measured:[C.measuredBg,C.measuredBorder,C.measured,"MEASURED"],configured:[C.configuredBg,C.configuredBorder,C.configured,"CONFIGURED"],
@@ -54,10 +57,29 @@ function statusTag(s,x,y,kind){
   ],{x:0.6,y:4.15,w:9.6,h:1.2,fontFace:FONT,fontSize:16,color:C.body,lineSpacingMultiple:1.35,margin:0});
   s.addText("VERIFY, DON'T PREDICT.  ·  RECEIPTS, NOT PROMISES.",{x:0.6,y:5.5,w:11,h:0.4,fontFace:MONO,fontSize:12,bold:true,color:C.accent,charSpacing:1,margin:0});
   footer(s,"KaavalAI · Milind Gunjan & Hari Krishna Govindarajan · github.com/kaaval-ai · kaaval.ai");
-  pageno(s,"01");
+  pageno(s);
 }
 
-/* ── 2 · The shift ── */
+/* ── Mission (aspiration up front) ── */
+{
+  const s=S();
+  kicker(s,"Our mission");
+  s.addText("Make every AI decision\naccountable.",{x:0.6,y:1.75,w:12.1,h:1.8,fontFace:FONT,fontSize:42,bold:true,color:C.ink,lineSpacingMultiple:1.08,margin:0});
+  s.addText([
+    {text:"Autonomous AI will run more of the economy every year — approving, deciding, and acting with no human in the loop. It can only be trusted with that power if every decision it makes is ",options:{}},
+    {text:"provable, recoverable, and on the record.",options:{bold:true,color:C.ink}},
+    {text:"  We are building that record. Kaaval is the trust layer for the agentic economy.",options:{}},
+  ],{x:0.6,y:3.85,w:11.6,h:1.5,fontFace:FONT,fontSize:16.5,color:C.body,lineSpacingMultiple:1.4,margin:0});
+  s.addShape("roundRect",{x:0.6,y:5.5,w:12.1,h:0.85,rectRadius:0.08,fill:{color:C.cardBg},line:{color:C.cardBorder,width:1}});
+  s.addText([
+    {text:"Every system society learned to trust got an accountability primitive first — ",options:{color:C.body}},
+    {text:"commerce got the ledger, the web got the certificate.",options:{bold:true,color:C.ink}},
+    {text:"  Agentic AI gets the receipt.",options:{bold:true,color:C.accent}},
+  ],{x:0.95,y:5.5,w:11.4,h:0.85,fontFace:FONT,fontSize:14,valign:"middle",lineSpacingMultiple:1.25,margin:0});
+  pageno(s);
+}
+
+/* ── The shift ── */
 {
   const s=S();
   kicker(s,"The shift");
@@ -333,7 +355,32 @@ function statusTag(s,x,y,kind){
   pageno(s,"12");
 }
 
-/* ── 13 · Team + close ── */
+/* ── The world we're building (aspiration) ── */
+{
+  const s=S();
+  kicker(s,"The world we're building");
+  title(s,"When AI can be trusted with decisions, it can run real things.");
+  sub(s,"Five years out, the accountability we're building isn't a product a few teams buy — it's the default every consequential AI action carries.");
+  const fut=[
+    {h:"Billions of decisions a day",d:"Every consequential AI action — a refund, a diagnosis, a trade, a dispatch — carries a verifiable record of what it was allowed to do and why."},
+    {h:"The standard evidence format",d:"Regulators, auditors, and insurers read Kaaval receipts the way finance reads a ledger. Proving an AI decision becomes a query, not an archaeology dig."},
+    {h:"AI safe enough to run the economy",d:"Autonomous agents operate money, healthcare, and infrastructure — because their decisions are accountable by default, not trusted by hope."},
+  ];
+  const w=3.9,y=2.55,h=3.1;
+  fut.forEach((f,i)=>{const x=0.6+i*(w+0.18);
+    s.addShape("roundRect",{x,y,w,h,rectRadius:0.1,fill:{color:C.cardBg},line:{color:C.cardBorder,width:1}});
+    s.addText(f.h,{x:x+0.28,y:y+0.3,w:w-0.56,h:0.7,fontFace:FONT,fontSize:16,bold:true,color:C.accent,lineSpacingMultiple:1.1,margin:0});
+    s.addText(f.d,{x:x+0.28,y:y+1.15,w:w-0.56,h:1.8,fontFace:FONT,fontSize:12.5,color:C.body,lineSpacingMultiple:1.35,valign:"top",margin:0});
+  });
+  s.addShape("roundRect",{x:0.6,y:5.9,w:12.1,h:0.7,rectRadius:0.08,fill:{color:C.navy}});
+  s.addText([
+    {text:"The agentic economy needs a trust layer. We intend to be it.",options:{bold:true,color:"FFFFFF"}},
+    {text:"    Stated as vision — the destination we build toward, not shipped features.",options:{italic:true,color:"8A97A6"}},
+  ],{x:0.95,y:5.9,w:11.4,h:0.7,fontFace:FONT,fontSize:14,valign:"middle",margin:0});
+  pageno(s);
+}
+
+/* ── Team + close ── */
 {
   const s=S();
   kicker(s,"Team & vision");
